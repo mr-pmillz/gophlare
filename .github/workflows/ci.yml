@@ -62,11 +62,6 @@ jobs:
         run: |
           echo "GOPATH=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-#      - name: Install dependencies
-#        run: |
-#          go get github.com/mattn/go-isatty@v0.0.16
-#          go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
-
       # Install gotestfmt on the VM running the action.
       - name: Set up gotestfmt
         uses: gotesttools/gotestfmt-action@v2
@@ -78,7 +73,7 @@ jobs:
       - name: Tests
         run: |
           set -euo pipefail
-          go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt || true
+          go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
