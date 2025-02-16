@@ -1,0 +1,11 @@
+COMPANY: "CHANGETHIS"
+OUTPUT: "/root/work"
+USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0"
+TIMEOUT: 600
+DOMAIN: |-
+  todo.foo
+OUT_OF_SCOPE: |-
+  outta.scope
+API_KEYS:
+  FLARE_API: &FLARE_API ""
+  FLARE_TENANT_ID: &FLARE_TENANT_ID 1234567

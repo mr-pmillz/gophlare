@@ -1,0 +1,39 @@
+project_name: gophlare
+version: 2
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+builds:
+  - env: [CGO_ENABLED=0]
+    id: gophlare
+    binary: gophlare
+    flags:
+      - -trimpath
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    ldflags: |
+      -s -w
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: tgz
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

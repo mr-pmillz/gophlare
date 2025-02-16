@@ -1,0 +1,13 @@
+.idea/
+*.log
+config.yaml
+config.yml
+config/config.yaml
+config/*.yaml
+config/*.yml
+config/*.json
+coverage/*
+todo.md
+phlare/flareClient_test.go
+gophlare
+*.json
