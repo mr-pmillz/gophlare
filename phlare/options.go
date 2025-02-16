@@ -1,6 +1,7 @@
 package phlare
 
 import (
+	"fmt"
 	"github.com/mr-pmillz/gophlare/config"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/spf13/cobra"
@@ -19,6 +20,7 @@ type Options struct {
 	FilesToDownload                 interface{}
 	OutOfScope                      interface{}
 	Emails                          interface{}
+	UserIDFormat                    interface{}
 	Timeout                         int
 	Years                           int
 	MaxZipFilesToDownload           int
@@ -35,12 +37,13 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("company", "c", "", "company name that your testing")
 	cmd.PersistentFlags().StringP("query", "q", "", "query to use for searching stealer logs.")
 	cmd.PersistentFlags().StringP("output", "o", "", "report output dir")
-	cmd.PersistentFlags().StringP("user-agent", "u", "", "custom user-agent to use for requests")
+	cmd.PersistentFlags().StringP("user-agent", "", fmt.Sprintf("gophlare/%s", cmd.Root().Version), "custom user-agent to use for requests")
 	// strings of interface type that can be a file, a slice, or a singular string
 	cmd.PersistentFlags().StringP("domain", "d", "", "domain string or file containing domains ex. domains.txt")
 	cmd.PersistentFlags().StringP("out-of-scope", "", "", "out of scope domains, IPs, or CIDRs")
 	cmd.PersistentFlags().StringP("files-to-download", "f", "", "comma separated list of files to match on and download if they exist from the query")
 	cmd.PersistentFlags().StringP("emails", "e", "", "emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt")
+	cmd.PersistentFlags().StringP("user-id-format", "u", "", "if you know the user ID format ex. a12345 , include this to enhance matching in-scope results. can be a string, a file, or comma-separated list of strings")
 	// integers
 	cmd.PersistentFlags().IntP("years", "y", 2, "number of years in the past to search for stealer logs")
 	cmd.PersistentFlags().IntP("timeout", "t", 600, "timeout duration for API requests in seconds")
@@ -134,6 +137,25 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		opts.Emails = emails.([]string)
 	case reflect.String:
 		opts.Emails = emails.(string)
+	default:
+		// Do Nothing
+	}
+
+	userIDFormat, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:                 "user-id-format",
+		IsFilePath:           true,
+		Opts:                 opts.UserIDFormat,
+		CommaInStringToSlice: true,
+	})
+	if err != nil {
+		return err
+	}
+	rt = reflect.TypeOf(emails)
+	switch rt.Kind() {
+	case reflect.Slice:
+		opts.UserIDFormat = userIDFormat.([]string)
+	case reflect.String:
+		opts.UserIDFormat = userIDFormat.(string)
 	default:
 		// Do Nothing
 	}

@@ -8,6 +8,7 @@ import (
 type Scope struct {
 	Domains         []string
 	Emails          []string
+	UserIDFormats   []string
 	FilesToDownload []string
 	OutOfScope      []string
 	SubDomains      []string
@@ -96,6 +97,24 @@ func NewScope(opts *Options) (*Scope, error) {
 			scope.FilesToDownload = append(scope.FilesToDownload, filesToDownload...)
 		} else {
 			scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.(string))
+		}
+	default:
+		// Do Nothing
+	}
+
+	rtUIDF := reflect.TypeOf(opts.UserIDFormat)
+	switch rtUIDF.Kind() {
+	case reflect.Slice:
+		scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.([]string)...)
+	case reflect.String:
+		if isFile, err := utils.Exists(opts.UserIDFormat.(string)); isFile && err == nil {
+			userIDFormats, err := utils.ReadLines(opts.UserIDFormat.(string))
+			if err != nil {
+				return nil, err
+			}
+			scope.UserIDFormats = append(scope.UserIDFormats, userIDFormats...)
+		} else {
+			scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.(string))
 		}
 	default:
 		// Do Nothing

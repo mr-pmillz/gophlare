@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## What's Changed## [unreleased]
+## What's Changed## [1.0.0] - 2025-02-16
+
+### ✨ New features
+
+- Add git-cliff changelog and ci job - ([2a8464a](https://github.com/mr-pmillz/gophlare/commit/2a8464af53b6cfb2641da3780dd768ba36bbe87a))
 
 ### 🐛 Bug fixes
 

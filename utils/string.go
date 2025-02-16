@@ -1,9 +1,34 @@
 package utils
 
 import (
+	valid "github.com/asaskevich/govalidator"
+	"net/url"
 	"regexp"
 	"strings"
 )
+
+// IsUserIDFormatMatch ...
+func IsUserIDFormatMatch(credentialUsername, userIDFormat string) bool {
+	// Dynamically generate a regex pattern to match the userIDFormat
+	patternStr := "^"
+	for _, char := range userIDFormat {
+		switch {
+		case char >= '0' && char <= '9':
+			patternStr += "\\d"
+		case (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z'):
+			patternStr += "[a-zA-Z]"
+		default:
+			patternStr += regexp.QuoteMeta(string(char))
+		}
+	}
+	patternStr += "$"
+
+	pattern, err := regexp.Compile(patternStr)
+	if err != nil {
+		return false
+	}
+	return pattern.MatchString(credentialUsername)
+}
 
 // RemoveDuplicateStr removes duplicate strings from a slice of strings
 func RemoveDuplicateStr(strSlice []string) []string { //nolint:typecheck
@@ -46,4 +71,79 @@ func ContainsExactMatch(s []string, str string) bool {
 	}
 
 	return false
+}
+
+// isURL tests a string to determine if it is a well-structured url or not.
+func isURL(toTest string) bool {
+	_, err := url.ParseRequestURI(toTest)
+	if err != nil {
+		return false
+	}
+
+	u, err := url.Parse(toTest)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+
+	return true
+}
+
+// ExtractBaseDomain extracts the base domain from a given URL or DNS name
+func ExtractBaseDomain(target string) (string, error) {
+	switch {
+	case isURL(target):
+		parsedURL, err := url.Parse(target)
+		if err != nil {
+			return "", LogError(err)
+		}
+		target = parsedURL.Hostname()
+		fallthrough
+	case valid.IsDNSName(target):
+		if valid.IsIP(target) {
+			return "", nil
+		}
+		domainParts := strings.Split(target, ".")
+		numParts := len(domainParts)
+
+		// Start from the end and find the first non-TLD part
+		tldCount := 0
+		for i := numParts - 1; i >= 0; i-- {
+			if !ContainsExactMatch(AlphaTLDs, domainParts[i]) {
+				break
+			}
+			tldCount++
+		}
+
+		// Handle special cases like .co.uk
+		if tldCount > 1 && numParts > tldCount+1 {
+			// Check if the part before the TLD is also in AlphaTLDs
+			if ContainsExactMatch(AlphaTLDs, domainParts[numParts-tldCount-1]) {
+				tldCount++
+			}
+		}
+
+		// If we have more parts than just the TLD, return the last non-TLD part and all TLD parts
+		if numParts > tldCount {
+			return strings.Join(domainParts[numParts-tldCount-1:], "."), nil
+		} else {
+			return strings.Join(domainParts, "."), nil
+		}
+	case valid.IsIP(target):
+		return "", nil
+	}
+	return "", nil
+}
+
+// HasBaseDomainWithoutTLDPrefix ...
+func HasBaseDomainWithoutTLDPrefix(credentialUsername, domain string) bool {
+	baseDomain, err := ExtractBaseDomain(domain)
+	if err != nil {
+		return false
+	}
+	domainParts := strings.Split(baseDomain, ".")
+	if len(domainParts) < 2 {
+		return false
+	}
+	baseDomainNoTLD := domainParts[0]
+	return strings.HasPrefix(strings.ToLower(credentialUsername), strings.ToLower(baseDomainNoTLD))
 }

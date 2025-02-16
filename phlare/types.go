@@ -4,8 +4,9 @@ import "time"
 
 // FlareClient ...
 type FlareClient struct {
-	Token  string
-	Client *Client
+	Token            string
+	Client           *Client
+	DefaultUserAgent string
 }
 
 // FlareAuthResponse ...
@@ -37,11 +38,37 @@ type FlareSearchCredentials struct {
 	Next *string `json:"next,omitempty"`
 }
 
+// FlareSearchCookiesBodyParams ...
+type FlareSearchCookiesBodyParams struct {
+	Domain        string   `json:"domain,omitempty"`         // The exact domain for which you want to search cookies. Subdomains will not be included.
+	Size          int      `json:"size,omitempty"`           // The number of results to fetch. (default: 100, max: 500)
+	From          string   `json:"from,omitempty"`           // The next value from the last response.
+	Names         []string `json:"names,omitempty"`          // A list of names to filter for specific cookies, for example ['session', 'PHPSESSID']. (max: 10)
+	Paths         []string `json:"paths,omitempty"`          // A list of paths to filter for specific cookies, for example ['/', '/login']. (max: 10)
+	ImportedAfter string   `json:"imported_after,omitempty"` // ISO-formatted datetime string to filter for cookies added to Flare’s database after a given date, for example 2024-10-29T17:50:44.237148+00:00.
+	ExpiresAfter  string   `json:"expires_after,omitempty"`  // ISO-formatted datetime string to filter for cookie expiration, for example 2024-10-29T17:50:44.237148+00:00.
+}
+
+// FlareSearchCookiesResponse ...
+type FlareSearchCookiesResponse struct {
+	Items []struct {
+		UUID         string    `json:"uuid,omitempty"`
+		Domain       string    `json:"domain,omitempty"`
+		ExpiresAt    time.Time `json:"expires_at,omitempty"`
+		ImportedAt   time.Time `json:"imported_at,omitempty"`
+		Name         string    `json:"name,omitempty"`
+		Path         string    `json:"path,omitempty"`
+		StealerLogID string    `json:"stealer_log_id,omitempty"`
+		Value        string    `json:"value,omitempty"`
+	} `json:"items,omitempty"`
+	Next *string `json:"next,omitempty"`
+}
+
 // FlareEventsGlobalSearchBodyParams ...
 type FlareEventsGlobalSearchBodyParams struct {
 	Query   Query   `json:"query,omitempty"`
 	Size    int     `json:"size,omitempty"`
-	From    string  `json:"from,omitempty"`
+	From    string  `json:"from,omitempty"` // The next value from the last response.
 	Order   string  `json:"order,omitempty"`
 	Filters Filters `json:"filters,omitempty"`
 }

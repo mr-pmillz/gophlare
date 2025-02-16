@@ -20,7 +20,11 @@ import (
 	"time"
 )
 
-const flareAPIBaseURL = "https://api.flare.io"
+const (
+	flareAPIBaseURL       = "https://api.flare.io"
+	gophlareClientVersion = "v1.0.1"
+	nullString            = "null"
+)
 
 // NewFlareClient ...
 func NewFlareClient(apiKey string, tenantID int) (*FlareClient, error) {
@@ -55,14 +59,15 @@ func NewFlareClient(apiKey string, tenantID int) (*FlareClient, error) {
 		}
 	}
 	if statusCode == 200 {
-		return &FlareClient{Token: tokenResp.Token, Client: c}, nil
+		userAgent := fmt.Sprintf("gophlare/%s", gophlareClientVersion)
+		return &FlareClient{Token: tokenResp.Token, Client: c, DefaultUserAgent: userAgent}, nil
 	} else {
 		return nil, fmt.Errorf("failed to obtain Flare API token")
 	}
 }
 
 // DownloadAllStealerLogPasswordFiles ...
-func DownloadAllStealerLogPasswordFiles(opts *Options, domains []string) error {
+func DownloadAllStealerLogPasswordFiles(opts *Options, scope *Scope) error {
 	flareOutputDir := fmt.Sprintf("%s/breach_data/stealer_logs", opts.Output)
 	if err := os.MkdirAll(flareOutputDir, 0750); err != nil {
 		return utils.LogError(err)
@@ -74,15 +79,21 @@ func DownloadAllStealerLogPasswordFiles(opts *Options, domains []string) error {
 	}
 
 	allCSVFiles := make([]string, 0)
-	for _, domain := range domains {
+	for _, domain := range scope.Domains {
 		utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for %s", domain)
 
-		results, err := queryGlobalEvents(fc, domain, flareOutputDir, opts.Years)
+		results, err := queryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.Years)
 		if err != nil {
 			return err
 		}
+		numResults := len(results.Items)
+		if numResults == 0 {
+			utils.InfoLabelWithColorf("FLARE", "yellow", "No Stealer Logs found for %s", domain)
+			continue
+		}
+		utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
 
-		allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, opts.KeepZipFiles)
+		allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles)
 		if err != nil {
 			return err
 		}
@@ -104,8 +115,8 @@ func DownloadAllStealerLogPasswordFiles(opts *Options, domains []string) error {
 }
 
 // queryGlobalEvents performs a search for global events by domain
-func queryGlobalEvents(fc *FlareClient, domain, outputDir string, years int) (*FlareEventsGlobalSearchResults, error) {
-	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, years)
+func queryGlobalEvents(fc *FlareClient, domain, outputDir, query string, years int) (*FlareEventsGlobalSearchResults, error) {
+	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, query, years)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -113,7 +124,7 @@ func queryGlobalEvents(fc *FlareClient, domain, outputDir string, years int) (*F
 }
 
 // downloadZipFilesAndProcessPasswordResults processes the results, downloading and parsing necessary files
-func downloadZipFilesAndProcessPasswordResults(results *FlareEventsGlobalSearchResults, fc *FlareClient, limit int, outputDir, domain string, keepZips bool) ([]FlareStealerLogsCredential, error) {
+func downloadZipFilesAndProcessPasswordResults(results *FlareEventsGlobalSearchResults, fc *FlareClient, limit int, outputDir, domain string, userIDFormats []string, keepZips bool) ([]FlareStealerLogsCredential, error) {
 	allDownloadedFiles, allFlareStealerLogCredentials := make([]string, 0), make([]FlareStealerLogsCredential, 0)
 	count := 0
 
@@ -139,7 +150,7 @@ func downloadZipFilesAndProcessPasswordResults(results *FlareEventsGlobalSearchR
 		allDownloadedFiles = append(allDownloadedFiles, downloadedFiles...)
 	}
 
-	parsedCredentials, allLiveCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, domain)
+	parsedCredentials, allLiveCookieBros, allHighValueCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, userIDFormats, domain)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +159,12 @@ func downloadZipFilesAndProcessPasswordResults(results *FlareEventsGlobalSearchR
 	// write allLiveCookieBros to JSON file
 	cookieBroJSONFileName := fmt.Sprintf("%s/flare-stealer-logs-cookie-bro.json", outputDir)
 	if err = utils.WriteStructToJSONFile(allLiveCookieBros, cookieBroJSONFileName); err != nil {
+		return nil, utils.LogError(err)
+	}
+
+	// write allLiveCookieBros to JSON file
+	highValueCookieBroJSONFileName := fmt.Sprintf("%s/flare-stealer-logs-high-value-cookie-bro.json", outputDir)
+	if err = utils.WriteStructToJSONFile(allHighValueCookieBros, highValueCookieBroJSONFileName); err != nil {
 		return nil, utils.LogError(err)
 	}
 
@@ -174,9 +191,10 @@ func limitReached(count, limit int) bool {
 }
 
 // parseDownloadedFilesForPasswordsAndCookies parses downloaded files to extract credentials
-func parseDownloadedFilesForPasswordsAndCookies(files []string, domain string) ([]FlareStealerLogsCredential, []CookieBro, error) {
+func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, domain string) ([]FlareStealerLogsCredential, []CookieBro, []CookieBro, error) {
 	allParsedCredentials := make([]FlareStealerLogsCredential, 0)
 	allCookieBros := make([]CookieBro, 0)
+	allHighValueCookieBros := make([]CookieBro, 0)
 	// by default when downloading the zips, process the password files for the in-scope domain
 	filesToParse := map[string]struct{}{
 		"All Passwords.txt": {},
@@ -187,37 +205,41 @@ func parseDownloadedFilesForPasswordsAndCookies(files []string, domain string) (
 	for _, file := range files {
 		unzippedFiles, tempDir, err := utils.UnzipToTemp(file)
 		if err != nil {
-			return nil, nil, utils.LogError(err)
+			return nil, nil, nil, utils.LogError(err)
 		}
 
 		for _, unzippedFile := range unzippedFiles {
 			if _, exists := filesToParse[filepath.Base(unzippedFile)]; exists {
 				// debug statement, todo: add in verbose option to print this...
 				utils.InfoLabelWithColorf("FLARE", "green", "Parsing in-scope domain creds: %s", unzippedFile)
-				credentials, err := parseCredentialsFile(unzippedFile, domain)
+				credentials, err := parseCredentialsFile(unzippedFile, domain, userIDFormats)
 				if err != nil {
-					return nil, nil, utils.LogError(err)
+					return nil, nil, nil, utils.LogError(err)
 				}
 				allParsedCredentials = append(allParsedCredentials, credentials...)
 			}
 			// check for cookie files
 			if strings.Contains(strings.ToLower(unzippedFile), "cookie") {
-				liveCookies, err := ParseCookieFile(unzippedFile)
+				// todo: map filename to cookies struct so that when writing cookies to a file, can write cookies to smaller individual files corresponding to relevant stealer log index.
+				liveCookies, highValueCookies, err := ParseCookieFile(unzippedFile)
 				if err != nil {
-					return nil, nil, utils.LogError(err)
+					return nil, nil, nil, utils.LogError(err)
 				}
 				// map live cookies to cookie bro format struct
 				cookieBros := MapCookiesToCookieBro(liveCookies)
 				// append cookieBros to allCookieBros
 				allCookieBros = append(allCookieBros, cookieBros...)
+
+				highValueCookieBros := MapCookiesToCookieBro(highValueCookies)
+				allHighValueCookieBros = append(allHighValueCookieBros, highValueCookieBros...)
 			}
 		}
 
 		if err := os.RemoveAll(tempDir); err != nil {
-			return nil, nil, utils.LogError(err)
+			return nil, nil, nil, utils.LogError(err)
 		}
 	}
-	return allParsedCredentials, allCookieBros, nil
+	return allParsedCredentials, allCookieBros, allHighValueCookieBros, nil
 }
 
 // writeCredentialsToCSV writes credentials to a CSV file
@@ -241,11 +263,7 @@ func exportCSVToExcel(csvFiles []string, outputDir string) error {
 // FlareRetrieveEventActivitiesByID ...
 func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFireworkActivitiesIndexSourceIDv2Response, error) {
 	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", flareAPIBaseURL, uid)
-	headers := map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
-		"Content-Type":  "application/json",
-		"User-Agent":    "go-flareio/0.1.0",
-	}
+	headers := fc.defaultHeaders()
 	data := &FlareFireworkActivitiesIndexSourceIDv2Response{}
 	statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
 	if err != nil {
@@ -275,16 +293,13 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 	downloadedFilePaths := make([]string, 0)
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
-			// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
 			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", flareAPIBaseURL, data.Activity.Data.UID)
-			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 			headers := map[string]string{
 				"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
 				"Accept":        "text/plain; charset=utf-8",
-				"User-Agent":    "go-flareio/0.1.0",
+				"User-Agent":    fc.DefaultUserAgent,
 			}
 			params := map[string]string{
-				// "file":           stealerLogsFile, // to download individual file, can use the file param and download_file endpoint
 				"i_agree_to_tos": "true",
 			}
 
@@ -295,6 +310,7 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 				break
 			}
 
+			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 			resp := &FlareStealerLogZipFileDownloadResponse{}
 			statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", resp, headers, params, nil)
 			if err != nil {
@@ -305,7 +321,7 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 			}
 			if resp.StealerLog.ExternalURL != "" {
 				time.Sleep(time.Second * 4)
-				err = downloadZip(resp.StealerLog.ExternalURL, outputFilePath)
+				err = downloadZip(resp.StealerLog.ExternalURL, outputFilePath, fc.DefaultUserAgent)
 				if err != nil {
 					return nil, utils.LogError(err)
 				}
@@ -340,7 +356,7 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 			headers := map[string]string{
 				"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
 				"Accept":        "text/plain; charset=utf-8",
-				"User-Agent":    "go-flareio/0.1.0",
+				"User-Agent":    fc.DefaultUserAgent,
 			}
 			params := map[string]string{
 				"file":           stealerLogsFile, // to download individual file, can use the file param and download_file endpoint
@@ -385,7 +401,7 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 		headers := map[string]string{
 			"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
 			"Accept":        "text/plain; charset=utf-8",
-			"User-Agent":    "go-flareio/0.1.0",
+			"User-Agent":    fc.DefaultUserAgent,
 		}
 		params := map[string]string{
 			"file":           stealerLogsFile, // to download individual file, can use the file param and download_file endpoint
@@ -408,7 +424,7 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 }
 
 // downloadZip downloads a ZIP file from the provided URL and saves it to the specified output path.
-func downloadZip(url, outputPath string) error {
+func downloadZip(url, outputPath, userAgent string) error {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -417,7 +433,7 @@ func downloadZip(url, outputPath string) error {
 	}
 
 	// Mimic curl behavior
-	req.Header.Set("User-Agent", "go-flareio/0.1.0")
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "*/*")
 
 	resp, err := client.Do(req)
@@ -451,54 +467,68 @@ func downloadZip(url, outputPath string) error {
 	return nil
 }
 
-// Common cookies to look for....
-// Microsoft Entra ID (formerly Azure AD):
-//		ESTSAUTH: Contains user's session information for SSO (transient)
-//		ESTSAUTHPERSISTENT: Contains user's session information for SSO (persistent)
-//		ESTSAUTHLIGHT: Contains Session GUID Information1
-//		x-ms-refreshtokencredential: Used when Primary Refresh Token (PRT) is in use
-// Azure AD B2C:
-//		x-ms-cpim-trans: Used for tracking authentication requests and current transaction5
-//		x-ms-cpim-sso:{Id}: Used for maintaining the SSO session
-//		x-ms-cpim-cache:{id}_n: Used for maintaining the request state
-// SharePoint and OneDrive use similar authentication cookies14:
-//		FedAuth: Used for each top-level site in SharePoint
-//		rtFA: Used across all of SharePoint for silent authentication
-//		Session cookies: Default, deleted when browser is closed
-//		Persistent cookies: Enabled when "Keep Me Signed In" is selected
-// Google uses several cookies for authentication and security:
-//		SID and HSID: Contain encrypted user account information, last for 2 years
-//		pm_sess: Prevents abuse, lasts for 30 minutes
-//		YSC: Prevents abuse, lasts for browsing session
-//		__Secure-YEC and AEC: Detect spam and fraud, last for 13 months and 6 months respectively
-// Okta
-// Okta uses HTTP session cookies for authentication:
-//		Session cookie: Provides access across web requests
-//		Session token: One-time bearer token for proof of authentication
-
 // FindHighValueCookies ...
 func FindHighValueCookies(cookies []Cookie) []Cookie {
 	// Define a map to group cookies by their respective providers
 	cookieMap := map[string][]string{
 		"Microsoft": {
-			"ESTSAUTH",                    //		ESTSAUTH: Contains user's session information for SSO (transient)
-			"ESTSAUTHPERSISTENT",          //		ESTSAUTHPERSISTENT: Contains user's session information for SSO (persistent)
-			"ESTSAUTHLIGHT",               //		ESTSAUTHLIGHT: Contains Session GUID Information1
-			"x-ms-refreshtokencredential", //		x-ms-refreshtokencredential: Used when Primary Refresh Token (PRT) is in use
+			"ESTSAUTH",                    // Contains user's session information for SSO (transient).
+			"ESTSAUTHPERSISTENT",          // Persistent session token for SSO across Microsoft services.
+			"ESTSAUTHLIGHT",               // Stores session GUID information, often used in lightweight authentication flows.
+			"ESTSAUTHPERSISTENTLIGHT",     // A lightweight version of ESTSAUTHPERSISTENT, often used in hybrid authentication scenarios.
+			"x-ms-refreshtokencredential", // Used when Primary Refresh Token (PRT) is active to maintain session state.
+			"SSOCOOKIE",                   // Secure authentication cookie enabling seamless SSO across Microsoft services.
+			"MSCC",                        // Microsoft account consent cookie, storing user preferences for authentication prompts.
+			"MUID",                        // Machine-unique identifier used for tracking authentication and security checks.
+			"MSPAuth",                     // Authentication token for Microsoft Account services, used in login sessions.
+			"MSPProf",                     // Stores user profile-related authentication data.
+			"MSPOK",                       // Helps confirm successful authentication for Microsoft services.
+			"RPSAuth",                     // Main authentication token for maintaining session state.
+			"RPSSecAuth",                  // Secure authentication token for Microsoft Entra ID and 365 services.
+			"MS0",                         // Session management cookie used for authentication and maintaining login state.
+			"MSFPC",                       // Used for tracking and authentication across Microsoft services.
+			"MSAAuth",                     // Authentication token for Microsoft Account sign-ins.
+			"MSAAUTHP",                    // Persistent authentication cookie for Microsoft 365 services.
+			"WT_FPC",                      // First-party authentication tracking cookie used for session persistence.
+			"MSAToken",                    // Stores a user's token for authentication and access control.
+			"FPC",                         // Microsoft’s first-party cookie used for authentication and tracking logged-in sessions.
+			"PPAuth",                      // Microsoft Passport authentication token for secure sign-ins.
 		},
 		"Azure": {
-			"x-ms-cpim-trans", //		x-ms-cpim-trans: Used for tracking authentication requests and current transaction5
-			"x-ms-cpim-sso",   //		x-ms-cpim-sso:{Id}: Used for maintaining the SSO session
-			"x-ms-cpim-cache", //		x-ms-cpim-cache:{id}_n: Used for maintaining the request state
+			"x-ms-cpim-trans", // Used for tracking authentication requests and current transactions.
+			"x-ms-cpim-sso",   // {Id}: Used for maintaining the SSO session.
+			"x-ms-cpim-cache", // {id}_n: Used for maintaining the request state.
+			"x-ms-cpim-rp",    // Stores relying party information in federated authentication scenarios.
+			"x-ms-cpim-rc",    // Stores the user's authentication state across multiple requests.
+			"AzureADAuth",     // Authentication token used specifically in Microsoft Entra ID (Azure AD).
+		},
+		"Microsoft 365": {
+			"OfficeAuth",       // Authentication token for Microsoft 365 applications like Outlook and Teams.
+			"AdminConsoleAuth", // Authentication token used for Microsoft Admin Console and Azure Portal access.
+		},
+		"Microsoft Admin Console": {
+			"IDCAuth", // Identity authentication cookie used in Microsoft Admin portals.
+			"CtxAuth", // Contextual authentication token for Microsoft Admin and Entra ID portals.
 		},
 		"SharePoint": {
 			"FedAuth", // FedAuth: Used for each top-level site in SharePoint
 			"rtFA",    //		rtFA: Used across all of SharePoint for silent authentication
 		},
 		"Google": {
-			"SID", //		SID and HSID: Contain encrypted user account information, last for 2 years
-			"YSC",
-			"__Secure-YEC",
+			"SID",               // Primary session ID cookie, used for authentication and security, lasts for 2 years.
+			"HSID",              // Secure cookie containing encrypted user account information, helps prevent fraudulent logins.
+			"SSID",              // Used for authentication, security, and session management across Google services.
+			"APISID",            // Stores user authentication data for persistent login across Google services.
+			"SAPISID",           // Similar to APISID, used for authentication and enforcing security policies.
+			"SIDCC",             // Security cookie protecting against unauthorized access and account hijacking.
+			"NID",               // Stores user preferences and login-related information, often used in Google search.
+			"G_AUTHUSER_H",      // Identifies the signed-in user when multiple accounts are used.
+			"GAPS",              // Session management cookie used for login authentication.
+			"__Secure-1PSID",    // First-party session ID for authentication and security within Google services.
+			"__Secure-3PSID",    // Third-party session ID for authentication across Google's services and third-party sites.
+			"__Secure-1PAPISID", // First-party authentication token used for persistent login and security.
+			"__Secure-3PAPISID", // Third-party authentication token for maintaining authentication across Google services.
+			"__Secure-YEC",      // Security-related cookie, used to enhance authentication and session integrity.
 		},
 	}
 
@@ -508,13 +538,15 @@ func FindHighValueCookies(cookies []Cookie) []Cookie {
 		for provider, prefixes := range cookieMap {
 			for _, prefix := range prefixes {
 				if strings.HasPrefix(cookie.Name, prefix) {
-					utils.InfoLabelWithColorf("Cookie Match", "yellow", "Cookie %s matches prefix %s for provider %s", cookie.Name, prefix, provider)
+					// if verbose print. TODO: include opts.Verbose
+					utils.InfoLabelWithColorf("Live Cookie", "yellow", "Cookie %s matches prefix %s for provider: %s", cookie.Name, prefix, provider)
 					highValueCookies = append(highValueCookies, cookie)
 					break
 				}
 			}
 		}
 	}
+	utils.InfoLabelWithColorf("Live Cookies", "green", "Found %d live high value cookies", len(highValueCookies))
 	return highValueCookies
 }
 
@@ -549,10 +581,11 @@ type CookieBro struct {
 }
 
 // ParseCookieFile parses a cookies file and returns only the high value live cookies and an error
-func ParseCookieFile(filename string) ([]Cookie, error) {
+func ParseCookieFile(filename string) ([]Cookie, []Cookie, error) {
+	utils.InfoLabelWithColorf("FLARE STEALER LOGS", "cyan", "Parsing %s for live cookies", filename)
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer file.Close()
 
@@ -593,18 +626,18 @@ func ParseCookieFile(filename string) ([]Cookie, error) {
 	}
 
 	if err = scanner.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	liveCookies, err := CheckCookieExpiration(cookies)
 	if err != nil {
-		return nil, utils.LogError(err)
+		return nil, nil, utils.LogError(err)
 	}
 
 	// check live cookies for high value targets
-	_ = FindHighValueCookies(liveCookies)
+	highValueCookies := FindHighValueCookies(liveCookies)
 
-	return liveCookies, nil
+	return liveCookies, highValueCookies, nil
 }
 
 // MapCookiesToCookieBro ...
@@ -667,7 +700,7 @@ func UniqueCredentials(credentials []FlareStealerLogsCredential) []FlareStealerL
 }
 
 // parseCredentialsFile parses the file and returns credentials matching the specified domain
-func parseCredentialsFile(filename, domain string) ([]FlareStealerLogsCredential, error) {
+func parseCredentialsFile(filename, domain string, userIDFormats []string) ([]FlareStealerLogsCredential, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %w", err)
@@ -720,7 +753,7 @@ func parseCredentialsFile(filename, domain string) ([]FlareStealerLogsCredential
 	}
 
 	// Filter credentials based on the domain
-	inScopeCredentials := filterCredentialsByDomain(credentials, domain)
+	inScopeCredentials := filterInScopeCredentials(credentials, domain, userIDFormats)
 	return inScopeCredentials, nil
 }
 
@@ -729,12 +762,15 @@ func isCredentialValid(cred FlareStealerLogsCredential) bool {
 	return cred.URL != "" || cred.Username != ""
 }
 
-// filterCredentialsByDomain ensures proper domain matching
-func filterCredentialsByDomain(credentials []FlareStealerLogsCredential, domain string) []FlareStealerLogsCredential {
+// filterInScopeCredentials ensures proper domain matching
+func filterInScopeCredentials(credentials []FlareStealerLogsCredential, domain string, userIDFormats []string) []FlareStealerLogsCredential {
 	var filtered []FlareStealerLogsCredential
 	for _, cred := range credentials {
-		if isDomainMatch(cred.URL, domain) {
-			filtered = append(filtered, cred)
+		for _, userIDFormat := range userIDFormats {
+			// this checks if the URL matches the domain or if the username matches the email domain or if the username has the domain prefix without tld or if the username matches the optionally provided userID format that is dynamically converted to an appropriate matching regex
+			if isDomainMatch(cred.URL, domain) || isUsernameEmailDomainMatch(cred.Username, domain) || utils.HasBaseDomainWithoutTLDPrefix(cred.Username, domain) || utils.IsUserIDFormatMatch(cred.Username, userIDFormat) {
+				filtered = append(filtered, cred)
+			}
 		}
 	}
 	return filtered
@@ -748,6 +784,12 @@ func isDomainMatch(credentialURL, domain string) bool {
 	}
 	host := parsedURL.Hostname()
 	return host == domain || strings.HasSuffix(host, "."+domain)
+}
+
+// isUsernameEmailDomainMatch ...
+func isUsernameEmailDomainMatch(credentialUsername, domain string) bool {
+	emailPattern := fmt.Sprintf("@%s", domain)
+	return strings.Contains(credentialUsername, emailPattern)
 }
 
 // FlareEventsGlobalSearchByDomain
@@ -767,17 +809,21 @@ func isDomainMatch(credentialURL, domain string) bool {
 // metadata.source:stealer_logs* AND cookies.host_key:.domain.com
 //
 // By default, this function uses the query: "metadata.source:stealer_logs* AND features.emails:*@domain.com"
+// Could also check for URLs but this will return customer login data also which is likely out-of-scope, for example:
+// metadata.source:stealer_logs* AND (features.emails:*@domain.com OR features.urls:*.domain.com)
 // Docs: https://api.docs.flare.io/api-reference/v4/endpoints/global-search
-func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir string, years int) (*FlareEventsGlobalSearchResults, error) {
+// Query Docs: https://docs.flare.io/queries
+func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query string, years int) (*FlareEventsGlobalSearchResults, error) {
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
-	headers := map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
-		"Content-Type":  "application/json",
-		"User-Agent":    "go-flareio/0.1.0",
-	}
+	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
 	size := 10
-	queryString := fmt.Sprintf("metadata.source:stealer_logs* AND features.emails:*@%s", domain)
+	var queryString string
+	if query != "" {
+		queryString = query
+	} else {
+		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.emails:*@%s", domain)
+	}
 	filterTypes := []string{
 		"illicit_networks", "open_web", "leak", "domain", "listing", "forum_content",
 		"blog_content", "blog_post", "profile", "chat_message", "ransomleak",
@@ -832,7 +878,7 @@ flarePaginate:
 			break flarePaginate
 		case *data.Next == "":
 			break flarePaginate
-		case *data.Next == "null":
+		case *data.Next == nullString:
 			break flarePaginate
 		default:
 			// Update the 'from' parameter for the next request
@@ -842,7 +888,9 @@ flarePaginate:
 		}
 	}
 
-	if err := utils.WriteStructToJSONFile(allData, fmt.Sprintf("%s/flare-events-stealerlogs-urls-%s.json", outputDir, domain)); err != nil {
+	utils.InfoLabelWithColorf("FlareEventsGlobalSearch", "blue", "found %d hits for query: %s", len(allData.Items), queryString)
+	// write full events results data to json file
+	if err := utils.WriteStructToJSONFile(allData, fmt.Sprintf("%s/flare-events-stealerlogs-emails-%s.json", outputDir, domain)); err != nil {
 		return nil, utils.LogError(err)
 	}
 
@@ -886,7 +934,7 @@ func (fc *FlareClient) defaultHeaders() map[string]string {
 	return map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
 		"Content-Type":  "application/json",
-		"User-Agent":    "go-flareio/0.1.0",
+		"User-Agent":    fc.DefaultUserAgent,
 	}
 }
 
@@ -927,6 +975,87 @@ func mergeResults(main, batch FlareListByBulkAccountResponse) FlareListByBulkAcc
 	return main
 }
 
+// FlareSearchCookiesByDomain ...
+// Docs: https://api.docs.flare.io/api-reference/leaksdb/endpoints/post-cookies-search
+func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string) (*FlareSearchCookiesResponse, error) {
+	flareSearchCookiesURL := fmt.Sprintf("%s/leaksdb/v2/cookies/_search", flareAPIBaseURL)
+	headers := fc.defaultHeaders()
+	allData := &FlareSearchCookiesResponse{}
+	size := 500
+	// current date for ExpiresAfter param
+	expiresAfter := time.Now().Format(time.RFC3339)
+	names := []string{
+		"ESTSAUTH",
+		"ESTSAUTHPERSISTENT",
+		"ESTSAUTHLIGHT",
+		"x-ms-refreshtokencredential",
+		"x-ms-cpim-sso",
+		"rtFA",
+		"session",
+		"access_token",
+		"refresh_token",
+		"token",
+	} // TODO: make names an optional CLI arg option
+	paths := []string{
+		"/",
+	} // TODO: make paths an optional CLI arg option
+	postBody := &FlareSearchCookiesBodyParams{
+		Domain: domain,
+		Size:   size,
+		Names:  names, // TODO: make names an optional CLI arg option
+		Paths:  paths, // TODO: make paths an optional CLI arg option
+		// ImportedAfter: "",
+		ExpiresAfter: expiresAfter,
+	}
+
+flarePaginate:
+	for {
+		// marshal each time for 'from' parameter pagination via *data.Next
+		postBodyJSON, err := json.Marshal(postBody)
+		if err != nil {
+			return nil, utils.LogError(err)
+		}
+		data := &FlareSearchCookiesResponse{}
+		statusCode, err := fc.Client.DoReq(flareSearchCookiesURL, "POST", data, headers, nil, postBodyJSON)
+		if err != nil {
+			return nil, utils.LogError(err)
+		}
+
+		if statusCode == 429 {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		if statusCode != 200 {
+			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
+		}
+
+		// Append the new data to allData
+		allData.Items = append(allData.Items, data.Items...)
+
+		// Check if we've reached the end of the results
+		switch {
+		case data.Next == nil:
+			break flarePaginate
+		case *data.Next == "":
+			break flarePaginate
+		case *data.Next == nullString:
+			break flarePaginate
+		default:
+			// Update the 'from' parameter for the next request
+			postBody.From = *data.Next
+			// utils.InfoLabelWithColorf("Flare Search Credentials", "blue", "found %d hits for %s", len(data.Items), domain)
+			time.Sleep(1 * time.Second)
+		}
+	}
+
+	if err := utils.WriteStructToJSONFile(allData, fmt.Sprintf("%s/flare-cookies-search-%s.json", outputDir, domain)); err != nil {
+		return nil, utils.LogError(err)
+	}
+
+	return allData, nil
+}
+
 // FlareSearchCredentialsBodyParams ...
 type FlareSearchCredentialsBodyParams struct {
 	Size  string           `json:"size,omitempty"`
@@ -944,10 +1073,7 @@ type FlareDomainQuery struct {
 // Docs: https://api.docs.flare.io/api-reference/leaksdb/endpoints/post-credentials-search
 func (fc *FlareClient) FlareLeakedCredentialsByDomain(domain, outputDir string) (*FlareSearchCredentials, error) {
 	flareLeaksByDomainURL := fmt.Sprintf("%s/leaksdb/v2/credentials/_search", flareAPIBaseURL)
-	headers := map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
-		"Content-Type":  "application/json",
-	}
+	headers := fc.defaultHeaders()
 	allData := &FlareSearchCredentials{}
 	size := "10000"
 	postBody := &FlareSearchCredentialsBodyParams{
@@ -989,7 +1115,7 @@ flarePaginate:
 			break flarePaginate
 		case *data.Next == "":
 			break flarePaginate
-		case *data.Next == "null":
+		case *data.Next == nullString:
 			break flarePaginate
 		default:
 			// Update the 'from' parameter for the next request
@@ -1017,7 +1143,7 @@ func parseFlareDataWriteToOutputFiles(domain, outputDir string, allData *FlareSe
 	uniqueUserPass := make(map[string]bool)
 	for _, i := range allData.Items {
 		allEmails = append(allEmails, i.IdentityName)
-		if i.Hash != "" && !utils.ContainsExactMatch([]string{"None", "none", "Null", "null", "nil", "<nil>", " "}, i.Hash) {
+		if i.Hash != "" && !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, "nil", "<nil>", " "}, i.Hash) {
 			userPassKey := fmt.Sprintf("%s:%s", i.IdentityName, i.Hash)
 			// Check if this pair has already been added
 			if !uniqueUserPass[userPassKey] {
@@ -1080,7 +1206,7 @@ func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *FlareListByBulkAccoun
 				case isLikelyAnEncryptedValue(password.Hash):
 					cred.Hash = password.Hash
 				default:
-					if !utils.ContainsExactMatch([]string{"None", "none", "Null", "null", ",null", "(null)", "nil", "<nil>", "", " "}, password.Hash) {
+					if !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, ",null", "(null)", "nil", "<nil>", "", " "}, password.Hash) {
 						cred.Password = password.Hash
 						cred.Hash = password.CredentialHash
 					}
@@ -1127,7 +1253,7 @@ func setFlareCredentialPairsStructFromFlareData(data *FlareSearchCredentials) *F
 		case isLikelyAnEncryptedValue(v.Hash):
 			flareData.Hash = v.Hash
 		default:
-			if !utils.ContainsExactMatch([]string{"None", "none", "Null", "null", ",null", "(null)", "nil", "<nil>", "", " "}, v.Hash) {
+			if !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, ",null", "(null)", "nil", "<nil>", "", " "}, v.Hash) {
 				flareData.Password = v.Hash
 			}
 		}

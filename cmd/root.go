@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/mr-pmillz/gophlare/cmd/docs"
 	"github.com/mr-pmillz/gophlare/cmd/search"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/projectdiscovery/gologger"
@@ -14,7 +15,7 @@ import (
 
 var (
 	cfgFile       string
-	version       = "v1.0.0"
+	version       = "v1.0.1"
 	configFileSet bool
 )
 
@@ -36,6 +37,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file default location for viper to look is ~/.config/gophlare/config.yaml")
 	RootCmd.PersistentFlags().BoolVarP(&configFileSet, "configfileset", "", false, "Used internally by gophlare to check if required args are set with and without configuration file, Do not use this flag...")
 	RootCmd.AddCommand(search.Command)
+	RootCmd.AddCommand(docs.Command)
 }
 
 // initConfig reads in config file and ENV variables if set.

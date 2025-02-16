@@ -70,7 +70,7 @@ Example Commands:
 		}
 
 		if opts.gophlareOptions.SearchStealerLogsByDomain {
-			if err := phlare.DownloadAllStealerLogPasswordFiles(&opts.gophlareOptions, scope.Domains); err != nil {
+			if err := phlare.DownloadAllStealerLogPasswordFiles(&opts.gophlareOptions, scope); err != nil {
 				utils.LogFatalf("Could not download all stealer log password files %s\n", err)
 			}
 		}
