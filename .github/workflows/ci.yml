@@ -3,11 +3,9 @@ name: CI
 # Controls when the action will run. Triggers the workflow on push with tags
 on:
   push:
-    branches: [ "main" ]
     tags:
       - '*'
   pull_request:
-    branches: [ "main" ]
 
 permissions:
   contents: write
@@ -132,7 +130,7 @@ jobs:
   #   only runs on push "*" tag
   # ================
   release:
-    needs: [build, golangci]
+    needs: [build, test, golangci]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:

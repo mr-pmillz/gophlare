@@ -22,7 +22,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.0.2"
+	gophlareClientVersion = "v1.0.3"
 	nullString            = "null"
 )
 
