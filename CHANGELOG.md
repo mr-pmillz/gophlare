@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## What's Changed## [1.0.1](https://github.com/mr-pmillz/gophlare/compare/v1.0.0..v1.0.1) - 2025-02-16
+
+### ✨ New features
+
+- Added cookies/_search api and optimized thangs :cookie: - ([d3aecf2](https://github.com/mr-pmillz/gophlare/commit/d3aecf2feceea3d5a4080f191953458ff14b7e9c))
+
 ## What's Changed## [1.0.0] - 2025-02-16
 
 ### ✨ New features
@@ -14,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - First commit - ([322f252](https://github.com/mr-pmillz/gophlare/commit/322f252f691a024711a08a0618eb1d9d0704f5ae))
 
-### ⚙️ Miscellaneous
+### ⚙️  Miscellaneous
 
 - Initial poc rough draft.. ToDo: cookie logic code-review - ([d8acda9](https://github.com/mr-pmillz/gophlare/commit/d8acda9e826250603d472ea4151f93ffc4021c33))
 
