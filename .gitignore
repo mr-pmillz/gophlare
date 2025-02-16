@@ -11,3 +11,4 @@ todo.md
 phlare/flareClient_test.go
 gophlare
 *.json
+RELEASE_CHANGELOG.md

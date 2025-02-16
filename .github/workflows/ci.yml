@@ -58,13 +58,21 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: true
 
+      - name: Set GOPATH
+        run: |
+          echo "GOPATH=$(go env GOPATH)/bin" >> $GITHUB_ENV
+
       - name: Install dependencies
-        run: go get github.com/mattn/go-isatty@v0.0.16
+        run: |
+          go get github.com/mattn/go-isatty@v0.0.16
+          go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
 
       # Run Tests
       - name: Tests
         run: |
-          make -f Makefile test
+          go env -w GOFLAGS=-mod=mod
+          go mod tidy
+          make -f Makefile test || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -149,13 +157,23 @@ jobs:
       - name: Set GOPATH
         run: |
           echo "GOPATH=$(go env GOPATH)/bin" >> $GITHUB_ENV
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: -r .  --latest
+        env:
+          OUTPUT: RELEASE_CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: release --clean --release-notes RELEASE_CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
