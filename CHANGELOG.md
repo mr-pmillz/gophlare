@@ -1,16 +1,38 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+## [1.0.4](https://github.com/mr-pmillz/gophlare/compare/v1.0.3...v1.0.4) - 2025-02-16
 
-## What's Changed## [1.0.1](https://github.com/mr-pmillz/gophlare/compare/v1.0.0..v1.0.1) - 2025-02-16
+### 🛠 Improvements
+
+- Update cicd goreleaser job version bump - ([788e8f2](https://github.com/mr-pmillz/gophlare/commit/788e8f28b9e8dd3c6cdbcd1897f42df54d72af8a))
+
+## [1.0.3](https://github.com/mr-pmillz/gophlare/compare/v1.0.2...v1.0.3) - 2025-02-16
+
+### 🛠 Improvements
+
+- Update go.mod - ([47d29b3](https://github.com/mr-pmillz/gophlare/commit/47d29b34934d80ffc0aee526449753af23939134))
+
+## [1.0.2](https://github.com/mr-pmillz/gophlare/compare/v1.0.1...v1.0.2) - 2025-02-16
+
+### 🛠 Improvements
+
+- Update pre-commit-config.yaml - ([11c5a7e](https://github.com/mr-pmillz/gophlare/commit/11c5a7e82f27462ed88dc28e0382f337d1ed0b92))
+- Update cicd goreleaser job version bump - ([d1b5e6b](https://github.com/mr-pmillz/gophlare/commit/d1b5e6bd604394cd7c362ea8f09011ffe5a50be6))
+- Update cliff.toml - ([fa8648b](https://github.com/mr-pmillz/gophlare/commit/fa8648bc8a872581386ca56ac20df94c75d4aa1c))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([a45ff4f](https://github.com/mr-pmillz/gophlare/commit/a45ff4f1e0dfd9b3e5366da1687aaf1312c8b359))
+
+## [1.0.1](https://github.com/mr-pmillz/gophlare/compare/v1.0.0...v1.0.1) - 2025-02-16
 
 ### ✨ New features
 
 - Added cookies/_search api and optimized thangs :cookie: - ([d3aecf2](https://github.com/mr-pmillz/gophlare/commit/d3aecf2feceea3d5a4080f191953458ff14b7e9c))
 
-## What's Changed## [1.0.0] - 2025-02-16
+## [1.0.0] - 2025-02-16
 
 ### ✨ New features
 
