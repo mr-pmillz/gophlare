@@ -9,3 +9,15 @@ repos:
         # entry: bash -c 'docker run --rm -v "$(pwd):/workdir" -i --rm trufflesecurity/trufflehog:latest git file:///workdir --since-commit HEAD --results=verified,unknown --fail'
         language: system
         stages: ["pre-commit", "pre-push"]
+      - id: golangci-lint
+        name: GolangCI-Lint
+        description: Runs golangci-lint
+        entry: bash -c 'make -f Makefile lint'
+        language: system
+        stages: ["pre-commit", "pre-push"]
+      - id: test
+        name: Test
+        description: Runs all Go tests
+        entry: bash -c 'make -f Makefile test'
+        language: system
+        stages: ["pre-commit", "pre-push"]
