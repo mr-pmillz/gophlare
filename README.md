@@ -5,8 +5,8 @@
 
 ## About
 
-Gophlare is an SDK for the flare.io API as well as a command-line tool. It can be imported and used in other go projects.
-Every API endpoint is not fully supported yet, but what differentiates this client from the official [go-flareio](https://github.com/Flared/go-flareio) SDK is that the endpoints that `gophlare` does support has the actual API response structures mapped for ease of use. 
+Gophlare is an SDK and CLI-wrapper for the flare.io API. It can be imported and used in other go projects.
+Every API endpoint is not fully supported yet.
 
 Gophlare also has several convenience features baked in such as:
 1. XLSX and CSV file generation.

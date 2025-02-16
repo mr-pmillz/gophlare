@@ -150,7 +150,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(emails)
+	rt = reflect.TypeOf(userIDFormat)
 	switch rt.Kind() {
 	case reflect.Slice:
 		opts.UserIDFormat = userIDFormat.([]string)

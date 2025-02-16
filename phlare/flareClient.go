@@ -22,7 +22,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.0.6"
+	gophlareClientVersion = "v1.0.7"
 	nullString            = "null"
 )
 
@@ -203,6 +203,7 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 	}
 
 	for _, file := range files {
+		utils.InfoLabelWithColorf("FLARE", "blue", "Checking stealer log zip file for creds: %s", file)
 		unzippedFiles, tempDir, err := utils.UnzipToTemp(file)
 		if err != nil {
 			return nil, nil, nil, utils.LogError(err)
