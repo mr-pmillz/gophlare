@@ -1,11 +1,5 @@
 # gophlare
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/mr-pmillz/gophlare)](https://goreportcard.com/report/github.com/mr-pmillz/gophlare)
-![GitHub all releases](https://img.shields.io/github/downloads/mr-pmillz/gophlare/total?style=social)
-![GitHub repo size](https://img.shields.io/github/repo-size/mr-pmillz/gophlare?style=plastic)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/mr-pmillz/gophlare?style=plastic)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/mr-pmillz/gophlare?style=plastic)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/mr-pmillz/gophlare?style=plastic)
 [![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fmr-pmillz%2Fgophlare)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fmr-pmillz%2Fgophlare)
 [![CI](https://github.com/mr-pmillz/gophlare/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-pmillz/gophlare/actions/workflows/ci.yml)
 
