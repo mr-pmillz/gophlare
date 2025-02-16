@@ -62,17 +62,23 @@ jobs:
         run: |
           echo "GOPATH=$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-      - name: Install dependencies
-        run: |
-          go get github.com/mattn/go-isatty@v0.0.16
-          go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
+#      - name: Install dependencies
+#        run: |
+#          go get github.com/mattn/go-isatty@v0.0.16
+#          go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
+
+      # Install gotestfmt on the VM running the action.
+      - name: Set up gotestfmt
+        uses: gotesttools/gotestfmt-action@v2
+        with:
+          # Optional: pass GITHUB_TOKEN to avoid rate limiting.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Run Tests
       - name: Tests
         run: |
-          go env -w GOFLAGS=-mod=mod
-          go mod tidy
-          make -f Makefile test || true
+          set -euo pipefail
+          go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -100,38 +106,6 @@ jobs:
           version: latest
           # Optional: golangci-lint command line arguments.
           args: --config ./.golangci-lint.yml
-
-  changelog:
-    name: Generate changelog
-    needs: [ build, test, golangci ]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate changelog
-        uses: orhun/git-cliff-action@v4
-        with:
-          config: cliff.toml
-          args: --verbose
-        env:
-          OUTPUT: CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
-
-      - name: Commit
-        run: |
-          git checkout main
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          set +e
-          git add CHANGELOG.md
-          git commit -m "Update changelog"
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git main
   # ================
   # RELEASE JOB
   #   runs after a successful build
@@ -182,3 +156,39 @@ jobs:
         with:
           name: gophlare
           path: dist/*
+
+  # ================
+  # Generate CHANGELOG.md after release finishes to avoid git in a dirty state error.
+  #   only runs on push "*" tag
+  # ================
+  changelog:
+    name: Generate changelog
+    needs: [ build, test, golangci, release ]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Commit
+        run: |
+          git checkout main
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          set +e
+          git add CHANGELOG.md
+          git commit -m "Update changelog"
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git main
