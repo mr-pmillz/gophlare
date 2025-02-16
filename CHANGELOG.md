@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.0.6](https://github.com/mr-pmillz/gophlare/compare/v1.0.5...v1.0.6) - 2025-02-16
+
+### 🐛 Bug fixes
+
+- Fix goreleaser :bug: dirty state update .gitignore job version bump - ([44e4f48](https://github.com/mr-pmillz/gophlare/commit/44e4f485670c48df5bf3e5d6eecb830703b04232))
+
+## [1.0.5](https://github.com/mr-pmillz/gophlare/compare/v1.0.4...v1.0.5) - 2025-02-16
+
+### 🛠 Improvements
+
+- Update cicd goreleaser job version bump - ([7754301](https://github.com/mr-pmillz/gophlare/commit/77543019b818dde9ef0e221cce14c2741bf5b5a2))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([844e9bf](https://github.com/mr-pmillz/gophlare/commit/844e9bf49978bd53a5454602f9c730abf786c205))
+
 ## [1.0.4](https://github.com/mr-pmillz/gophlare/compare/v1.0.3...v1.0.4) - 2025-02-16
 
 ### 🛠 Improvements
