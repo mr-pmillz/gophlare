@@ -79,7 +79,7 @@ If you want to download and parse all matching stealer logs, set the `--max-zip-
 By default, this will search the stealer logs going back 2 years but you can adjust the years via the `--years` flag
 
 ```shell
-gophlare search --config config.yaml --keep-zip-files --max-zip-download-limit 0
+gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0
 ```
 
 ## gophlare as a library
