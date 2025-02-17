@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
-## [unreleased]
+## [1.0.8](https://github.com/mr-pmillz/gophlare/compare/v1.0.7...v1.0.8) - 2025-02-17
+
+### 🛠 Improvements
+
+- Update readme - ([b0d22b8](https://github.com/mr-pmillz/gophlare/commit/b0d22b8d25da39cb85bc6f326c125b39d8d218db))
 
 ### ⚙️  Miscellaneous
 
