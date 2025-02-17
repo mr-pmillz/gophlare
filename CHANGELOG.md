@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [unreleased]
+
+### ⚙️  Miscellaneous
+
+- Merge branch 'main' of github.com:mr-pmillz/gophlare - ([3ff7612](https://github.com/mr-pmillz/gophlare/commit/3ff7612ee294007b4c8c99e1ce77ab67dd8c96d0))
+- Update changelog - ([51ef9cb](https://github.com/mr-pmillz/gophlare/commit/51ef9cb93c468c41bcac82ac12cf11e6dd169377))
+
+## [1.0.7](https://github.com/mr-pmillz/gophlare/compare/v1.0.6...v1.0.7) - 2025-02-16
+
+### 🐛 Bug fixes
+
+- Fix typo in options.go for user-id-format flag - ([69a541b](https://github.com/mr-pmillz/gophlare/commit/69a541bd607886b1f5ab6d3c1d2f982acd2c0a1c))
+
 ## [1.0.6](https://github.com/mr-pmillz/gophlare/compare/v1.0.5...v1.0.6) - 2025-02-16
 
 ### 🐛 Bug fixes

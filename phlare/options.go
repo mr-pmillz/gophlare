@@ -47,7 +47,7 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	// integers
 	cmd.PersistentFlags().IntP("years", "y", 2, "number of years in the past to search for stealer logs")
 	cmd.PersistentFlags().IntP("timeout", "t", 600, "timeout duration for API requests in seconds")
-	cmd.PersistentFlags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Default is 50. Set to 0 to download all zip files.")
+	cmd.PersistentFlags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files.")
 	// booleans
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by domain, download and parse all the matching zip files for passwords and live cookies")
 	cmd.PersistentFlags().BoolP("keep-zip-files", "", false, "keep all the matching downloaded zip files from the stealer logs")
