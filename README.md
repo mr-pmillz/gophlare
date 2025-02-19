@@ -75,11 +75,25 @@ The preceding config will match any username with the regex pattern, `^[A-Za-z]\
 
 ### Search Stealer Logs for Creds and Live Cookies
 
-If you want to download and parse all matching stealer logs, set the `--max-zip-download-limit` to 0.
+If you want to download and parse all matching stealer logs, set the `--max-zip-download-limit` to 0. Default is 50.
 By default, this will search the stealer logs going back 2 years but you can adjust the years via the `--years` flag
 
 ```shell
-gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0
+gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0 --years 3
+```
+
+### Search list of emails for leaked creds
+
+```shell
+./gophlare search --config config/config.yaml --search-emails-in-bulk -e emails.txt
+```
+
+### Search credentials api by domain for passwords
+
+cli flags should override options set in config.yaml. For example, the following command will output results to the current directory via the `-o` option
+
+```shell
+./gophlare search --config config/config.yaml --search-credentials-by-domain -o .
 ```
 
 ## gophlare as a library
