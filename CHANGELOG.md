@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.0.9](https://github.com/mr-pmillz/gophlare/compare/v1.0.8...v1.0.9) - 2025-02-19
+
+### 🐛 Bug fixes
+
+- Fixed :bug: in --search-emails-in-bulk - ([0925622](https://github.com/mr-pmillz/gophlare/commit/0925622c38a43384892baccdc7ba5f14f38def56))
+
+### 🛠 Improvements
+
+- Update readme version bump - ([e63851d](https://github.com/mr-pmillz/gophlare/commit/e63851df8cea21fa44d68f1e9336a173afca8f05))
+- Update readme - ([95769ed](https://github.com/mr-pmillz/gophlare/commit/95769ed553b212a1d813d442e1d7a6a141444d7e))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([c1200d4](https://github.com/mr-pmillz/gophlare/commit/c1200d4fccff442c5c860ce83d5927220ba68d5f))
+
 ## [1.0.8](https://github.com/mr-pmillz/gophlare/compare/v1.0.7...v1.0.8) - 2025-02-17
 
 ### 🛠 Improvements
