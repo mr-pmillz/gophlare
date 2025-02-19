@@ -1193,6 +1193,8 @@ type FlareCreds struct {
 }
 
 // mapBulkEmailCredsToCSVFormat ...
+//
+//nolint:gocognit
 func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *FlareListByBulkAccountResponse) (*FlareCreds, error) {
 	flareCreds := &FlareCreds{}
 	for email, emailResults := range *matchedEmailCredResults {
@@ -1213,24 +1215,29 @@ func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *FlareListByBulkAccoun
 					}
 				}
 				// fill out remaining values to cred
-				importedAt, err := time.Parse(time.RFC3339, password.ImportedAt)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse ImportedAt for email %s: %w", email, err)
-				}
-				cred.ImportedAt = importedAt
 				cred.SourceID = password.SourceID
-				breachedAt, err := time.Parse(time.RFC3339, password.Source.BreachedAt)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse BreachedAt for email %s: %w", email, err)
+				if password.ImportedAt != "" {
+					importedAt, err := time.Parse(time.RFC3339, password.ImportedAt)
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse ImportedAt for email %s: %w", email, err)
+					}
+					cred.ImportedAt = importedAt
 				}
-				cred.BreachedAt = breachedAt
-				leakedAt, err := time.Parse(time.RFC3339, password.Source.LeakedAt)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse LeakedAt for email %s: %w", email, err)
+				if password.Source.BreachedAt != "" {
+					breachedAt, err := time.Parse(time.RFC3339, password.Source.BreachedAt)
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse BreachedAt for email %s: %w", email, err)
+					}
+					cred.BreachedAt = breachedAt
 				}
-				cred.LeakedAt = leakedAt
+				if password.Source.LeakedAt != "" {
+					leakedAt, err := time.Parse(time.RFC3339, password.Source.LeakedAt)
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse LeakedAt for email %s: %w", email, err)
+					}
+					cred.LeakedAt = leakedAt
+				}
 				cred.Domain = *password.Domain
-
 				flareCreds.Data = append(flareCreds.Data, cred)
 			}
 		}
@@ -1362,7 +1369,8 @@ func SearchEmailsInBulk(opts *Options, emails []string) error {
 		return utils.LogError(err)
 	}
 	// generate xlsx file from csv file
-	if err = utils.CSVsToExcel([]string{csvOutputFile}, flareOutputDir); err != nil {
+	xlsxOutputFile := fmt.Sprintf("%s/flare-bulk-credential-lookup.xlsx", flareOutputDir)
+	if err = utils.CSVsToExcel([]string{csvOutputFile}, xlsxOutputFile); err != nil {
 		return utils.LogError(err)
 	}
 
