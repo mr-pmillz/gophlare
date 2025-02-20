@@ -15,6 +15,19 @@ type FlareAuthResponse struct {
 	Token           string `json:"token"`
 }
 
+// FlareSearchCredentialsBodyParams ...
+type FlareSearchCredentialsBodyParams struct {
+	Size  string           `json:"size,omitempty"`
+	From  string           `json:"from,omitempty"`
+	Query FlareDomainQuery `json:"query"`
+}
+
+// FlareDomainQuery ...
+type FlareDomainQuery struct {
+	Type string `json:"type"`
+	Fqdn string `json:"fqdn"`
+}
+
 // FlareSearchCredentials is the JSON response for the /leaksdb/v2/credentials/_search endpoint
 type FlareSearchCredentials struct {
 	Items []struct {
@@ -79,15 +92,15 @@ type Query struct {
 }
 
 type EstimatedCreatedAt struct {
-	Gt  string `json:"gt,omitempty"`
-	Gte string `json:"gte,omitempty"`
-	Lt  string `json:"lt,omitempty"`
-	Lte string `json:"lte,omitempty"`
+	Gt  string `json:"gt,omitempty"`  // Gt Matches values greater than the specified timestamp.: ISO-8601 which is time.RFC3339 (YYYY-MM-DDT00:00:00Z)
+	Gte string `json:"gte,omitempty"` // Gte Matches values greater than or equal to the specified timestamp.: ISO-8601 which is time.RFC3339 (YYYY-MM-DDT00:00:00Z)
+	Lt  string `json:"lt,omitempty"`  // Lt Matches values lesser than the specified timestamp.: ISO-8601 which is time.RFC3339 (YYYY-MM-DDT00:00:00Z)
+	Lte string `json:"lte,omitempty"` // Lte Matches values lesser than or equal to the specified timestamp.: ISO-8601 which is time.RFC3339 (YYYY-MM-DDT00:00:00Z)
 }
 
 type Filters struct {
-	Severity           []string           `json:"severity,omitempty"`
-	Type               []string           `json:"type,omitempty"`
+	Severity           []string           `json:"severity,omitempty"` // can be info,low,medium,high,critical
+	Type               []string           `json:"type,omitempty"`     // illicit_networks open_web leak domain listing forum_content blog_content blog_post profile chat_message ransomleak infected_devices financial_data bot stealer_log paste social_media source_code source_code_files stack_exchange google service buckets bucket bucket_object
 	EstimatedCreatedAt EstimatedCreatedAt `json:"estimated_created_at,omitempty"`
 }
 
@@ -118,6 +131,13 @@ type FlareEventsGlobalSearchResults struct {
 		} `json:"highlights,omitempty"`
 	} `json:"items,omitempty"`
 	Next *string `json:"next,omitempty"`
+}
+
+// FlareStealerLogZipFileDownloadResponse ...
+type FlareStealerLogZipFileDownloadResponse struct {
+	StealerLog struct {
+		ExternalURL string `json:"external_url,omitempty"`
+	} `json:"stealer_log,omitempty"`
 }
 
 // FlareFireworkActivitiesIndexSourceIDv2Response ...
@@ -265,6 +285,14 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 	} `json:"activity,omitempty"`
 }
 
+// FlareStealerLogsCredential holds the parsed information for each entry
+type FlareStealerLogsCredential struct {
+	Software string
+	URL      string
+	Username string
+	Password string
+}
+
 // Bulk Accounts Lookup Response Types
 
 // FlareListByBulkAccountResponse structure to hold the API response
@@ -304,4 +332,34 @@ type Source struct {
 	Name            string   `json:"name"`
 	RelatedURLs     []string `json:"related_urls"`
 	URL             *string  `json:"url"` // Use *string to handle null values
+}
+
+// Cookie ...
+type Cookie struct {
+	Domain         string
+	Secure         bool
+	Path           string
+	HTTPOnly       bool
+	Expiration     int64
+	IsExpired      bool
+	ExpirationDate string
+	Name           string
+	Value          string
+}
+
+// CookieBro ...
+type CookieBro struct {
+	Name             string      `json:"name,omitempty"`
+	Value            string      `json:"value,omitempty"`
+	Domain           string      `json:"domain,omitempty"`
+	HostOnly         bool        `json:"hostOnly,omitempty"`
+	Path             string      `json:"path,omitempty"`
+	Secure           bool        `json:"secure,omitempty"`
+	HTTPOnly         bool        `json:"httpOnly,omitempty"`
+	SameSite         string      `json:"sameSite,omitempty"`
+	Session          bool        `json:"session,omitempty"`
+	FirstPartyDomain string      `json:"firstPartyDomain,omitempty"`
+	PartitionKey     interface{} `json:"partitionKey,omitempty"`
+	ExpirationDate   int         `json:"expirationDate,omitempty"`
+	StoreID          string      `json:"storeId,omitempty"`
 }

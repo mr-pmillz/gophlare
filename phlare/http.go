@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"github.com/mr-pmillz/gophlare/utils"
+	"github.com/schollz/progressbar/v3"
 	"io"
 	"net/http"
 	"net/url"
@@ -122,4 +124,48 @@ func decodeXML(body io.Reader, target interface{}) error {
 	}
 
 	return err
+}
+
+// downloadZip downloads a ZIP file from the provided URL and saves it to the specified output path.
+func downloadZip(url, outputPath, userAgent string) error {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Mimic curl behavior
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "*/*")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download file, status code: %d", resp.StatusCode)
+	}
+
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	// Create progress bar
+	bar := progressbar.DefaultBytes(
+		resp.ContentLength,
+		"downloading",
+	)
+
+	// Stream the response body directly to the file with progress bar
+	_, err = io.Copy(io.MultiWriter(outFile, bar), resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write file content: %w", err)
+	}
+
+	return nil
 }

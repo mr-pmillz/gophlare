@@ -1,11 +1,38 @@
 package utils
 
 import (
+	"fmt"
 	valid "github.com/asaskevich/govalidator"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
+
+// FormatDate Accepts multiple input formats: MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD
+// Always returns the date in time.RFC3339 (YYYY-MM-DDT00:00:00Z)
+func FormatDate(date string) (string, error) {
+	// Define possible date formats
+	formats := []string{
+		"01-02-2006", // MM-DD-YYYY
+		"2006-01-02", // YYYY-MM-DD
+		"01/02/2006", // MM/DD/YYYY
+		"2006/01/02", // YYYY/MM/DD
+	}
+
+	var parsedTime time.Time
+	var err error
+
+	// Try parsing using each format
+	for _, layout := range formats {
+		parsedTime, err = time.Parse(layout, date)
+		if err == nil {
+			return parsedTime.Format(time.RFC3339), nil // Return in RFC3339 format
+		}
+	}
+
+	return "", fmt.Errorf("invalid date format: %s", date)
+}
 
 // IsUserIDFormatMatch ...
 func IsUserIDFormatMatch(credentialUsername, userIDFormat string) bool {

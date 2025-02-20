@@ -1,11 +1,48 @@
 COMPANY: "CHANGETHIS"
-OUTPUT: "/root/work"
-USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0"
+OUTPUT: "CHANGETHIS"
+USER_AGENT: ""
 TIMEOUT: 600
+# Accepts multiple input formats: MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD
+# Always returns the date in time.RFC3339 (YYYY-MM-DDT00:00:00Z)
+# TO if left blank defaults to today's date
+FROM: "2023-01-01"
+TO: "2025-02-19"
 DOMAIN: |-
   todo.foo
 USER_ID_FORMAT: |-
   a12345
+SEVERITY: |-
+  critical
+  high
+  medium
+  low
+  info
+EVENTS_FILTER_TYPES: |-
+  illicit_networks
+  open_web
+  leak
+  domain
+  listing
+  forum_content
+  blog_content
+  blog_post
+  profile
+  chat_message
+  ransomleak
+  infected_devices
+  financial_data
+  bot
+  stealer_log
+  paste
+  social_media
+  source_code
+  source_code_files
+  stack_exchange
+  google
+  service
+  buckets
+  bucket
+  bucket_object
 OUT_OF_SCOPE: |-
   outta.scope
 API_KEYS:

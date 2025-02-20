@@ -6,17 +6,18 @@ import (
 )
 
 type Scope struct {
-	Domains         []string
-	Emails          []string
-	UserIDFormats   []string
-	FilesToDownload []string
-	OutOfScope      []string
-	SubDomains      []string
+	Domains           []string
+	Emails            []string
+	UserIDFormats     []string
+	FilesToDownload   []string
+	OutOfScope        []string
+	Severity          []string
+	EventsFilterTypes []string
 }
 
-// NewScope ...
-//
-//nolint:gocognit
+// NewScope initializes a Scope object using the provided Options, parsing and validating various input configurations.
+// Returns the constructed Scope and an error if any issues occur during initialization.
+// nolint:gocognit
 func NewScope(opts *Options) (*Scope, error) {
 	scope := new(Scope)
 	outOfScopeType := reflect.TypeOf(opts.OutOfScope)
@@ -115,6 +116,42 @@ func NewScope(opts *Options) (*Scope, error) {
 			scope.UserIDFormats = append(scope.UserIDFormats, userIDFormats...)
 		} else {
 			scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.(string))
+		}
+	default:
+		// Do Nothing
+	}
+
+	rtSev := reflect.TypeOf(opts.Severity)
+	switch rtSev.Kind() {
+	case reflect.Slice:
+		scope.Severity = append(scope.Severity, opts.Severity.([]string)...)
+	case reflect.String:
+		if isFile, err := utils.Exists(opts.Severity.(string)); isFile && err == nil {
+			severity, err := utils.ReadLines(opts.Severity.(string))
+			if err != nil {
+				return nil, err
+			}
+			scope.Severity = append(scope.Severity, severity...)
+		} else {
+			scope.Severity = append(scope.Severity, opts.Severity.(string))
+		}
+	default:
+		// Do Nothing
+	}
+
+	rtEvents := reflect.TypeOf(opts.EventsFilterTypes)
+	switch rtEvents.Kind() {
+	case reflect.Slice:
+		scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.([]string)...)
+	case reflect.String:
+		if isFile, err := utils.Exists(opts.EventsFilterTypes.(string)); isFile && err == nil {
+			eventsFilterTypes, err := utils.ReadLines(opts.EventsFilterTypes.(string))
+			if err != nil {
+				return nil, err
+			}
+			scope.EventsFilterTypes = append(scope.EventsFilterTypes, eventsFilterTypes...)
+		} else {
+			scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.(string))
 		}
 	default:
 		// Do Nothing

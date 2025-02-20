@@ -29,10 +29,12 @@ Gophlare currently supports the following API endpoints:
 ## Usage
 
 ```shell
-Run search enumeration
+search the flare api for credentials, emails, and stealer logs
 
 Example Commands:
-        gophlare search --config config.yaml
+        gophlare search --config config.yaml --search-credentials-by-domain
+        gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0 --from '2023-01-01'
+        gophlare search --config config.yaml --search-emails-in-bulk -e emails.txt -o output-directory
 
 Usage:
   gophlare search [flags]
@@ -41,7 +43,9 @@ Flags:
   -c, --company string                  company name that your testing
   -d, --domain string                   domain string or file containing domains ex. domains.txt
   -e, --emails string                   emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt
-  -f, --files-to-download string        comma separated list of files to match on and download if they exist from the query
+      --events-filter-types string      flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
+      --files-to-download string        comma separated list of files to match on and download if they exist from the query
+  -f, --from string                     from date used for a filter for stealer log searches. ex. 2021-01-01
   -h, --help                            help for search
       --keep-zip-files                  keep all the matching downloaded zip files from the stealer logs
   -m, --max-zip-download-limit int      maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files. (default 50)
@@ -51,15 +55,15 @@ Flags:
       --search-credentials-by-domain    search for credentials by domain
       --search-emails-in-bulk           search list of emails for credentials.
       --search-stealer-logs-by-domain   search the stealer logs by domain, download and parse all the matching zip files for passwords and live cookies
-  -t, --timeout int                     timeout duration for API requests in seconds (default 600)
-      --user-agent string               custom user-agent to use for requests (default "gophlare/")
+  -s, --severity string                 the stealer log severities to filter on. can be a string, a file, or comma-separated list of strings (default "medium,high,critical")
+      --timeout int                     timeout duration for API requests in seconds (default 600)
+      --to string                       to date used for a filter for stealer log searches. ex. 2025-01-01. Defaults to today. (default "2025-02-20")
+      --user-agent string               custom user-agent to use for requests
   -u, --user-id-format string           if you know the user ID format ex. a12345 , include this to enhance matching in-scope results. can be a string, a file, or comma-separated list of strings
   -v, --verbose                         enable verbose output
-  -y, --years int                       number of years in the past to search for stealer logs (default 2)
 
 Global Flags:
       --config string   config file default location for viper to look is ~/.config/gophlare/config.yaml
-      --configfileset   Used internally by gophlare to check if required args are set with and without configuration file, Do not use this flag...
 ```
 
 ### Configuration
@@ -76,10 +80,10 @@ The preceding config will match any username with the regex pattern, `^[A-Za-z]\
 ### Search Stealer Logs for Creds and Live Cookies
 
 If you want to download and parse all matching stealer logs, set the `--max-zip-download-limit` to 0. Default is 50.
-By default, this will search the stealer logs going back 2 years but you can adjust the years via the `--years` flag
+By default, this will search the stealer logs going back 2 years but you can adjust the date range using the `--from` and `--to` flags
 
 ```shell
-gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0 --years 3
+gophlare search --config config/config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0 --from 2023-01-01 --to 2025-02-19
 ```
 
 ### Search list of emails for leaked creds

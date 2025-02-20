@@ -16,24 +16,25 @@ func configureCommand(cmd *cobra.Command) {
 	_ = phlare.ConfigureCommand(cmd)
 }
 
-// LoadFromCommand ...
+// LoadFromCommand loads configuration options from the provided cobra.Command into the current Options instance.
 func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	return opts.gophlareOptions.LoadFromCommand(cmd)
 }
 
-// Command ...
+// Command defines a cobra command for running search enumeration processes with support for various configurations and flags.
 var Command = &cobra.Command{
 	Use:   "search",
 	Args:  cobra.MinimumNArgs(0),
-	Short: "Run search enumeration",
-	Long: `Run search enumeration
+	Short: "search the flare api for leaks",
+	Long: `search the flare api for credentials, emails, and stealer logs
 
 Example Commands:
-	gophlare search --config config.yaml
+	gophlare search --config config.yaml --search-credentials-by-domain
+	gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0
+	gophlare search --config config.yaml --search-emails-in-bulk -e emails.txt -o output-directory
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if configFileSet, err := cmd.Flags().GetBool("configfileset"); !configFileSet && err == nil {
-			_ = cmd.MarkPersistentFlagRequired("company")
 			_ = cmd.MarkPersistentFlagRequired("domain")
 			_ = cmd.MarkPersistentFlagRequired("output")
 		}
@@ -43,16 +44,16 @@ Example Commands:
 		var err error
 		opts := Options{}
 		if err = opts.LoadFromCommand(cmd); err != nil {
-			utils.LogFatalf("Could not LoadFromCommand %s\n", err)
+			utils.LogFatalf("Could not LoadFromCommand: %s\n", err)
 		}
 
 		// ensure required flags represented via config.yaml parsed by viper are not empty!
 		switch {
 		case opts.gophlareOptions.Output == "":
-			utils.LogFatalf("OUTPUT config.yaml value cannot be empty!")
+			utils.LogFatalf("OUTPUT cannot be empty!")
 		case reflect.TypeOf(opts.gophlareOptions.Domain).Kind() == reflect.String:
 			if opts.gophlareOptions.Domain.(string) == "" {
-				utils.LogFatalf("DOMAIN value cannot be empty!")
+				utils.LogFatalf("DOMAIN cannot be empty!")
 			}
 		}
 
@@ -70,20 +71,20 @@ Example Commands:
 		}
 
 		if opts.gophlareOptions.SearchStealerLogsByDomain {
-			if err := phlare.DownloadAllStealerLogPasswordFiles(&opts.gophlareOptions, scope); err != nil {
+			if err := DownloadAllStealerLogPasswordFiles(&opts.gophlareOptions, scope); err != nil {
 				utils.LogFatalf("Could not download all stealer log password files %s\n", err)
 			}
 		}
 
 		if opts.gophlareOptions.SearchCredentialsByDomain {
-			_, err := phlare.SearchFlareLeaksDatabase(&opts.gophlareOptions, scope.Domains)
+			_, err := FlareLeaksDatabaseSearchByDomain(&opts.gophlareOptions, scope.Domains)
 			if err != nil {
 				utils.LogFatalf("Could not search flare leaks database by domain: %+v\n%s\n", scope.Domains, err)
 			}
 		}
 
 		if opts.gophlareOptions.Emails != nil && opts.gophlareOptions.SearchEmailsInBulk {
-			if err := phlare.SearchEmailsInBulk(&opts.gophlareOptions, scope.Emails); err != nil {
+			if err := SearchEmailsInBulk(&opts.gophlareOptions, scope.Emails); err != nil {
 				utils.LogFatalf("Could not search emails in bulk: %+v\n%s\n", scope.Emails, err)
 			}
 		}
