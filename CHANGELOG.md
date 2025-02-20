@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.1.0](https://github.com/mr-pmillz/gophlare/compare/v1.0.9...v1.1.0) - 2025-02-20
+
+### ✨ New features
+
+- Added from, to, severity, eventsFilterTypes opts
+- refactored search command
+- updated docs - ([52e632e](https://github.com/mr-pmillz/gophlare/commit/52e632e7075ab4c822285702f0bcbb886fc9767a))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([6a59d0a](https://github.com/mr-pmillz/gophlare/commit/6a59d0a036e9a19fcaa463a08d1b34cc854ca547))
+
 ## [1.0.9](https://github.com/mr-pmillz/gophlare/compare/v1.0.8...v1.0.9) - 2025-02-19
 
 ### 🐛 Bug fixes
