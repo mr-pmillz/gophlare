@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.1.2](https://github.com/mr-pmillz/gophlare/compare/v1.1.1...v1.1.2) - 2025-03-10
+
+### 🛠 Improvements
+
+- Update changelog - ([78496b6](https://github.com/mr-pmillz/gophlare/commit/78496b6a4490beb64ecdaf368c5a491c42678a36))
+
+### ⚙️  Miscellaneous
+
+- Changelog generation handled by cicd... - ([86e1ef6](https://github.com/mr-pmillz/gophlare/commit/86e1ef60a869d72562f452dc3413aa7288703a1f))
+
 ## [1.1.1](https://github.com/mr-pmillz/gophlare/compare/v1.1.0...v1.1.1) - 2025-03-10
 
 ### ✨ New features
