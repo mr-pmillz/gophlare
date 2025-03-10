@@ -5,6 +5,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+// NewGoPhlareConfig ...
+//
+// nolint:unused
+func NewGoPhlareConfig(flareAPI string, flareTenantID int) *GoPhlareConfig {
+	config := &GoPhlareConfig{}
+	config.APIKeys.FlareAPI = flareAPI
+	config.APIKeys.FlareTenantID = flareTenantID
+	return config
+}
+
 // LoadAPIKeys ...
 func LoadAPIKeys() (*GoPhlareConfig, error) {
 	var config GoPhlareConfig

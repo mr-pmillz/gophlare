@@ -112,10 +112,55 @@ cli flags should override options set in config.yaml. For example, the following
 package main
 
 import (
-	"github.com/mr-pmillz/gophlare"
+	"github.com/mr-pmillz/gophlare/cmd/search"
+	"github.com/mr-pmillz/gophlare/config"
+	"github.com/mr-pmillz/gophlare/phlare"
 )
 
-// TODO
+// getDateXYearsAgo returns the `yearsAgo` int as a string in the format:  01-02-2006
+func getDateXYearsAgo(yearsAgo int) string {
+	return time.Now().AddDate(-yearsAgo, 0, 0).Format(time.RFC3339)
+}
+
+func main() {
+	company := "CHANGETHIS" // CHANGE-THIS
+	output := "/tmp/example" // CHANGE-THIS
+	domains := []string{"example.com"} // CHANGE-THIS
+	emails := []string{"test1@example.com", "test2@example.com"} // CHANGE-THIS
+	phlareOptions := &phlare.Options{
+		Company:    company,
+		Output:     output,
+		From:       getDateXYearsAgo(1),
+		Timeout:    600,
+		Severity:          []string{"medium", "high", "critical"},
+		EventsFilterTypes: []string{"illicit_networks", "open_web", "leak", "domain", "listing", "forum_content", "blog_content", "blog_post", "profile", "chat_message", "ransomleak", "infected_devices", "financial_data", "bot", "stealer_log", "paste", "social_media", "source_code", "source_code_files", "stack_exchange", "google", "service", "buckets", "bucket", "bucket_object"},
+		Emails: emails,
+	}
+	apiKeys := config.NewGoPhlareConfig("CHANGETHIS", 123456) // CHANGE-THIS
+	phlareOptions.APIKeys = apiKeys
+
+	flareCreds, err := search.FlareLeaksDatabaseSearchByDomain(phlareOptions, domains)
+	if err != nil {
+		panic(err)
+	}
+	// do something with flareCreds...
+	_ = flareCreds
+
+	phlareOptions.MaxZipFilesToDownload = 100
+	phlareOptions.UserIDFormat = []string{"a12345", "a123456", "aa12345", "aa123456"}
+	scope, err := phlare.NewScope(phlareOptions)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = search.DownloadAllStealerLogPasswordFiles(phlareOptions, scope); err != nil {
+		panic(err)
+	}
+
+	if err = search.SearchEmailsInBulk(phlareOptions, scope.Emails); err != nil {
+		panic(err)
+    }
+}
 ```
 
 ## ToDo
@@ -123,4 +168,4 @@ import (
 - [ ] Enhance cookies search
 - [ ] Export cookies to separate cookie bro output JSON files per stealer log ID
 - [ ] Implement remaining API endpoints
-- [ ] Add example library usage to README.md
+- [X] Add example library usage to README.md

@@ -21,140 +21,168 @@ type Scope struct {
 func NewScope(opts *Options) (*Scope, error) {
 	scope := new(Scope)
 	outOfScopeType := reflect.TypeOf(opts.OutOfScope)
-	switch outOfScopeType.Kind() {
-	case reflect.Slice:
-		scope.OutOfScope = append(scope.OutOfScope, opts.OutOfScope.([]string)...)
-	case reflect.String:
-		if opts.OutOfScope.(string) != "" {
-			if exists, err := utils.Exists(opts.OutOfScope.(string)); exists && err == nil {
-				outOfScopes, err := utils.ReadLines(opts.OutOfScope.(string))
-				if err != nil {
-					return nil, err
+	if outOfScopeType == nil {
+		scope.OutOfScope = make([]string, 0)
+	} else {
+		switch outOfScopeType.Kind() {
+		case reflect.Slice:
+			scope.OutOfScope = append(scope.OutOfScope, opts.OutOfScope.([]string)...)
+		case reflect.String:
+			if opts.OutOfScope.(string) != "" {
+				if exists, err := utils.Exists(opts.OutOfScope.(string)); exists && err == nil {
+					outOfScopes, err := utils.ReadLines(opts.OutOfScope.(string))
+					if err != nil {
+						return nil, err
+					}
+					scope.OutOfScope = append(scope.OutOfScope, outOfScopes...)
+				} else {
+					scope.OutOfScope = append(scope.OutOfScope, opts.OutOfScope.(string))
 				}
-				scope.OutOfScope = append(scope.OutOfScope, outOfScopes...)
-			} else {
-				scope.OutOfScope = append(scope.OutOfScope, opts.OutOfScope.(string))
 			}
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	// check if domain arg is file, string, or a slice
 	rtd := reflect.TypeOf(opts.Domain)
-	switch rtd.Kind() {
-	case reflect.Slice:
-		for _, domain := range opts.Domain.([]string) {
-			scope.addDomains(domain)
-		}
-	case reflect.String:
-		if isFile, err := utils.Exists(opts.Domain.(string)); isFile && err == nil {
-			domainList, err := utils.ReadLines(opts.Domain.(string))
-			if err != nil {
-				return nil, err
-			}
-
-			// parse --domain file or string into scope object
-			for _, domain := range domainList {
+	if rtd == nil {
+		scope.Domains = make([]string, 0)
+	} else {
+		switch rtd.Kind() {
+		case reflect.Slice:
+			for _, domain := range opts.Domain.([]string) {
 				scope.addDomains(domain)
 			}
-		} else {
-			scope.addDomains(opts.Domain.(string))
+		case reflect.String:
+			if isFile, err := utils.Exists(opts.Domain.(string)); isFile && err == nil {
+				domainList, err := utils.ReadLines(opts.Domain.(string))
+				if err != nil {
+					return nil, err
+				}
+
+				// parse --domain file or string into scope object
+				for _, domain := range domainList {
+					scope.addDomains(domain)
+				}
+			} else {
+				scope.addDomains(opts.Domain.(string))
+			}
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	// check if emails arg is file, string, or a slice
 	rte := reflect.TypeOf(opts.Emails)
-	switch rte.Kind() {
-	case reflect.Slice:
-		scope.Emails = append(scope.Emails, opts.Emails.([]string)...)
-	case reflect.String:
-		if isFile, err := utils.Exists(opts.Emails.(string)); isFile && err == nil {
-			emailList, err := utils.ReadLines(opts.Emails.(string))
-			if err != nil {
-				return nil, err
+	if rte == nil {
+		scope.Emails = make([]string, 0)
+	} else {
+		switch rte.Kind() {
+		case reflect.Slice:
+			scope.Emails = append(scope.Emails, opts.Emails.([]string)...)
+		case reflect.String:
+			if isFile, err := utils.Exists(opts.Emails.(string)); isFile && err == nil {
+				emailList, err := utils.ReadLines(opts.Emails.(string))
+				if err != nil {
+					return nil, err
+				}
+				scope.Emails = append(scope.Emails, emailList...)
+			} else {
+				scope.Emails = append(scope.Emails, opts.Emails.(string))
 			}
-			scope.Emails = append(scope.Emails, emailList...)
-		} else {
-			scope.Emails = append(scope.Emails, opts.Emails.(string))
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	// check if files-to-download arg is file, string, or a slice
 	rtf := reflect.TypeOf(opts.FilesToDownload)
-	switch rtf.Kind() {
-	case reflect.Slice:
-		scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.([]string)...)
-	case reflect.String:
-		if isFile, err := utils.Exists(opts.FilesToDownload.(string)); isFile && err == nil {
-			filesToDownload, err := utils.ReadLines(opts.FilesToDownload.(string))
-			if err != nil {
-				return nil, err
+	if rtf == nil {
+		scope.FilesToDownload = make([]string, 0)
+	} else {
+		switch rtf.Kind() {
+		case reflect.Slice:
+			scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.([]string)...)
+		case reflect.String:
+			if isFile, err := utils.Exists(opts.FilesToDownload.(string)); isFile && err == nil {
+				filesToDownload, err := utils.ReadLines(opts.FilesToDownload.(string))
+				if err != nil {
+					return nil, err
+				}
+				scope.FilesToDownload = append(scope.FilesToDownload, filesToDownload...)
+			} else {
+				scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.(string))
 			}
-			scope.FilesToDownload = append(scope.FilesToDownload, filesToDownload...)
-		} else {
-			scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.(string))
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	rtUIDF := reflect.TypeOf(opts.UserIDFormat)
-	switch rtUIDF.Kind() {
-	case reflect.Slice:
-		scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.([]string)...)
-	case reflect.String:
-		if isFile, err := utils.Exists(opts.UserIDFormat.(string)); isFile && err == nil {
-			userIDFormats, err := utils.ReadLines(opts.UserIDFormat.(string))
-			if err != nil {
-				return nil, err
+	if rtUIDF == nil {
+		scope.UserIDFormats = make([]string, 0)
+	} else {
+		switch rtUIDF.Kind() {
+		case reflect.Slice:
+			scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.([]string)...)
+		case reflect.String:
+			if isFile, err := utils.Exists(opts.UserIDFormat.(string)); isFile && err == nil {
+				userIDFormats, err := utils.ReadLines(opts.UserIDFormat.(string))
+				if err != nil {
+					return nil, err
+				}
+				scope.UserIDFormats = append(scope.UserIDFormats, userIDFormats...)
+			} else {
+				scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.(string))
 			}
-			scope.UserIDFormats = append(scope.UserIDFormats, userIDFormats...)
-		} else {
-			scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.(string))
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	rtSev := reflect.TypeOf(opts.Severity)
-	switch rtSev.Kind() {
-	case reflect.Slice:
-		scope.Severity = append(scope.Severity, opts.Severity.([]string)...)
-	case reflect.String:
-		if isFile, err := utils.Exists(opts.Severity.(string)); isFile && err == nil {
-			severity, err := utils.ReadLines(opts.Severity.(string))
-			if err != nil {
-				return nil, err
+	if rtSev == nil {
+		scope.Severity = make([]string, 0)
+	} else {
+		switch rtSev.Kind() {
+		case reflect.Slice:
+			scope.Severity = append(scope.Severity, opts.Severity.([]string)...)
+		case reflect.String:
+			if isFile, err := utils.Exists(opts.Severity.(string)); isFile && err == nil {
+				severity, err := utils.ReadLines(opts.Severity.(string))
+				if err != nil {
+					return nil, err
+				}
+				scope.Severity = append(scope.Severity, severity...)
+			} else {
+				scope.Severity = append(scope.Severity, opts.Severity.(string))
 			}
-			scope.Severity = append(scope.Severity, severity...)
-		} else {
-			scope.Severity = append(scope.Severity, opts.Severity.(string))
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	rtEvents := reflect.TypeOf(opts.EventsFilterTypes)
-	switch rtEvents.Kind() {
-	case reflect.Slice:
-		scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.([]string)...)
-	case reflect.String:
-		if isFile, err := utils.Exists(opts.EventsFilterTypes.(string)); isFile && err == nil {
-			eventsFilterTypes, err := utils.ReadLines(opts.EventsFilterTypes.(string))
-			if err != nil {
-				return nil, err
+	if rtEvents == nil {
+		scope.EventsFilterTypes = make([]string, 0)
+	} else {
+		switch rtEvents.Kind() {
+		case reflect.Slice:
+			scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.([]string)...)
+		case reflect.String:
+			if isFile, err := utils.Exists(opts.EventsFilterTypes.(string)); isFile && err == nil {
+				eventsFilterTypes, err := utils.ReadLines(opts.EventsFilterTypes.(string))
+				if err != nil {
+					return nil, err
+				}
+				scope.EventsFilterTypes = append(scope.EventsFilterTypes, eventsFilterTypes...)
+			} else {
+				scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.(string))
 			}
-			scope.EventsFilterTypes = append(scope.EventsFilterTypes, eventsFilterTypes...)
-		} else {
-			scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.(string))
+		default:
+			// Do Nothing
 		}
-	default:
-		// Do Nothing
 	}
 
 	return scope, nil
