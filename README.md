@@ -117,7 +117,7 @@ import (
 	"github.com/mr-pmillz/gophlare/phlare"
 )
 
-// getDateXYearsAgo returns the `yearsAgo` int as a string in the format:  01-02-2006
+// getDateXYearsAgo returns the `yearsAgo` int as a string in the format:  time.RFC3339
 func getDateXYearsAgo(yearsAgo int) string {
 	return time.Now().AddDate(-yearsAgo, 0, 0).Format(time.RFC3339)
 }
