@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.1.1](https://github.com/mr-pmillz/gophlare/compare/v1.1.0...v1.1.1) - 2025-03-10
+
+### ✨ New features
+
+- Added NewConfig helper, updated NewScope, version bump - ([5705ddd](https://github.com/mr-pmillz/gophlare/commit/5705ddddaf4ff13372a94ce94ce314397947c2f4))
+
+### 🛠 Improvements
+
+- Update README.md added badges - ([04d8c7a](https://github.com/mr-pmillz/gophlare/commit/04d8c7a75c1fc6520372577aaf2722a4da05f7e5))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([3f49bfc](https://github.com/mr-pmillz/gophlare/commit/3f49bfc2d2abfc01531aa0f85ba5923ccda8982e))
+
 ## [1.1.0](https://github.com/mr-pmillz/gophlare/compare/v1.0.9...v1.1.0) - 2025-02-20
 
 ### ✨ New features
