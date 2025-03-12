@@ -37,3 +37,35 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+
+dockers:
+  - image_templates:
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-amd64"
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-amd64"
+    goarch: amd64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.url=https://github.com/mr-pmillz/{{.ProjectName}}"
+      - "--label=org.opencontainers.image.source=https://github.com/mr-pmillz/{{.ProjectName}}"
+      - "--platform=linux/{{ .Arch }}"
+  - image_templates:
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-arm64"
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-arm64"
+    goarch: arm64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.url=https://github.com/mr-pmillz/{{.ProjectName}}"
+      - "--label=org.opencontainers.image.source=https://github.com/mr-pmillz/{{.ProjectName}}"
+      - "--platform=linux/{{ .Arch }}"
