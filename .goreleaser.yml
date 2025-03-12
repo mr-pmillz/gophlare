@@ -53,7 +53,7 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=org.opencontainers.image.url=https://github.com/mr-pmillz/{{.ProjectName}}"
       - "--label=org.opencontainers.image.source=https://github.com/mr-pmillz/{{.ProjectName}}"
-      - "--platform=linux/{{ .Arch }}"
+      - "--platform=linux/amd64"
   - image_templates:
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-arm64"
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-arm64"
@@ -68,4 +68,4 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=org.opencontainers.image.url=https://github.com/mr-pmillz/{{.ProjectName}}"
       - "--label=org.opencontainers.image.source=https://github.com/mr-pmillz/{{.ProjectName}}"
-      - "--platform=linux/{{ .Arch }}"
+      - "--platform=linux/arm64"
