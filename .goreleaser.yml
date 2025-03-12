@@ -43,7 +43,7 @@ dockers:
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-amd64"
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-amd64"
     goarch: amd64
-    dockerfile: Dockerfile
+    dockerfile: goreleaser.dockerfile
     use: buildx
     build_flag_templates:
       - "--pull"
@@ -58,7 +58,7 @@ dockers:
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-arm64"
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-arm64"
     goarch: arm64
-    dockerfile: Dockerfile
+    dockerfile: goreleaser.dockerfile
     use: buildx
     build_flag_templates:
       - "--pull"
