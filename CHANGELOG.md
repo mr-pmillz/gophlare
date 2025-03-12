@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.1.7](https://github.com/mr-pmillz/gophlare/compare/v1.1.6...v1.1.7) - 2025-03-12
+
+### 🛠 Improvements
+
+- Update cicd permissions in ci.yml - ([e3f1b86](https://github.com/mr-pmillz/gophlare/commit/e3f1b862b87a2348272ce501123c0ced2d65b51a))
+
+## [1.1.6](https://github.com/mr-pmillz/gophlare/compare/v1.1.5...v1.1.6) - 2025-03-12
+
+### ✨ New features
+
+- Add GITHUB_TOKEN to .goreleaser env for ghcr push - ([4a2dcf8](https://github.com/mr-pmillz/gophlare/commit/4a2dcf894a9e52b90f9efe43bc1cf39b280d9d1c))
+
+## [1.1.5](https://github.com/mr-pmillz/gophlare/compare/v1.1.4...v1.1.5) - 2025-03-12
+
+### 🧪 Testing
+
+- Testing goreleaser docker build/push to ghcr.io - ([1b7c003](https://github.com/mr-pmillz/gophlare/commit/1b7c0030d26c9112da4ef696b708fdf002675783))
+
+## [1.1.4](https://github.com/mr-pmillz/gophlare/compare/v1.1.3...v1.1.4) - 2025-03-12
+
+### ⚙️  Miscellaneous
+
+- Map has no entry for key "Arch", i knew it! - ([ebb2393](https://github.com/mr-pmillz/gophlare/commit/ebb23930271a0816eb7d91c8780d7bcc46e8bb41))
+
+## [1.1.3](https://github.com/mr-pmillz/gophlare/compare/v1.1.2...v1.1.3) - 2025-03-12
+
+### ✨ New features
+
+- Added Dockerfile & updated goreleaser to push image to ghcr.io - ([b4428d1](https://github.com/mr-pmillz/gophlare/commit/b4428d17f2fcbd0b5cb7bab0529e445f0014f625))
+
+### ⚙️  Miscellaneous
+
+- Update README.md - ([c204f38](https://github.com/mr-pmillz/gophlare/commit/c204f382ea0eaad514b5d6a7ed94223d4b733aec))
+- Update changelog - ([fc0a26e](https://github.com/mr-pmillz/gophlare/commit/fc0a26e8aad90b352793453a2356094cf56e20e3))
+
 ## [1.1.2](https://github.com/mr-pmillz/gophlare/compare/v1.1.1...v1.1.2) - 2025-03-10
 
 ### 🛠 Improvements
