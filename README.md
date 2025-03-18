@@ -9,6 +9,15 @@
 [![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fmr-pmillz%2Fgophlare)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fmr-pmillz%2Fgophlare)
 [![CI](https://github.com/mr-pmillz/gophlare/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-pmillz/gophlare/actions/workflows/ci.yml)
 
+<p align="center">
+  <a href="#about">About</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#supported-api-endpoints">Supported API Endpoints</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#todo">ToDo</a>
+</p>
+
 ## About
 
 Gophlare is an SDK and CLI-wrapper for the flare.io API. It can be imported and used in other go projects.
@@ -20,6 +29,12 @@ Gophlare also has several convenience features baked in such as:
 3. Stealer logs cookies parser that can sort cookies by expiration date and CookieBro export to JSON support.
 4. Getting credentials by domain name.
 5. Hash identification for `hash` results that can differentiate between passwords, password hashes, and encrypted values.
+
+## Installation
+
+```shell
+go install -v github.com/mr-pmillz/gophlare@latest
+```
 
 ## Supported API Endpoints
 
