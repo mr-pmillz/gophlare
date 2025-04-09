@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.1.8](https://github.com/mr-pmillz/gophlare/compare/v1.1.7...v1.1.8) - 2025-04-09
+
+### 🛠 Improvements
+
+- Updated goreleaser dockerfile and docs - ([21ff4a1](https://github.com/mr-pmillz/gophlare/commit/21ff4a1f8cf1f9dad8ec0e41d375aec8e939bfb0))
+
+### ⚙️  Miscellaneous
+
+- Update README.md - ([bac3169](https://github.com/mr-pmillz/gophlare/commit/bac3169074132da65402b34c4e0361cdbac07364))
+- Update changelog - ([53eee49](https://github.com/mr-pmillz/gophlare/commit/53eee49af00085e4e62be8e9ce27f68680b2758e))
+
 ## [1.1.7](https://github.com/mr-pmillz/gophlare/compare/v1.1.6...v1.1.7) - 2025-03-12
 
 ### 🛠 Improvements
