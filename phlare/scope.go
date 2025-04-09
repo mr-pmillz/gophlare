@@ -17,7 +17,8 @@ type Scope struct {
 
 // NewScope initializes a Scope object using the provided Options, parsing and validating various input configurations.
 // Returns the constructed Scope and an error if any issues occur during initialization.
-// nolint:gocognit
+//
+//nolint:gocognit
 func NewScope(opts *Options) (*Scope, error) {
 	scope := new(Scope)
 	outOfScopeType := reflect.TypeOf(opts.OutOfScope)

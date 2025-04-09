@@ -10,7 +10,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.1.7"
+	gophlareClientVersion = "v1.1.8"
 	nullString            = "null"
 )
 
@@ -241,7 +241,8 @@ func getPastISO8601Date(yearsAgo int) string {
 // It supports query customization, date range filters, and severity levels, aggregating results via pagination.
 // Results are saved to a JSON file in the specified output directory for further analysis or storage.
 // Returns aggregated search results or an error in case the operation fails.
-// nolint:gocognit
+//
+//nolint:gocognit
 func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string) (*FlareEventsGlobalSearchResults, error) {
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()

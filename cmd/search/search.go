@@ -643,7 +643,8 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 // mapBulkEmailCredsToCSVFormat converts bulk email credential lookup data into a standardized CSV data format.
 // matchedEmailCredResults is the bulk account response containing mapped emails and associated credential data.
 // Returns a pointer to FlareCreds, which holds the transformed credential pairs, or an error if parsing fails.
-// nolint:gocognit
+//
+//nolint:gocognit
 func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *phlare.FlareListByBulkAccountResponse) (*FlareCreds, error) {
 	flareCreds := &FlareCreds{}
 	for email, emailResults := range *matchedEmailCredResults {

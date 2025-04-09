@@ -51,7 +51,7 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("from", "f", "", "from date used for a filter for stealer log searches. ex. 2021-01-01 ")
 	cmd.PersistentFlags().StringP("to", "", todaysDate(), "to date used for a filter for stealer log searches. ex. 2025-01-01. Defaults to today.")
 	// strings of interface type that can be a file, a slice, or a singular string
-	cmd.PersistentFlags().StringP("domain", "d", "", "domain string or file containing domains ex. domains.txt")
+	cmd.PersistentFlags().StringP("domain", "d", "", "domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings")
 	cmd.PersistentFlags().StringP("out-of-scope", "", "", "out of scope domains, IPs, or CIDRs")
 	cmd.PersistentFlags().StringP("files-to-download", "", "", "comma separated list of files to match on and download if they exist from the query")
 	cmd.PersistentFlags().StringP("emails", "e", "", "emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt")

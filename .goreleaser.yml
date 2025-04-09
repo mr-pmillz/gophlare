@@ -41,8 +41,8 @@ changelog:
 
 dockers:
   - image_templates:
-      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-amd64"
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-amd64"
     goarch: amd64
     dockerfile: goreleaser.dockerfile
     use: buildx
@@ -55,9 +55,11 @@ dockers:
       - "--label=org.opencontainers.image.url=https://github.com/mr-pmillz/{{.ProjectName}}"
       - "--label=org.opencontainers.image.source=https://github.com/mr-pmillz/{{.ProjectName}}"
       - "--platform=linux/amd64"
+    extra_files:
+      - entrypoint.sh
   - image_templates:
-      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-arm64"
       - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-arm64"
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest-arm64"
     goarch: arm64
     dockerfile: goreleaser.dockerfile
     use: buildx
@@ -70,3 +72,5 @@ dockers:
       - "--label=org.opencontainers.image.url=https://github.com/mr-pmillz/{{.ProjectName}}"
       - "--label=org.opencontainers.image.source=https://github.com/mr-pmillz/{{.ProjectName}}"
       - "--platform=linux/arm64"
+    extra_files:
+      - entrypoint.sh

@@ -7,7 +7,7 @@ import (
 
 // NewGoPhlareConfig ...
 //
-// nolint:unused
+//nolint:unused
 func NewGoPhlareConfig(flareAPI string, flareTenantID int) *GoPhlareConfig {
 	config := &GoPhlareConfig{}
 	config.APIKeys.FlareAPI = flareAPI
