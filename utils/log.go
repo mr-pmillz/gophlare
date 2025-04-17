@@ -70,7 +70,7 @@ func InfoLabelWithColorf(label, colorString, format string, args ...interface{})
 		emoji = "❌" // Error
 	case colorString == "yellow":
 		msgColor = color.New(color.FgHiYellow)
-		emoji = "⚠️" // Warning
+		emoji = "⚠️ " // Warning
 	case colorString == "magenta":
 		msgColor = color.New(color.FgHiMagenta)
 		emoji = "✨" // Highlight
