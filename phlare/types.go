@@ -140,6 +140,11 @@ type FlareStealerLogZipFileDownloadResponse struct {
 	} `json:"stealer_log,omitempty"`
 }
 
+// FlareTime is a custom time.Time type that supports unmarshalling additional timestamp formats
+type FlareTime struct {
+	time.Time
+}
+
 // FlareFireworkActivitiesIndexSourceIDv2Response ...
 type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 	Activity struct {
@@ -151,19 +156,20 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 			ID       string `json:"id,omitempty"`
 			Index    string `json:"index,omitempty"`
 			Metadata struct {
-				EstimatedCreatedAt time.Time   `json:"estimated_created_at,omitempty"`
+				EstimatedCreatedAt FlareTime   `json:"estimated_created_at,omitempty"`
 				EventID            interface{} `json:"event_id,omitempty"`
-				FirstCrawledAt     time.Time   `json:"first_crawled_at,omitempty"`
-				LastCrawledAt      time.Time   `json:"last_crawled_at,omitempty"`
+				FirstCrawledAt     FlareTime   `json:"first_crawled_at,omitempty"`
+				LastCrawledAt      FlareTime   `json:"last_crawled_at,omitempty"`
 				PayloadDigest      string      `json:"payload_digest,omitempty"`
-				ScrapedAt          time.Time   `json:"scraped_at,omitempty"`
+				ScrapedAt          FlareTime   `json:"scraped_at,omitempty"`
 				Source             string      `json:"source,omitempty"`
+				CrawledBy          interface{} `json:"crawled_by,omitempty"`
 			} `json:"metadata,omitempty"`
 			UID         string      `json:"uid,omitempty"`
 			URL         interface{} `json:"url,omitempty"`
 			BrowserURL  interface{} `json:"browser_url,omitempty"`
 			Name        interface{} `json:"name,omitempty"`
-			InstalledAt time.Time   `json:"installed_at,omitempty"`
+			InstalledAt FlareTime   `json:"installed_at,omitempty"`
 			UpdatedAt   interface{} `json:"updated_at,omitempty"`
 			SellerID    interface{} `json:"seller_id,omitempty"`
 			Isp         interface{} `json:"isp,omitempty"`
@@ -171,7 +177,7 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 			Credentials []struct {
 				URL         string `json:"url,omitempty"`
 				Username    string `json:"username,omitempty"`
-				Password    string `json:"password,omitempty"`
+				Password    string `json:"password,omitempty"` // this is also redacted
 				Application string `json:"application,omitempty"`
 			} `json:"credentials,omitempty"`
 			Cookies []struct {
@@ -204,10 +210,10 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 				MalwareFamily string    `json:"malware_family,omitempty"`
 				BuildID       string    `json:"build_id,omitempty"`
 				FileLocation  string    `json:"file_location,omitempty"`
-				InfectionDate time.Time `json:"infection_date,omitempty"`
+				InfectionDate FlareTime `json:"infection_date,omitempty"`
 			} `json:"malware_information,omitempty"`
 			Files     []string    `json:"files,omitempty"`
-			Resources []string    `json:"resources,omitempty"` // sometimes credentials are here in the format, "Host: URL  |  Username: EMAIL  |  Password: PASSWORD",
+			Resources []string    `json:"resources,omitempty"` // sometimes credentials are here in the format, "Host: URL  |  Username: EMAIL  |  Password: PASSWORD", But a lot of the time, the password value is redacted...
 			Price     interface{} `json:"price,omitempty"`
 			Currency  interface{} `json:"currency,omitempty"`
 			Features  struct {
@@ -239,7 +245,7 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 			} `json:"highlights,omitempty"`
 			Host          interface{} `json:"host,omitempty"`
 			ID            string      `json:"id,omitempty"`
-			InfectionDate time.Time   `json:"infection_date,omitempty"`
+			InfectionDate FlareTime   `json:"infection_date,omitempty"`
 			ParentID      interface{} `json:"parent_id,omitempty"`
 			ParentTitle   interface{} `json:"parent_title,omitempty"`
 			ParentTitleEn interface{} `json:"parent_title_en,omitempty"`
@@ -255,7 +261,7 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 			Tags                      []interface{} `json:"tags,omitempty"`
 			Notes                     interface{}   `json:"notes,omitempty"`
 			StateCode                 interface{}   `json:"state_code,omitempty"`
-			Timestamp                 time.Time     `json:"timestamp,omitempty"`
+			Timestamp                 FlareTime     `json:"timestamp,omitempty"`
 			Title                     string        `json:"title,omitempty"`
 			Type                      string        `json:"type,omitempty"`
 			UID                       string        `json:"uid,omitempty"`
@@ -273,13 +279,14 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 		} `json:"header,omitempty"`
 		HistoryLogs interface{} `json:"history_logs,omitempty"`
 		Metadata    struct {
-			EstimatedCreatedAt time.Time   `json:"estimated_created_at,omitempty"`
+			EstimatedCreatedAt FlareTime   `json:"estimated_created_at,omitempty"`
 			EventID            interface{} `json:"event_id,omitempty"`
-			FirstCrawledAt     time.Time   `json:"first_crawled_at,omitempty"`
-			LastCrawledAt      time.Time   `json:"last_crawled_at,omitempty"`
+			FirstCrawledAt     FlareTime   `json:"first_crawled_at,omitempty"`
+			LastCrawledAt      FlareTime   `json:"last_crawled_at,omitempty"`
 			PayloadDigest      string      `json:"payload_digest,omitempty"`
-			ScrapedAt          time.Time   `json:"scraped_at,omitempty"`
+			ScrapedAt          FlareTime   `json:"scraped_at,omitempty"`
 			Source             string      `json:"source,omitempty"`
+			CrawledBy          interface{} `json:"crawled_by,omitempty"`
 		} `json:"metadata,omitempty"`
 		SimilarItems []interface{} `json:"similar_items,omitempty"`
 	} `json:"activity,omitempty"`
