@@ -101,12 +101,13 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 
 		data, err := fc.FlareRetrieveEventActivitiesByID(result.Metadata.UID)
 		if err != nil {
-			return nil, utils.LogError(err)
+			utils.LogWarningf("Failed to retrieve event activities for %s: %s\n", result.Metadata.UID, err.Error())
+			continue
 		}
 
 		downloadedFiles, err := fc.FlareDownloadStealerLogZipFilesThatContainPasswords(data, outputDir)
 		if err != nil {
-			utils.LogWarningf("Failed to download all Stealer Logs for %s: %s\n", result.Metadata.UID, err.Error())
+			utils.LogWarningf("Failed to download Stealer Logs for %s: %s\n", result.Metadata.UID, err.Error())
 			continue
 		}
 		allDownloadedFiles = append(allDownloadedFiles, downloadedFiles...)
