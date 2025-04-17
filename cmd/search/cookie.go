@@ -2,6 +2,7 @@ package search
 
 import (
 	"bufio"
+	"errors"
 	"github.com/mr-pmillz/gophlare/phlare"
 	"github.com/mr-pmillz/gophlare/utils"
 	"io"
@@ -110,7 +111,7 @@ func ParseCookieFile(filename string) ([]phlare.Cookie, []phlare.Cookie, error) 
 	for {
 		line, err := reader.ReadString('\n') // Read each line until newline character
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break // End of file reached, stop reading
 			}
 			return nil, nil, utils.LogError(err) // Handle other read errors

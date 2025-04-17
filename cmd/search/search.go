@@ -79,7 +79,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		return err
 	}
 
-	utils.InfoLabelWithColorf("FLARE", "blue", "Finished downloading all stealer log zip files from Flare that contain passwords")
+	utils.InfoLabelWithColorf("FLARE", "blue", "Finished downloading all stealer log zip files from Flare that contained passwords")
 	return nil
 }
 
@@ -104,6 +104,13 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 			utils.LogWarningf("Failed to retrieve event activities for %s: %s\n", result.Metadata.UID, err.Error())
 			continue
 		}
+		// save the marshalled JSON results to a file for easy reference later on
+		// ToDo: make saving the events JSON data an optional argument
+		sanitizedUID := utils.SanitizeString(result.Metadata.UID)
+		eventsJSONFileName := fmt.Sprintf("%s/flare-events-%s.json", outputDir, sanitizedUID)
+		if err = utils.WriteStructToJSONFile(data, eventsJSONFileName); err != nil {
+			utils.LogWarningf("Failed to write events JSON file for %s: %s\n", result.Metadata.UID, err.Error())
+		}
 
 		downloadedFiles, err := fc.FlareDownloadStealerLogZipFilesThatContainPasswords(data, outputDir)
 		if err != nil {
@@ -113,20 +120,20 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 		allDownloadedFiles = append(allDownloadedFiles, downloadedFiles...)
 	}
 
-	parsedCredentials, allLiveCookieBros, allHighValueCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, userIDFormats, domain)
+	parsedCredentials, allLiveCookieBros, allHighValueCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, userIDFormats, domain, outputDir)
 	if err != nil {
 		return nil, err
 	}
 	allFlareStealerLogCredentials = append(allFlareStealerLogCredentials, parsedCredentials...)
 
 	// write allLiveCookieBros to JSON file
-	cookieBroJSONFileName := fmt.Sprintf("%s/flare-stealer-logs-cookie-bro.json", outputDir)
+	cookieBroJSONFileName := fmt.Sprintf("%s/all-flare-stealer-logs-cookie-bro.json", outputDir)
 	if err = utils.WriteStructToJSONFile(allLiveCookieBros, cookieBroJSONFileName); err != nil {
 		return nil, utils.LogError(err)
 	}
 
 	// write allLiveCookieBros to JSON file
-	highValueCookieBroJSONFileName := fmt.Sprintf("%s/flare-stealer-logs-high-value-cookie-bro.json", outputDir)
+	highValueCookieBroJSONFileName := fmt.Sprintf("%s/all-flare-stealer-logs-high-value-cookie-bro.json", outputDir)
 	if err = utils.WriteStructToJSONFile(allHighValueCookieBros, highValueCookieBroJSONFileName); err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -162,7 +169,9 @@ func limitReached(count, limit int) bool {
 // Returns:
 // - A slice of parsed credentials (FlareStealerLogsCredential), live cookie data (CookieBro), high-value cookie data (CookieBro).
 // - An error if any processing step fails.
-func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, domain string) ([]phlare.FlareStealerLogsCredential, []phlare.CookieBro, []phlare.CookieBro, error) {
+//
+//nolint:gocognit
+func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, domain, outputDir string) ([]phlare.FlareStealerLogsCredential, []phlare.CookieBro, []phlare.CookieBro, error) {
 	allParsedCredentials := make([]phlare.FlareStealerLogsCredential, 0)
 	allCookieBros := make([]phlare.CookieBro, 0)
 	allHighValueCookieBros := make([]phlare.CookieBro, 0)
@@ -179,20 +188,24 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 		if err != nil {
 			return nil, nil, nil, utils.LogError(err)
 		}
+		stealerLogBaseFileName := filepath.Base(file)
+		stealerLogBaseFileName = strings.ReplaceAll(stealerLogBaseFileName, ".zip", "")
 
 		for _, unzippedFile := range unzippedFiles {
-			if _, exists := filesToParse[filepath.Base(unzippedFile)]; exists {
-				// debug statement, todo: add in verbose option to print this...
+			unzippedBaseFileName := filepath.Base(unzippedFile)
+			if _, exists := filesToParse[unzippedBaseFileName]; exists {
 				utils.InfoLabelWithColorf("FLARE", "green", "Parsing in-scope domain creds: %s", unzippedFile)
 				credentials, err := parseCredentialsFile(unzippedFile, domain, userIDFormats)
 				if err != nil {
 					return nil, nil, nil, utils.LogError(err)
 				}
+				if len(credentials) > 0 {
+					utils.InfoLabelWithColorf("FLARE CREDS", "magenta", "Found %d in-scope creds from: %s", len(credentials), unzippedFile)
+				}
 				allParsedCredentials = append(allParsedCredentials, credentials...)
 			}
 			// check for cookie files
 			if strings.Contains(strings.ToLower(unzippedFile), "cookie") {
-				// todo: map filename to cookies struct so that when writing cookies to a file, can write cookies to smaller individual files corresponding to relevant stealer log index.
 				liveCookies, highValueCookies, err := ParseCookieFile(unzippedFile)
 				if err != nil {
 					return nil, nil, nil, utils.LogError(err)
@@ -201,9 +214,25 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 				cookieBros := MapCookiesToCookieBro(liveCookies)
 				// append cookieBros to allCookieBros
 				allCookieBros = append(allCookieBros, cookieBros...)
+				if len(cookieBros) >= 1 {
+					// write live cookieBros to individual file with stealerlog id in the filename
+					sanitizedUnzippedBaseFileName := utils.SanitizeString(unzippedBaseFileName)
+					liveCookieBroFileName := fmt.Sprintf("%s/live-cookie-bro-%s-%s.json", outputDir, stealerLogBaseFileName, sanitizedUnzippedBaseFileName)
+					if err = utils.WriteStructToJSONFile(cookieBros, liveCookieBroFileName); err != nil {
+						utils.LogWarningf("Failed to write live cookie bro to file: %s\n", liveCookieBroFileName)
+					}
+				}
 
 				highValueCookieBros := MapCookiesToCookieBro(highValueCookies)
 				allHighValueCookieBros = append(allHighValueCookieBros, highValueCookieBros...)
+				if len(highValueCookieBros) >= 1 {
+					// write high-value cookieBros to individual file with stealerlog id in the filename
+					sanitizedUnzippedBaseFileName := utils.SanitizeString(unzippedBaseFileName)
+					highValueCookieBroFileName := fmt.Sprintf("%s/high-value-cookie-bro-%s-%s.json", outputDir, stealerLogBaseFileName, sanitizedUnzippedBaseFileName)
+					if err = utils.WriteStructToJSONFile(cookieBros, highValueCookieBroFileName); err != nil {
+						utils.LogWarningf("Failed to write high-value cookie bro to file: %s\n", highValueCookieBroFileName)
+					}
+				}
 			}
 		}
 
