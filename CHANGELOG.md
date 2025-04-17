@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.0](https://github.com/mr-pmillz/gophlare/compare/v1.1.9...v1.2.0) - 2025-04-17
+
+### 🐛 Bug fixes
+
+- Write individual cookie bro and events json to files. resolved linter warnings - ([58dc8a0](https://github.com/mr-pmillz/gophlare/commit/58dc8a07b2e9a1c1bb84799cde69264989778a60))
+- Fixed bufio.Scanner: token too long bug :bug: - ([0e0a172](https://github.com/mr-pmillz/gophlare/commit/0e0a172311abbbe2c35ff4294ddbcc46aa592ac0))
+- Fixed flare events time.Time type unmarshalling bug :bug: - ([4a5ce83](https://github.com/mr-pmillz/gophlare/commit/4a5ce8363107472bcff1a7cfabdf54b66a6267f8))
+
+### ⚡ Performance
+
+- Optimized warning log msg fmt - ([ffbc4d6](https://github.com/mr-pmillz/gophlare/commit/ffbc4d6a6384c581fb9d3fd127b56d430006a4da))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([686853f](https://github.com/mr-pmillz/gophlare/commit/686853f43ac8161a134e0db4551c187c4d0e0305))
+
 ## [1.1.9](https://github.com/mr-pmillz/gophlare/compare/v1.1.8...v1.1.9) - 2025-04-17
 
 ### ⚡ Performance
