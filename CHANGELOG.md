@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.1.9](https://github.com/mr-pmillz/gophlare/compare/v1.1.8...v1.1.9) - 2025-04-17
+
+### ⚡ Performance
+
+- Optimized. log warning instead of err to continue downloading results - ([0c0e24a](https://github.com/mr-pmillz/gophlare/commit/0c0e24ad873ff51c3ee40e33e0e31b391e39c06c))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([e856eac](https://github.com/mr-pmillz/gophlare/commit/e856eace18174d4eeb2707c3a74958495c609fd8))
+
 ## [1.1.8](https://github.com/mr-pmillz/gophlare/compare/v1.1.7...v1.1.8) - 2025-04-09
 
 ### 🛠 Improvements
