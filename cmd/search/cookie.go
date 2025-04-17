@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"github.com/mr-pmillz/gophlare/phlare"
 	"github.com/mr-pmillz/gophlare/utils"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -104,13 +105,19 @@ func ParseCookieFile(filename string) ([]phlare.Cookie, []phlare.Cookie, error) 
 	defer file.Close()
 
 	var cookies []phlare.Cookie
+	reader := bufio.NewReader(file)
 
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024) // Increase the buffer size to handle large lines
-	scanner.Buffer(buf, 1024*1024)  // Set the maximum token size to 1MB
+	for {
+		line, err := reader.ReadString('\n') // Read each line until newline character
+		if err != nil {
+			if err == io.EOF {
+				break // End of file reached, stop reading
+			}
+			return nil, nil, utils.LogError(err) // Handle other read errors
+		}
 
-	for scanner.Scan() {
-		fields := strings.Split(scanner.Text(), "\t")
+		line = strings.TrimSpace(line) // Clean up whitespace
+		fields := strings.Split(line, "\t")
 		if len(fields) != 7 {
 			continue // Skip malformed lines
 		}
@@ -139,16 +146,13 @@ func ParseCookieFile(filename string) ([]phlare.Cookie, []phlare.Cookie, error) 
 		})
 	}
 
-	if err = scanner.Err(); err != nil {
-		return nil, nil, err
-	}
-
+	// Check and filter live cookies
 	liveCookies, err := CheckCookieExpiration(cookies)
 	if err != nil {
 		return nil, nil, utils.LogError(err)
 	}
 
-	// check live cookies for high value targets
+	// Check live cookies for high value targets
 	highValueCookies := FindHighValueCookies(liveCookies)
 
 	return liveCookies, highValueCookies, nil
