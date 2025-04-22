@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.1](https://github.com/mr-pmillz/gophlare/compare/v1.2.0...v1.2.1) - 2025-04-22
+
+### ✨ New features
+
+- Added token refresh capabilities, updated lint config - ([58827c8](https://github.com/mr-pmillz/gophlare/commit/58827c85816634343251be6d0c5d22c381c40e4c))
+
+### 📚 Documentation
+
+- Docs update - ([ed832d8](https://github.com/mr-pmillz/gophlare/commit/ed832d8770ef8891494eae89e40bfe9f752bdedd))
+
+### 📦 Dependencies
+
+- Deps update - ([b719910](https://github.com/mr-pmillz/gophlare/commit/b719910136bb8276e355040593738503324b91ad))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([fa667c5](https://github.com/mr-pmillz/gophlare/commit/fa667c57d2d265fc8e2b509e80f9d7c402656e0a))
+
 ## [1.2.0](https://github.com/mr-pmillz/gophlare/compare/v1.1.9...v1.2.0) - 2025-04-17
 
 ### 🐛 Bug fixes
