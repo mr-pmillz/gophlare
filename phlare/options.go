@@ -59,7 +59,7 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("severity", "s", "medium,high,critical", "the stealer log severities to filter on. can be a string, a file, or comma-separated list of strings")
 	cmd.PersistentFlags().StringP("events-filter-types", "", "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object", "flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings")
 	// integers
-	cmd.PersistentFlags().IntP("timeout", "", 600, "timeout duration for API requests in seconds")
+	cmd.PersistentFlags().IntP("timeout", "", 900, "timeout duration for API requests in seconds")
 	cmd.PersistentFlags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files.")
 	// booleans
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by domain, download and parse all the matching zip files for passwords and live cookies")

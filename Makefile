@@ -18,16 +18,7 @@ fmt:
 	$(info ******************** checking formatting ********************)
 	@test -z $(shell gofmt -l $(SRC)) || (gofmt -d $(SRC); exit 1)
 
-.PHONY: golangci-lint-check
-golangci-lint-check:
-ifndef GITHUB_ACTIONS
-	$(info ******************** checking if golangci-lint is installed ********************)
-	$(warning "ensuring latest version of golangci-lint installed, running: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest")
-	go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-endif
-
-.PHONY: lint
-lint: golangci-lint-check
+lint:
 	$(info ******************** running lint tools ********************)
 	golangci-lint run -c .golangci-lint.yml -v ./... --timeout 10m
 

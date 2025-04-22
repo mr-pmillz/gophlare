@@ -4,14 +4,18 @@ import "time"
 
 // FlareClient ...
 type FlareClient struct {
-	Token            string
+	APIKey           string
+	TenantID         int
 	Client           *Client
 	DefaultUserAgent string
+	Token            *string
+	TokenExp         *time.Time
+	ClientTimeout    int
 }
 
 // FlareAuthResponse ...
 type FlareAuthResponse struct {
-	RefreshTokenExp int    `json:"refresh_token_exp"`
+	RefreshTokenExp int64  `json:"refresh_token_exp"`
 	Token           string `json:"token"`
 }
 

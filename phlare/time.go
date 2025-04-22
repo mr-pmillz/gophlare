@@ -35,3 +35,10 @@ func (ft *FlareTime) UnmarshalJSON(b []byte) error {
 	// If all parsing attempts fail
 	return fmt.Errorf("cannot parse time: %s", s)
 }
+
+// EpochToTime converts an epoch timestamp (in seconds) to a *time.Time value.
+// It returns a pointer to the corresponding time in the UTC timezone.
+func EpochToTime(epoch int64) *time.Time {
+	t := time.Unix(epoch, 0).UTC()
+	return &t
+}

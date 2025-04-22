@@ -109,7 +109,7 @@ func ParseCookieFile(filename string) ([]phlare.Cookie, []phlare.Cookie, error) 
 	reader := bufio.NewReader(file)
 
 	for {
-		line, err := reader.ReadString('\n') // Read each line until newline character
+		line, err := reader.ReadString('\n') // Read each line until a newline character
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break // End of file reached, stop reading

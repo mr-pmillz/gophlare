@@ -10,8 +10,9 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.2.0"
+	gophlareClientVersion = "v1.2.1"
 	nullString            = "null"
+	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
 
 // NewFlareClient initializes and returns a new FlareClient with the provided API key, tenant ID, and timeout settings.
@@ -53,10 +54,41 @@ func NewFlareClient(apiKey, userAgent string, tenantID, timeout int) (*FlareClie
 		}
 	}
 	if statusCode == 200 {
-		return &FlareClient{Token: tokenResp.Token, Client: c, DefaultUserAgent: finalUserAgent}, nil
+		return &FlareClient{
+			Token:            &tokenResp.Token,
+			Client:           c,
+			DefaultUserAgent: finalUserAgent,
+			TenantID:         tenantID,
+			APIKey:           apiKey,
+			TokenExp:         EpochToTime(tokenResp.RefreshTokenExp),
+			ClientTimeout:    timeout,
+		}, nil
 	} else {
 		return nil, fmt.Errorf("failed to obtain Flare API token")
 	}
+}
+
+// IsAPITokenExpired returns true if the API token has expired
+func (fc *FlareClient) IsAPITokenExpired() bool {
+	if fc.Token == nil || fc.TokenExp == nil {
+		return true
+	}
+	return time.Now().After(*fc.TokenExp)
+}
+
+// RefreshAPIToken refreshes the API token if it has expired
+func (fc *FlareClient) RefreshAPIToken() error {
+	if !fc.IsAPITokenExpired() {
+		return nil
+	}
+	utils.InfoLabelWithColorf("FLARE API TOKEN", "yellow", "API token expired, refreshing...")
+	updatedFC, err := NewFlareClient(fc.APIKey, fc.DefaultUserAgent, fc.TenantID, fc.ClientTimeout)
+	if err != nil {
+		return fmt.Errorf("failed to refresh token: %w", err)
+	}
+	fc.Token = updatedFC.Token
+	fc.TokenExp = updatedFC.TokenExp
+	return nil
 }
 
 // QueryGlobalEvents performs a search for global events by domain and returns the results *FlareEventsGlobalSearchResults
@@ -70,12 +102,38 @@ func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to strin
 
 // FlareRetrieveEventActivitiesByID retrieves event activities by their unique ID from the Flare API and returns the response or an error.
 func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFireworkActivitiesIndexSourceIDv2Response, error) {
+	// Check token expiry before making the request
+	if fc.IsAPITokenExpired() {
+		err := fc.RefreshAPIToken()
+		if err != nil {
+			return nil, fmt.Errorf("failed to refresh token: %w", err)
+		}
+	}
 	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", flareAPIBaseURL, uid)
 	headers := fc.defaultHeaders()
 	data := &FlareFireworkActivitiesIndexSourceIDv2Response{}
+
 	statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
 	if err != nil {
 		return nil, utils.LogError(err)
+	}
+
+	if statusCode == 401 {
+		// retrieve a fresh Bearer token and retry request
+		utils.InfoLabelWithColorf("FLARE API TOKEN", "yellow", "API token expired, refreshing...")
+		err := fc.RefreshAPIToken()
+		if err != nil {
+			return nil, utils.LogError(err)
+		}
+
+		headers = fc.defaultHeaders()
+		statusCode, err = fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
+		if err != nil {
+			return nil, utils.LogError(err)
+		}
+		if statusCode == 401 {
+			return nil, fmt.Errorf("authorization failed even after token refresh")
+		}
 	}
 	if statusCode != 200 {
 		return nil, fmt.Errorf("error retrieving flare event activities by ID, received non 200 HTTP response status code: %d", statusCode)
@@ -97,11 +155,8 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
 			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", flareAPIBaseURL, data.Activity.Data.UID)
-			headers := map[string]string{
-				"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
-				"Accept":        "text/plain; charset=utf-8",
-				"User-Agent":    fc.DefaultUserAgent,
-			}
+			headers := fc.defaultHeaders()
+			headers["Accept"] = acceptHeaderTextPlain
 			params := map[string]string{
 				"i_agree_to_tos": "true",
 			}
@@ -156,11 +211,8 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 			// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
 			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", flareAPIBaseURL, data.Activity.Data.UID)
 			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
-			headers := map[string]string{
-				"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
-				"Accept":        "text/plain; charset=utf-8",
-				"User-Agent":    fc.DefaultUserAgent,
-			}
+			headers := fc.defaultHeaders()
+			headers["Accept"] = acceptHeaderTextPlain
 			params := map[string]string{
 				"file":           stealerLogsFile, // to download individual file, can use the file param and download_file endpoint
 				"i_agree_to_tos": "true",
@@ -202,11 +254,8 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 		// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
 		flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", flareAPIBaseURL, data.Activity.Data.UID)
 		utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
-		headers := map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
-			"Accept":        "text/plain; charset=utf-8",
-			"User-Agent":    fc.DefaultUserAgent,
-		}
+		headers := fc.defaultHeaders()
+		headers["Accept"] = acceptHeaderTextPlain
 		params := map[string]string{
 			"file":           stealerLogsFile, // to download individual file, can use the file param and download_file endpoint
 			"i_agree_to_tos": "true",
@@ -366,8 +415,13 @@ func (fc *FlareClient) FlareBulkCredentialLookup(emails []string, outputDir stri
 
 // defaultHeaders extracts common headers for Flare API requests
 func (fc *FlareClient) defaultHeaders() map[string]string {
+	token := ""
+	if fc.Token != nil {
+		token = *fc.Token
+	}
+
 	return map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", fc.Token),
+		"Authorization": fmt.Sprintf("Bearer %s", token),
 		"Content-Type":  "application/json",
 		"User-Agent":    fc.DefaultUserAgent,
 	}

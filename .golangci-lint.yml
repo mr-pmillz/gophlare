@@ -1,60 +1,47 @@
-run:
-  timeout: 5m
-
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
     - bodyclose
-    #- copyloopvar
-    #- deadcode
-    #- depguard
-    #- dogsled
     - dupl
     - errorlint
-    #- exportloopref
-    #- exhaustive
-    #- funlen
-    #- gas
-    #- gochecknoinits
-    - goconst
     - gocognit
+    - goconst
     - gocritic
-    #- gocyclo
-    #- gofmt
-    #- goimports
-    #- golint
-    #- gomnd
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - ineffassign
-    #- interfacer
-    #- lll
-    #- maligned
-    #- misspell
-    #- nakedret
-    #- noctx
-    #- nolintlint
-    # - prealloc
-    # - revive
-    #- rowserrcheck
-    #- scopelint
     - staticcheck
-    #- structcheck
-    - stylecheck
-    - typecheck
     - unconvert
-    #- unparam
     - unused
-    #- varcheck
     - whitespace
-  fast: false
-
-linters-settings:
-  gosimple:
-    checks: ["all", "-S1028"]
-  staticcheck:
-    checks: ["all"]
-  gosec:
-    checks: ["all", "-G306"]
+  settings:
+    gosec:
+      excludes:
+        - G306
+    staticcheck:
+      checks:
+        - -S1028
+        - all
+        - -QF1002
+#        - -S1034
+#        - -QF1001
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
