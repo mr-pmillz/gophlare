@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.2](https://github.com/mr-pmillz/gophlare/compare/v1.2.1...v1.2.2) - 2025-04-25
+
+### ✨ New features
+
+- Optimized cred parser to support redline format. various other improvements - ([5101242](https://github.com/mr-pmillz/gophlare/commit/5101242f8dc55bf545e9ab848bb330c67c93413d))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([d61fbda](https://github.com/mr-pmillz/gophlare/commit/d61fbda0abc029f1fbf4cf0311a0f0bbe2bf26bc))
+
 ## [1.2.1](https://github.com/mr-pmillz/gophlare/compare/v1.2.0...v1.2.1) - 2025-04-22
 
 ### ✨ New features
