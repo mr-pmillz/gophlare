@@ -36,7 +36,7 @@ func LogError(err error) error {
 // LogWarningf logs a warning to stdout
 func LogWarningf(format string, args ...interface{}) {
 	msgColor := color.New(color.FgHiYellow)
-	emoji := "⚠️" // Warning
+	emoji := "⚠️ " // Warning
 	msg := fmt.Sprintf(format, args...)
 	msgColor.EnableColor()
 	msgStyle := msgColor.Sprintf("%s %s", emoji, msg) //nolint:govet

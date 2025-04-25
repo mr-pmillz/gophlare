@@ -10,7 +10,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.2.1"
+	gophlareClientVersion = "v1.2.2"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -77,18 +77,16 @@ func (fc *FlareClient) IsAPITokenExpired() bool {
 }
 
 // RefreshAPIToken refreshes the API token if it has expired
-func (fc *FlareClient) RefreshAPIToken() error {
+func (fc *FlareClient) RefreshAPIToken() (*FlareClient, error) {
 	if !fc.IsAPITokenExpired() {
-		return nil
+		return fc, nil
 	}
 	utils.InfoLabelWithColorf("FLARE API TOKEN", "yellow", "API token expired, refreshing...")
 	updatedFC, err := NewFlareClient(fc.APIKey, fc.DefaultUserAgent, fc.TenantID, fc.ClientTimeout)
 	if err != nil {
-		return fmt.Errorf("failed to refresh token: %w", err)
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
-	fc.Token = updatedFC.Token
-	fc.TokenExp = updatedFC.TokenExp
-	return nil
+	return updatedFC, nil
 }
 
 // QueryGlobalEvents performs a search for global events by domain and returns the results *FlareEventsGlobalSearchResults
@@ -102,38 +100,29 @@ func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to strin
 
 // FlareRetrieveEventActivitiesByID retrieves event activities by their unique ID from the Flare API and returns the response or an error.
 func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFireworkActivitiesIndexSourceIDv2Response, error) {
+	// initialize new FlareClient in case token has expired
+	refreshedFC := &FlareClient{}
 	// Check token expiry before making the request
 	if fc.IsAPITokenExpired() {
-		err := fc.RefreshAPIToken()
+		var err error
+		refreshedFC, err = fc.RefreshAPIToken()
 		if err != nil {
 			return nil, fmt.Errorf("failed to refresh token: %w", err)
 		}
+	} else {
+		refreshedFC = fc
 	}
 	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", flareAPIBaseURL, uid)
-	headers := fc.defaultHeaders()
+	headers := refreshedFC.defaultHeaders()
 	data := &FlareFireworkActivitiesIndexSourceIDv2Response{}
 
-	statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
+	statusCode, err := refreshedFC.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
 
 	if statusCode == 401 {
-		// retrieve a fresh Bearer token and retry request
-		utils.InfoLabelWithColorf("FLARE API TOKEN", "yellow", "API token expired, refreshing...")
-		err := fc.RefreshAPIToken()
-		if err != nil {
-			return nil, utils.LogError(err)
-		}
-
-		headers = fc.defaultHeaders()
-		statusCode, err = fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
-		if err != nil {
-			return nil, utils.LogError(err)
-		}
-		if statusCode == 401 {
-			return nil, fmt.Errorf("authorization failed even after token refresh")
-		}
+		return nil, fmt.Errorf("received %d HTTP response code. Authorization failed. Check API request quota and try again later", statusCode)
 	}
 	if statusCode != 200 {
 		return nil, fmt.Errorf("error retrieving flare event activities by ID, received non 200 HTTP response status code: %d", statusCode)

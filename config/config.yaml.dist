@@ -10,13 +10,22 @@ TO: "2025-02-19"
 DOMAIN: |-
   todo.foo
 USER_ID_FORMAT: |-
+  a1234
   a12345
+  a123456
+  aa1234
+  aa12345
+  aa123456
+  abc1234
+  abc12345
+  abc123456
+  AA\ABC1234
+  AA\ABC12345
+  AA\ABC123456
 SEVERITY: |-
   critical
   high
   medium
-  low
-  info
 EVENTS_FILTER_TYPES: |-
   illicit_networks
   open_web

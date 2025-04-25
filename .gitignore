@@ -30,3 +30,4 @@ gophlare
 RELEASE_CHANGELOG.md
 report.xml
 coverage.xml
+*.txt

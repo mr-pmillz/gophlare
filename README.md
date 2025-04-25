@@ -180,8 +180,8 @@ func main() {
 
 ## ToDo
 
-- [ ] Enhance cookies search
-- [ ] Export cookies to separate cookie bro output JSON files per stealer log ID
 - [ ] Implement remaining API endpoints
+- [X] Enhance cookies search
+- [X] Export cookies to separate cookie bro output JSON files per stealer log ID
 - [X] Add Dockerfile and push to ghcr.io container registry
 - [X] Add example library usage to README.md

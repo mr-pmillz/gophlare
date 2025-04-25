@@ -57,6 +57,31 @@ func IsUserIDFormatMatch(credentialUsername, userIDFormat string) bool {
 	return pattern.MatchString(credentialUsername)
 }
 
+// IsUserID checks if a string matches common user ID patterns
+// It matches formats like:
+// - A12345 (letter followed by numbers)
+// - ABC1234 (multiple letters followed by numbers)
+// - AA\A12345 (domain\username format)
+// - DOMAIN\user123 (domain\username with mixed case)
+func IsUserID(username string) bool {
+	// Define regex patterns for different user ID formats
+	patterns := []string{
+		`^[A-Za-z]{1,3}\d{1,6}$`,                   // Simple format: up to 3 letters followed by up to 6 numbers
+		`^[A-Za-z]+\\[A-Za-z]+\d+$`,        // Domain\Username format with letter(s) followed by number(s)
+		`^[A-Za-z]+\\[A-Za-z0-9]+$`,        // Domain\Username format with alphanumeric username
+	}
+
+	// Check username against each pattern
+	for _, pattern := range patterns {
+		matched, err := regexp.MatchString(pattern, username)
+		if err == nil && matched {
+			return true
+		}
+	}
+
+	return false
+}
+
 // RemoveDuplicateStr removes duplicate strings from a slice of strings
 func RemoveDuplicateStr(strSlice []string) []string { //nolint:typecheck
 	allKeys := make(map[string]bool)

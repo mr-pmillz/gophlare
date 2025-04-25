@@ -386,3 +386,29 @@ func setColWidths(f *excelize.File, sheetName string) error {
 	}
 	return nil
 }
+
+// CopyFile ...
+func CopyFile(src, dest string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return LogError(err)
+	}
+	defer srcFile.Close()
+
+	if err = os.MkdirAll(filepath.Dir(dest), 0750); err != nil {
+		return LogError(err)
+	}
+
+	destFile, err := os.Create(dest)
+	if err != nil {
+		return LogError(err)
+	}
+	defer destFile.Close()
+
+	buf := make([]byte, 1024*1024*4)
+	_, err = io.CopyBuffer(destFile, srcFile, buf)
+	if err != nil {
+		return LogError(err)
+	}
+	return nil
+}

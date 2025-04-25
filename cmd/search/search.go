@@ -53,7 +53,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 
 		results, err := phlare.QueryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes)
 		if err != nil {
-			return err
+			return utils.LogError(err)
 		}
 		numResults := len(results.Items)
 		if numResults == 0 {
@@ -62,21 +62,27 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		}
 		utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
 
-		allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles)
+		allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles)
 		if err != nil {
-			return err
+			return utils.LogError(err)
 		}
 
-		csvFileName, err := writeCredentialsToCSV(allFlareStealerLogCredentials, flareOutputDir, domain)
+		csvFileName, err := writeCredentialsToCSV(allFlareStealerLogInScopeCredentials, flareOutputDir, "in-scope", domain)
 		if err != nil {
-			return err
+			return utils.LogError(err)
+		}
+		// also write all credentials to a CSV file
+		allCredsCSVFileName, err := writeCredentialsToCSV(allFlareStealerLogCredentials, flareOutputDir, "all", domain)
+		if err != nil {
+			return utils.LogError(err)
 		}
 
 		allCSVFiles = append(allCSVFiles, csvFileName)
+		allCSVFiles = append(allCSVFiles, allCredsCSVFileName)
 	}
 
 	if err = exportCSVToExcel(allCSVFiles, flareOutputDir); err != nil {
-		return err
+		return utils.LogError(err)
 	}
 
 	utils.InfoLabelWithColorf("FLARE", "blue", "Finished downloading all stealer log zip files from Flare that contained passwords")
@@ -86,8 +92,8 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 // downloadZipFilesAndProcessPasswordResults downloads ZIP files containing stealer logs, parses passwords, and processes results.
 // It takes the search results, a FlareClient instance, a download limit, output directory, domain, user ID formats, and a keepZips flag.
 // Returns []FlareStealerLogsCredential a unique list of extracted credentials and any errors encountered during the process.
-func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobalSearchResults, fc *phlare.FlareClient, limit int, outputDir, domain string, userIDFormats []string, keepZips bool) ([]phlare.FlareStealerLogsCredential, error) {
-	allDownloadedFiles, allFlareStealerLogCredentials := make([]string, 0), make([]phlare.FlareStealerLogsCredential, 0)
+func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobalSearchResults, fc *phlare.FlareClient, limit int, outputDir, domain string, userIDFormats []string, keepZips bool) ([]phlare.FlareStealerLogsCredential, []phlare.FlareStealerLogsCredential, error) {
+	allDownloadedFiles, allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials := make([]string, 0), make([]phlare.FlareStealerLogsCredential, 0), make([]phlare.FlareStealerLogsCredential, 0)
 	count := 0
 
 	for _, result := range results.Items {
@@ -120,34 +126,37 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 		allDownloadedFiles = append(allDownloadedFiles, downloadedFiles...)
 	}
 
-	parsedCredentials, allLiveCookieBros, allHighValueCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, userIDFormats, domain, outputDir)
+	parsedInScopeCredentials, allParsedCredentials, allLiveCookieBros, allHighValueCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, userIDFormats, domain, outputDir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	allFlareStealerLogCredentials = append(allFlareStealerLogCredentials, parsedCredentials...)
+	allFlareStealerLogInScopeCredentials = append(allFlareStealerLogInScopeCredentials, parsedInScopeCredentials...)
+	allFlareStealerLogCredentials = append(allFlareStealerLogCredentials, allParsedCredentials...)
 
 	// write allLiveCookieBros to JSON file
 	cookieBroJSONFileName := fmt.Sprintf("%s/all-flare-stealer-logs-cookie-bro.json", outputDir)
 	if err = utils.WriteStructToJSONFile(allLiveCookieBros, cookieBroJSONFileName); err != nil {
-		return nil, utils.LogError(err)
+		return nil, nil, utils.LogError(err)
 	}
 
 	// write allLiveCookieBros to JSON file
 	highValueCookieBroJSONFileName := fmt.Sprintf("%s/all-flare-stealer-logs-high-value-cookie-bro.json", outputDir)
 	if err = utils.WriteStructToJSONFile(allHighValueCookieBros, highValueCookieBroJSONFileName); err != nil {
-		return nil, utils.LogError(err)
+		return nil, nil, utils.LogError(err)
 	}
 
 	if !keepZips {
 		for _, downloadedFile := range allDownloadedFiles {
-			if err = os.Remove(downloadedFile); err != nil {
-				utils.LogWarningf("Failed to remove downloaded file: %s\n", downloadedFile)
-				continue
+			if exists, err := utils.Exists(downloadedFile); err == nil && exists {
+				if err = os.Remove(downloadedFile); err != nil {
+					utils.LogWarningf("Failed to remove downloaded file: %s\n", downloadedFile)
+					continue
+				}
 			}
 		}
 	}
 
-	return UniqueCredentials(allFlareStealerLogCredentials), nil
+	return UniqueCredentials(allFlareStealerLogInScopeCredentials), UniqueCredentials(allFlareStealerLogCredentials), nil
 }
 
 // isStealerLog checks if the metadata type is a "stealer_log" or "bot"
@@ -167,11 +176,12 @@ func limitReached(count, limit int) bool {
 // - userIDFormats: Formats used to identify user IDs within the credentials.
 // - domain: The domain to which the credentials and cookies should be scoped.
 // Returns:
-// - A slice of parsed credentials (FlareStealerLogsCredential), live cookie data (CookieBro), high-value cookie data (CookieBro).
+// - A slice of parsed in-scope credentials (FlareStealerLogsCredential), all credentials (FlareStealerLogsCredential), live cookie data (CookieBro), high-value cookie data (CookieBro).
 // - An error if any processing step fails.
 //
 //nolint:gocognit
-func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, domain, outputDir string) ([]phlare.FlareStealerLogsCredential, []phlare.CookieBro, []phlare.CookieBro, error) {
+func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, domain, outputDir string) ([]phlare.FlareStealerLogsCredential, []phlare.FlareStealerLogsCredential, []phlare.CookieBro, []phlare.CookieBro, error) {
+	allParsedInScopeCredentials := make([]phlare.FlareStealerLogsCredential, 0)
 	allParsedCredentials := make([]phlare.FlareStealerLogsCredential, 0)
 	allCookieBros := make([]phlare.CookieBro, 0)
 	allHighValueCookieBros := make([]phlare.CookieBro, 0)
@@ -186,29 +196,35 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 		utils.InfoLabelWithColorf("FLARE", "blue", "Checking stealer log zip file for creds: %s", file)
 		unzippedFiles, tempDir, err := utils.UnzipToTemp(file)
 		if err != nil {
-			return nil, nil, nil, utils.LogError(err)
+			return nil, nil, nil, nil, utils.LogError(err)
 		}
 		stealerLogBaseFileName := filepath.Base(file)
 		stealerLogBaseFileName = strings.ReplaceAll(stealerLogBaseFileName, ".zip", "")
 
 		for _, unzippedFile := range unzippedFiles {
 			unzippedBaseFileName := filepath.Base(unzippedFile)
+			sanitizedUnzippedBaseFileName := utils.SanitizeString(unzippedBaseFileName)
 			if _, exists := filesToParse[unzippedBaseFileName]; exists {
 				utils.InfoLabelWithColorf("FLARE", "green", "Parsing in-scope domain creds: %s", unzippedFile)
-				credentials, err := parseCredentialsFile(unzippedFile, domain, userIDFormats)
+				inScopeCredentials, allCredentials, err := parseCredentialsFile(unzippedFile, domain, userIDFormats)
 				if err != nil {
-					return nil, nil, nil, utils.LogError(err)
+					return nil, nil, nil, nil, utils.LogError(err)
 				}
-				if len(credentials) > 0 {
-					utils.InfoLabelWithColorf("FLARE CREDS", "magenta", "Found %d in-scope creds from: %s", len(credentials), unzippedFile)
+				if len(inScopeCredentials) > 0 {
+					utils.InfoLabelWithColorf("FLARE CREDS", "magenta", "Found %d in-scope creds from: %s", len(inScopeCredentials), unzippedFile)
+					// save passwords file to output dir for manual analysis later on.
+					if err = utils.CopyFile(unzippedFile, fmt.Sprintf("%s/%s-%s.txt", outputDir, stealerLogBaseFileName, sanitizedUnzippedBaseFileName)); err != nil {
+						utils.LogWarningf("Failed to copy file: %s\n", unzippedFile)
+					}
 				}
-				allParsedCredentials = append(allParsedCredentials, credentials...)
+				allParsedInScopeCredentials = append(allParsedInScopeCredentials, inScopeCredentials...)
+				allParsedCredentials = append(allParsedCredentials, allCredentials...)
 			}
 			// check for cookie files
 			if strings.Contains(strings.ToLower(unzippedFile), "cookie") {
 				liveCookies, highValueCookies, err := ParseCookieFile(unzippedFile)
 				if err != nil {
-					return nil, nil, nil, utils.LogError(err)
+					return nil, nil, nil, nil, utils.LogError(err)
 				}
 				// map live cookies to cookie bro format struct
 				cookieBros := MapCookiesToCookieBro(liveCookies)
@@ -216,7 +232,6 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 				allCookieBros = append(allCookieBros, cookieBros...)
 				if len(cookieBros) >= 1 {
 					// write live cookieBros to individual file with stealerlog id in the filename
-					sanitizedUnzippedBaseFileName := utils.SanitizeString(unzippedBaseFileName)
 					liveCookieBroFileName := fmt.Sprintf("%s/live-cookie-bro-%s-%s.json", outputDir, stealerLogBaseFileName, sanitizedUnzippedBaseFileName)
 					if err = utils.WriteStructToJSONFile(cookieBros, liveCookieBroFileName); err != nil {
 						utils.LogWarningf("Failed to write live cookie bro to file: %s\n", liveCookieBroFileName)
@@ -226,8 +241,7 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 				highValueCookieBros := MapCookiesToCookieBro(highValueCookies)
 				allHighValueCookieBros = append(allHighValueCookieBros, highValueCookieBros...)
 				if len(highValueCookieBros) >= 1 {
-					// write high-value cookieBros to individual file with stealerlog id in the filename
-					sanitizedUnzippedBaseFileName := utils.SanitizeString(unzippedBaseFileName)
+					// write high-value cookieBros to individual files with stealerlog id in the filename
 					highValueCookieBroFileName := fmt.Sprintf("%s/high-value-cookie-bro-%s-%s.json", outputDir, stealerLogBaseFileName, sanitizedUnzippedBaseFileName)
 					if err = utils.WriteStructToJSONFile(cookieBros, highValueCookieBroFileName); err != nil {
 						utils.LogWarningf("Failed to write high-value cookie bro to file: %s\n", highValueCookieBroFileName)
@@ -237,17 +251,17 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 		}
 
 		if err = os.RemoveAll(tempDir); err != nil {
-			return nil, nil, nil, utils.LogError(err)
+			return nil, nil, nil, nil, utils.LogError(err)
 		}
 	}
-	return allParsedCredentials, allCookieBros, allHighValueCookieBros, nil
+	return allParsedInScopeCredentials, allParsedCredentials, allCookieBros, allHighValueCookieBros, nil
 }
 
 // parseCredentialsFile parses the file and returns credentials matching the specified domain
-func parseCredentialsFile(filename, domain string, userIDFormats []string) ([]phlare.FlareStealerLogsCredential, error) {
+func parseCredentialsFile(filename, domain string, userIDFormats []string) ([]phlare.FlareStealerLogsCredential, []phlare.FlareStealerLogsCredential, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
+		return nil, nil, fmt.Errorf("error opening file: %w", err)
 	}
 	defer file.Close()
 
@@ -257,8 +271,8 @@ func parseCredentialsFile(filename, domain string, userIDFormats []string) ([]ph
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			// Empty line indicates the end of a credential block
+		if line == "" || line == "===============" {
+			// Empty line or =============== indicates the end of a credential block
 			if isCredentialValid(current) {
 				credentials = append(credentials, current)
 				current = phlare.FlareStealerLogsCredential{}
@@ -278,11 +292,17 @@ func parseCredentialsFile(filename, domain string, userIDFormats []string) ([]ph
 		switch key {
 		case "SOFT":
 			current.Software = value
+		case "Application":
+			current.Software = value
 		case "URL":
 			current.URL = value
 		case "USER":
 			current.Username = value
+		case "Username":
+			current.Username = value
 		case "PASS":
+			current.Password = value
+		case "Password":
 			current.Password = value
 		}
 	}
@@ -292,12 +312,12 @@ func parseCredentialsFile(filename, domain string, userIDFormats []string) ([]ph
 	}
 
 	if err = scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
+		return nil, nil, fmt.Errorf("error reading file: %w", err)
 	}
 
 	// Filter credentials based on the domain
 	inScopeCredentials := filterInScopeCredentials(credentials, domain, userIDFormats)
-	return inScopeCredentials, nil
+	return inScopeCredentials, credentials, nil
 }
 
 // isCredentialValid checks if a credential has at least a URL or Username
@@ -305,17 +325,37 @@ func isCredentialValid(cred phlare.FlareStealerLogsCredential) bool {
 	return cred.URL != "" || cred.Username != ""
 }
 
-// filterInScopeCredentials ensures proper domain matching
+// filterInScopeCredentials filters credentials to those matching the given domain
+// or userID formats. It checks if:
+// 1. The URL's domain matches or is a subdomain of the target domain
+// 2. The username contains an email with the target domain
+// 3. The username has a prefix matching the base domain name (without TLD)
+// 4. The username matches any of the provided userID formats
+// 5. The username is a valid user ID or Domain\username format
 func filterInScopeCredentials(credentials []phlare.FlareStealerLogsCredential, domain string, userIDFormats []string) []phlare.FlareStealerLogsCredential {
 	var filtered []phlare.FlareStealerLogsCredential
+
 	for _, cred := range credentials {
+		// First, check domain-related matches (independent of userIDFormats)
+		if isDomainMatch(cred.URL, domain) ||
+			isUsernameEmailDomainMatch(cred.Username, domain) ||
+			utils.HasBaseDomainWithoutTLDPrefix(cred.Username, domain) {
+			filtered = append(filtered, cred)
+			continue
+		}
+
+		// Only check userID formats if we haven't already matched
 		for _, userIDFormat := range userIDFormats {
-			// this checks if the URL matches the domain or if the username matches the email domain or if the username has the domain prefix without tld or if the username matches the optionally provided userID format that is dynamically converted to an appropriate matching regex
-			if isDomainMatch(cred.URL, domain) || isUsernameEmailDomainMatch(cred.Username, domain) || utils.HasBaseDomainWithoutTLDPrefix(cred.Username, domain) || utils.IsUserIDFormatMatch(cred.Username, userIDFormat) {
+			if utils.IsUserIDFormatMatch(cred.Username, userIDFormat) {
 				filtered = append(filtered, cred)
 			}
 		}
+		// also perform a more greedy regex match for user IDs
+		if utils.IsUserID(cred.Username) {
+			filtered = append(filtered, cred)
+		}
 	}
+
 	return filtered
 }
 
@@ -336,8 +376,8 @@ func isUsernameEmailDomainMatch(credentialUsername, domain string) bool {
 }
 
 // writeCredentialsToCSV writes credentials to a CSV file
-func writeCredentialsToCSV(credentials []phlare.FlareStealerLogsCredential, outputDir, domain string) (string, error) {
-	fileName := fmt.Sprintf("%s/flare-stealer-logs-%s.csv", outputDir, domain)
+func writeCredentialsToCSV(credentials []phlare.FlareStealerLogsCredential, outputDir, fileNameLabel, domain string) (string, error) {
+	fileName := fmt.Sprintf("%s/FSL-%s-%s.csv", outputDir, fileNameLabel, domain)
 	if err := utils.WriteStructToCSVFile(credentials, fileName); err != nil {
 		return "", utils.LogError(err)
 	}

@@ -92,7 +92,7 @@ func FindHighValueCookies(cookies []phlare.Cookie) []phlare.Cookie {
 			}
 		}
 	}
-	utils.InfoLabelWithColorf("Live Cookies", "green", "Found %d live high value cookies", len(highValueCookies))
+	utils.InfoLabelWithColorf("COOKIES", "magenta", "Found %d live high value cookies", len(highValueCookies))
 	return highValueCookies
 }
 
@@ -181,19 +181,22 @@ func MapCookiesToCookieBro(cookies []phlare.Cookie) []phlare.CookieBro {
 func CheckCookieExpiration(cookies []phlare.Cookie) ([]phlare.Cookie, error) {
 	liveCookies := make([]phlare.Cookie, 0)
 	for _, cookie := range cookies {
-		isExpired, _ := CheckExpirationRFC3339(cookie.Expiration)
+		isExpired, _ := IsCookieEpochExpiredRFC3339(cookie.Expiration)
 		if !isExpired {
 			// utils.InfoLabelWithColorf("Cookie", "green", "Cookie %s is not expired until %s", cookie.Name, expirationDate)
 			liveCookies = append(liveCookies, cookie)
 		}
 	}
+	if len(liveCookies) >= 1 {
+		utils.InfoLabelWithColorf("COOKIES", "green", "Found %d live cookies", len(liveCookies))
+	}
 	return liveCookies, nil
 }
 
-// CheckExpirationRFC3339 checks if a given epoch timestamp is expired and returns:
+// IsCookieEpochExpiredRFC3339 checks if a given epoch timestamp is expired and returns:
 // - A bool indicating whether it's expired
 // - A string representing the expiration time in RFC3339 format
-func CheckExpirationRFC3339(epochTimestamp int64) (bool, string) {
+func IsCookieEpochExpiredRFC3339(epochTimestamp int64) (bool, string) {
 	expirationTime := time.Unix(epochTimestamp, 0).UTC()
 	expired := time.Now().After(expirationTime)
 	return expired, expirationTime.Format(time.RFC3339)
