@@ -178,6 +178,14 @@ func main() {
 }
 ```
 
+## BloodHound Data Correlation
+
+This feature has only been developed and tested using BloodHound-CE (Community Edition)
+
+### Quick-Start
+
+Use https://github.com/Tanguy-Boisset/bloodhound-automation and uncomment the postgresql port and volume declaration in templates/docker-compose.yml
+
 ## ToDo
 
 - [ ] Implement remaining API endpoints

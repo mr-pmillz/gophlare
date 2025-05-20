@@ -147,6 +147,7 @@ func TestExtractBaseDomain(t *testing.T) {
 		{name: "test co.uk", args: args{target: "co.uk"}, want: "co.uk", wantErr: false},
 		{name: "test foo.co.uk", args: args{target: "foo.co.uk"}, want: "foo.co.uk", wantErr: false},
 		{name: "test foo.example.com", args: args{target: "foo.example.com"}, want: "example.com", wantErr: false},
+		{name: "test FOO.EXAMPLE.COM", args: args{target: "FOO.EXAMPLE.COM"}, want: "EXAMPLE.COM", wantErr: false},
 		{name: "test api.foo.bar.co.uk", args: args{target: "api.foo.bar.co.uk"}, want: "api.foo.bar.co.uk", wantErr: false},
 		{name: "test api.asdfasdf.asdfadfasdfasdf.co.uk", args: args{target: "api.asdfasdf.asdfadfasdfasdf.co.uk"}, want: "asdfadfasdfasdf.co.uk", wantErr: false},
 		{name: "test cool.example.edu", args: args{target: "cool.example.edu"}, want: "example.edu", wantErr: false},

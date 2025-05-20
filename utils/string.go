@@ -34,6 +34,11 @@ func FormatDate(date string) (string, error) {
 	return "", fmt.Errorf("invalid date format: %s", date)
 }
 
+// EpochToTime converts an int64 epoch timestamp (seconds since Unix epoch) to time.Time
+func EpochToTime(epoch int64) time.Time {
+	return time.Unix(epoch, 0)
+}
+
 // IsUserIDFormatMatch ...
 func IsUserIDFormatMatch(credentialUsername, userIDFormat string) bool {
 	// Dynamically generate a regex pattern to match the userIDFormat
@@ -125,6 +130,17 @@ func ContainsExactMatch(s []string, str string) bool {
 	return false
 }
 
+// ContainsExactMatchLowercase checks if a string exists within a slice
+func ContainsExactMatchLowercase(s []string, str string) bool {
+	for _, v := range s {
+		if v == strings.ToLower(str) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // isURL tests a string to determine if it is a well-structured url or not.
 func isURL(toTest string) bool {
 	_, err := url.ParseRequestURI(toTest)
@@ -160,7 +176,7 @@ func ExtractBaseDomain(target string) (string, error) {
 		// Start from the end and find the first non-TLD part
 		tldCount := 0
 		for i := numParts - 1; i >= 0; i-- {
-			if !ContainsExactMatch(AlphaTLDs, domainParts[i]) {
+			if !ContainsExactMatchLowercase(AlphaTLDs, domainParts[i]) {
 				break
 			}
 			tldCount++
@@ -169,7 +185,7 @@ func ExtractBaseDomain(target string) (string, error) {
 		// Handle special cases like .co.uk
 		if tldCount > 1 && numParts > tldCount+1 {
 			// Check if the part before the TLD is also in AlphaTLDs
-			if ContainsExactMatch(AlphaTLDs, domainParts[numParts-tldCount-1]) {
+			if ContainsExactMatchLowercase(AlphaTLDs, domainParts[numParts-tldCount-1]) {
 				tldCount++
 			}
 		}
