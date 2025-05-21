@@ -1,41 +1,46 @@
 package bloodhound
 
+import "time"
+
 // BHCEUserData ...
 type BHCEUserData struct {
 	Data []Data `json:"data,omitempty"`
 }
 type Properties struct {
-	Domain                  string        `json:"domain,omitempty"`
-	Name                    string        `json:"name,omitempty"`
-	Distinguishedname       string        `json:"distinguishedname,omitempty"`
-	Domainsid               string        `json:"domainsid,omitempty"`
-	Samaccountname          string        `json:"samaccountname,omitempty"`
-	Isaclprotected          bool          `json:"isaclprotected,omitempty"`
-	Description             interface{}   `json:"description,omitempty"`
-	Whencreated             int           `json:"whencreated,omitempty"`
-	Sensitive               bool          `json:"sensitive,omitempty"`
-	Dontreqpreauth          bool          `json:"dontreqpreauth,omitempty"`
-	Passwordnotreqd         bool          `json:"passwordnotreqd,omitempty"`
-	Unconstraineddelegation bool          `json:"unconstraineddelegation,omitempty"`
-	Pwdneverexpires         bool          `json:"pwdneverexpires,omitempty"`
-	Enabled                 bool          `json:"enabled,omitempty"`
-	Trustedtoauth           bool          `json:"trustedtoauth,omitempty"`
-	Lastlogon               int           `json:"lastlogon,omitempty"`
-	Lastlogontimestamp      int           `json:"lastlogontimestamp,omitempty"`
-	Pwdlastset              int           `json:"pwdlastset,omitempty"`
-	Serviceprincipalnames   []interface{} `json:"serviceprincipalnames,omitempty"`
-	Hasspn                  bool          `json:"hasspn,omitempty"`
-	Displayname             string        `json:"displayname,omitempty"`
-	Email                   string        `json:"email,omitempty"`
-	Title                   string        `json:"title,omitempty"`
-	Homedirectory           string        `json:"homedirectory,omitempty"`
-	Userpassword            string        `json:"userpassword,omitempty"`
-	Unixpassword            string        `json:"unixpassword,omitempty"`
-	Unicodepassword         string        `json:"unicodepassword,omitempty"`
-	Sfupassword             string        `json:"sfupassword,omitempty"`
-	Logonscript             string        `json:"logonscript,omitempty"`
-	Admincount              bool          `json:"admincount,omitempty"`
-	Sidhistory              []interface{} `json:"sidhistory,omitempty"`
+	Domain                       string        `json:"domain,omitempty"`
+	Name                         string        `json:"name,omitempty"`
+	Distinguishedname            string        `json:"distinguishedname,omitempty"`
+	Domainsid                    string        `json:"domainsid,omitempty"`
+	Samaccountname               string        `json:"samaccountname,omitempty"`
+	Isaclprotected               bool          `json:"isaclprotected,omitempty"`
+	Description                  interface{}   `json:"description,omitempty"`
+	Whencreated                  int64         `json:"whencreated,omitempty"`
+	Sensitive                    bool          `json:"sensitive,omitempty"`
+	Dontreqpreauth               bool          `json:"dontreqpreauth,omitempty"`
+	Passwordnotreqd              bool          `json:"passwordnotreqd,omitempty"`
+	Unconstraineddelegation      bool          `json:"unconstraineddelegation,omitempty"`
+	Pwdneverexpires              bool          `json:"pwdneverexpires,omitempty"`
+	Enabled                      bool          `json:"enabled,omitempty"`
+	Trustedtoauth                bool          `json:"trustedtoauth,omitempty"`
+	Lastlogon                    int64         `json:"lastlogon,omitempty"`
+	Lastlogontimestamp           int64         `json:"lastlogontimestamp,omitempty"`
+	Pwdlastset                   int64         `json:"pwdlastset,omitempty"`
+	Serviceprincipalnames        []interface{} `json:"serviceprincipalnames,omitempty"`
+	Hasspn                       bool          `json:"hasspn,omitempty"`
+	Displayname                  string        `json:"displayname,omitempty"`
+	Email                        string        `json:"email,omitempty"`
+	Title                        string        `json:"title,omitempty"`
+	Homedirectory                string        `json:"homedirectory,omitempty"`
+	Userpassword                 string        `json:"userpassword,omitempty"`
+	Unixpassword                 string        `json:"unixpassword,omitempty"`
+	Unicodepassword              string        `json:"unicodepassword,omitempty"`
+	Sfupassword                  string        `json:"sfupassword,omitempty"`
+	Logonscript                  string        `json:"logonscript,omitempty"`
+	Admincount                   bool          `json:"admincount,omitempty"`
+	Sidhistory                   []interface{} `json:"sidhistory,omitempty"`
+	ObjectID                     interface{}   `json:"objectid,omitempty"`
+	HasBreachData                bool          `json:"hasbreachdata,omitempty"`
+	HasBreachDataAfterPwdLastSet bool          `json:"hasbreachdataafterpwdlastset,omitempty"`
 }
 type Aces struct {
 	PrincipalSID  string `json:"PrincipalSID,omitempty"`
@@ -57,8 +62,30 @@ type Data struct {
 	SPNTargets        []interface{} `json:"SPNTargets,omitempty"`
 	Aces              []Aces        `json:"Aces,omitempty"`
 	Meta              Meta          `json:"meta,omitempty"`
+	BreachData        []LeakInfo    `json:"breachData,omitempty"` // Custom field for breach data correlation
 }
 
+type LeakInfo struct {
+	Password       string
+	BreachedAt interface{}
+}
+
+// FlareCredentialPairs ...
+type FlareCredentialPairs struct {
+	Email      string
+	Password   string
+	Hash       string
+	SourceID   string
+	Domain     string
+	ImportedAt time.Time
+	LeakedAt   interface{}
+	BreachedAt interface{}
+}
+
+// FlareCreds ...
+type FlareCreds struct {
+	Data []FlareCredentialPairs
+}
 
 // OldBloodHoundUserNodes ...
 type OldBloodHoundUserNodes struct {

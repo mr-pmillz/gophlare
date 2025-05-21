@@ -54,7 +54,7 @@ Example Commands:
 			utils.LogFatalf("Error creating directory:  %s\n", err)
 		}
 
-		if err = UpdateADUsersMetadata(&opts.bloodhoundOptions); err != nil {
+		if err = ProcessData(&opts.bloodhoundOptions); err != nil {
 			utils.LogFatalf("Could not update AD users metadata: %s\n", err)
 		}
 	},

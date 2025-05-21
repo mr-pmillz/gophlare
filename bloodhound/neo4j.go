@@ -235,9 +235,6 @@ func (db *Neo4jDB) GetAllUserData() (*BHCEUserData, error) {
 		if v, ok := props["description"]; ok {
 			userData.Properties.Description = v
 		}
-		if v, ok := props["whencreated"].(int64); ok {
-			userData.Properties.Whencreated = int(v)
-		}
 		if v, ok := props["sensitive"].(bool); ok {
 			userData.Properties.Sensitive = v
 		}
@@ -259,14 +256,17 @@ func (db *Neo4jDB) GetAllUserData() (*BHCEUserData, error) {
 		if v, ok := props["trustedtoauth"].(bool); ok {
 			userData.Properties.Trustedtoauth = v
 		}
-		if v, ok := props["lastlogon"].(int64); ok {
-			userData.Properties.Lastlogon = int(v)
+		if v, ok := props["whencreated"].(float64); ok {
+			userData.Properties.Whencreated = int64(v)
 		}
-		if v, ok := props["lastlogontimestamp"].(int64); ok {
-			userData.Properties.Lastlogontimestamp = int(v)
+		if v, ok := props["lastlogon"].(float64); ok {
+			userData.Properties.Lastlogon = int64(v)
 		}
-		if v, ok := props["pwdlastset"].(int64); ok {
-			userData.Properties.Pwdlastset = int(v)
+		if v, ok := props["lastlogontimestamp"].(float64); ok {
+			userData.Properties.Lastlogontimestamp = int64(v)
+		}
+		if v, ok := props["pwdlastset"].(float64); ok {
+			userData.Properties.Pwdlastset = int64(v)
 		}
 		if v, ok := props["serviceprincipalnames"].([]interface{}); ok {
 			userData.Properties.Serviceprincipalnames = v
@@ -306,6 +306,9 @@ func (db *Neo4jDB) GetAllUserData() (*BHCEUserData, error) {
 		}
 		if v, ok := props["sidhistory"].([]interface{}); ok {
 			userData.Properties.Sidhistory = v
+		}
+		if v, ok := props["objectid"].(string); ok {
+			userData.Properties.ObjectID = v
 		}
 
 		// userData.AllowedToDelegate = ...

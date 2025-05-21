@@ -34,9 +34,94 @@ func FormatDate(date string) (string, error) {
 	return "", fmt.Errorf("invalid date format: %s", date)
 }
 
-// EpochToTime converts an int64 epoch timestamp (seconds since Unix epoch) to time.Time
-func EpochToTime(epoch int64) time.Time {
-	return time.Unix(epoch, 0)
+// EpochOrDateToTime converts an interface{} epoch timestamp (seconds since Unix epoch) to time.Time in UTC
+func EpochOrDateToTime(epoch interface{}) (time.Time, error) {
+	switch v := epoch.(type) {
+	case int:
+		return time.Unix(int64(v), 0).UTC(), nil
+	case int64:
+		return time.Unix(v, 0).UTC(), nil
+	case float64:
+		return time.Unix(int64(v), 0).UTC(), nil
+	case string:
+		return time.Parse(time.RFC3339, v)
+	case time.Time:
+		return v.UTC(), nil
+	default:
+		return time.Time{}, fmt.Errorf("invalid epoch type: %T", epoch)
+	}
+}
+
+// CompareBreachedAtToPasswordLastSetDate compares if the breachedAt date is after the passwordLastSet date
+// returns true if breachedAt is after passwordLastSet, false otherwise
+// returns the difference between breachedAt and passwordLastSet in string format
+// returns an error if the input is not a valid time.Time or epoch timestamp
+func CompareBreachedAtToPasswordLastSetDate(breachedAt, passwordLastSet interface{}) (bool, string, error) {
+	pwLastSetTime, err := EpochOrDateToTime(passwordLastSet)
+	if err != nil {
+		return false, "", err
+	}
+
+	breachedAtTime, err := EpochOrDateToTime(breachedAt)
+	if err != nil {
+		return false, "", err
+	}
+	if pwLastSetTime.IsZero() || breachedAtTime.IsZero() {
+		return false, "", nil
+	}
+	isAfter := breachedAtTime.After(pwLastSetTime)
+	diff := breachedAtTime.Sub(pwLastSetTime)
+	// format diff to human-readable duration format: X year, X months, X days, X hours, X minutes, X seconds
+	pwLastSetSinceBreach := fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes, %d seconds", diff/31536000, (diff%31536000)/2592000, ((diff%31536000)%2592000)/86400, (((diff%31536000)%2592000)%86400)/3600, ((((diff%31536000)%2592000)%86400)%3600)/60, ((((diff%31536000)%2592000)%86400)%3600)%60)
+
+	return isAfter, pwLastSetSinceBreach, nil
+}
+
+// IsHash checks if the input string matches the format of common hash algorithm formats.
+// hopefully a temporary work-around since flare does not distinguish by credential type and groups hashes and cleartext passwords into the same hash key.
+// this is to reduce non cleartext password results noise that can muddy up the cred stuffing auto generated lists...
+func IsHash(input string) bool {
+	// Normalize input by trimming whitespace and converting to lowercase
+	input = strings.TrimSpace(strings.ToLower(input))
+
+	// Define regex patterns for hash formats
+	hashPatterns := map[string]string{
+		"MD5":       "^[a-f0-9]{32}$",
+		"SHA-1":     "^[a-f0-9]{40}$",
+		"TIGER-192": "^[a-f0-9]{48}$",
+		"SHA-3-224": "^[a-f0-9]{56}$",
+		"SHA-256":   "^[a-f0-9]{64}$",
+		"SHA-384":   "^[a-f0-9]{96}$",
+		"SHA-512":   "^[a-f0-9]{128}$",
+		"Blowfish":  `^\$2[aby]?\$\d{1,2}\$[./a-zA-Z0-9]{53}$`, // Blowfish ($2a$, $2b$, $2y$)
+	}
+
+	// Check the input against each pattern
+	for _, pattern := range hashPatterns {
+		match, _ := regexp.MatchString(pattern, input)
+		if match {
+			return true
+		}
+	}
+
+	// additional checks for sampled hash values
+	if ContainsPrefix([]string{"pbkdf2_sha256", "pbkdf2_sha512", "c2NyeXB0AA4AAAAIAAAA", "$S$D", "$P$B", "sha1$2", "sha1$4"}, input) && len(input) >= 32 {
+		return true
+	}
+
+	return false
+}
+
+// IsLikelyAnEncryptedValue checks if the given input string is likely an encrypted value by evaluating its format.
+func IsLikelyAnEncryptedValue(input string) bool {
+	// Normalize input by trimming whitespace and converting to lowercase
+	input = strings.TrimSpace(strings.ToLower(input))
+	if strings.HasSuffix(input, "=") && valid.IsBase64(input) {
+		// likely an encrypted value that flare includes in the Items[n].Hash key...
+		return true
+	}
+
+	return false
 }
 
 // IsUserIDFormatMatch ...

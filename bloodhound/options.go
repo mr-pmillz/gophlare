@@ -16,6 +16,8 @@ type Options struct {
 	Neo4jPort                     string
 	Neo4jUser                     string
 	Neo4jPassword                 string
+	UpdateBloodhound              bool
+	Verbose                       bool
 }
 
 // ConfigureCommand ...
@@ -29,6 +31,8 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("neo4j-port", "", "7687", "Neo4j port")
 	cmd.PersistentFlags().StringP("neo4j-user", "", "neo4j", "Neo4j user")
 	cmd.PersistentFlags().StringP("neo4j-password", "", "neo5j", "Neo4j password")
+	cmd.PersistentFlags().BoolP("update-bloodhound", "", false, "update bloodhound neo4j database with breach data")
+	cmd.PersistentFlags().BoolP("verbose", "v", false, "Verbose output")
 
 	cmd.PersistentFlags().BoolP("configfileset", "c", false, "Config file set")
 	return nil
@@ -36,6 +40,19 @@ func ConfigureCommand(cmd *cobra.Command) error {
 
 // LoadFromCommand loads command-line arguments and flags into the Options struct. It validates and processes the provided inputs.
 func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
+	// Booleans
+	cmdVerbose, err := cmd.Flags().GetBool("verbose")
+	if err != nil {
+		return err
+	}
+	opts.Verbose = cmdVerbose
+
+	cmdUpdateBloodhound, err := cmd.Flags().GetBool("update-bloodhound")
+	if err != nil {
+		return err
+	}
+	opts.UpdateBloodhound = cmdUpdateBloodhound
+
 	bloodHoundUsersJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "bloodhound-users-json-file",
 		IsFilePath: true,
