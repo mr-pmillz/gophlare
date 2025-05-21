@@ -256,7 +256,6 @@ func UnmarshalJSONFile(filePath string, v interface{}) error {
 	return nil
 }
 
-
 // shortenStringSheetName takes a spreadsheet worksheet name and shortens it to ensure the max 31 char limit is not exceeded.
 func shortenStringSheetName(str string, index int) string {
 	if len(str) > 31 {
@@ -551,6 +550,8 @@ func writeSingleStructToCSV(val reflect.Value, writer *csv.Writer) error {
 }
 
 // writeMapToCSV handles a single map
+//
+//nolint:gocognit
 func writeMapToCSV(val reflect.Value, writer *csv.Writer) error {
 	if val.Type().Key().Kind() != reflect.String {
 		return errors.New("map key must be string")
@@ -566,9 +567,7 @@ func writeMapToCSV(val reflect.Value, writer *csv.Writer) error {
 		mapVal := val.MapIndex(key)
 
 		// Check if this is a nested structure
-		if mapVal.Kind() == reflect.Struct ||
-			(mapVal.Kind() == reflect.Ptr && !mapVal.IsNil() && mapVal.Elem().Kind() == reflect.Struct) {
-
+		if mapVal.Kind() == reflect.Struct || (mapVal.Kind() == reflect.Ptr && !mapVal.IsNil() && mapVal.Elem().Kind() == reflect.Struct) {
 			var structVal reflect.Value
 			if mapVal.Kind() == reflect.Ptr {
 				structVal = mapVal.Elem()
@@ -582,7 +581,7 @@ func writeMapToCSV(val reflect.Value, writer *csv.Writer) error {
 				return err
 			}
 
-			// Prefix with parent key
+			// Prefix with a parent key
 			for _, nestedHeader := range nestedHeaders {
 				headers = append(headers, keyStr+"."+nestedHeader)
 			}
@@ -642,6 +641,7 @@ func writeMapToCSV(val reflect.Value, writer *csv.Writer) error {
 }
 
 // writeMapSliceToCSV handles a slice of maps with nested struct support
+//
 //nolint:gocognit
 func writeMapSliceToCSV(val reflect.Value, writer *csv.Writer) error {
 	if val.Len() == 0 {
@@ -666,9 +666,7 @@ func writeMapSliceToCSV(val reflect.Value, writer *csv.Writer) error {
 			fieldVal := mapVal.MapIndex(key)
 
 			// Check for nested structures
-			if fieldVal.Kind() == reflect.Struct ||
-				(fieldVal.Kind() == reflect.Ptr && !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct) {
-
+			if fieldVal.Kind() == reflect.Struct || (fieldVal.Kind() == reflect.Ptr && !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct) {
 				var structVal reflect.Value
 				if fieldVal.Kind() == reflect.Ptr {
 					structVal = fieldVal.Elem()

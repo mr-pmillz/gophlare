@@ -31,8 +31,8 @@ func NewNeo4jDBOptions(host, port, user, password string) *Neo4jDBOptions {
 
 // NewNeo4jDBConnection ...
 func NewNeo4jDBConnection(neo4jOpts *Neo4jDBOptions) (*Neo4jDB, error) {
-	dbUri := fmt.Sprintf("neo4j://%s:%s", neo4jOpts.Host, neo4jOpts.Port)
-	driver, err := neo4j.NewDriver(dbUri, neo4j.BasicAuth(neo4jOpts.User, neo4jOpts.Password, ""))
+	dbURI := fmt.Sprintf("neo4j://%s:%s", neo4jOpts.Host, neo4jOpts.Port)
+	driver, err := neo4j.NewDriver(dbURI, neo4j.BasicAuth(neo4jOpts.User, neo4jOpts.Password, ""))
 	if err != nil {
 		return nil, utils.LogError(err)
 	}

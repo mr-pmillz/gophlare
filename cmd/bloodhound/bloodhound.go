@@ -326,7 +326,6 @@ func dumpDicerNG(flareOutputDir string, data *bloodhound.BHCEUserData) error {
 			}
 			userIDMap[d.Properties.Samaccountname][cred.Password] = true
 		}
-
 	}
 
 	// Create waves based on the number of unique passwords per accountName
