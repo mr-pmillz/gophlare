@@ -10,12 +10,14 @@ type Options struct {
 	BloodhoundUsersJSONFile       string
 	FlareCredsByDomainJSONFile    string
 	GoldmineCredsByDomainJSONFile string
-	LinkedinScrapeJSONFile        string
 	OutputDir                     string
 	Neo4jHost                     string
 	Neo4jPort                     string
 	Neo4jUser                     string
 	Neo4jPassword                 string
+	BloodhoundUser                string
+	BloodhoundPassword            string
+	BloodhoundServerURL           string
 	UpdateBloodhound              bool
 	Verbose                       bool
 }
@@ -25,12 +27,14 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("bloodhound-users-json-file", "b", "", "Bloodhound JSON file")
 	cmd.PersistentFlags().StringP("flare-creds-by-domain-json-file", "f", "", "Flare credentials by domain JSON file")
 	cmd.PersistentFlags().StringP("goldmine-creds-by-domain-json-file", "g", "", "Goldmine credentials by domain JSON file")
-	cmd.PersistentFlags().StringP("linkedin-scrape-json-file", "l", "", "Goldmine LinkedIn Scrape JSON file")
 	cmd.PersistentFlags().StringP("output-dir", "o", "", "Output directory")
 	cmd.PersistentFlags().StringP("neo4j-host", "", "127.0.0.1", "Neo4j host")
 	cmd.PersistentFlags().StringP("neo4j-port", "", "7687", "Neo4j port")
 	cmd.PersistentFlags().StringP("neo4j-user", "", "neo4j", "Neo4j user")
 	cmd.PersistentFlags().StringP("neo4j-password", "", "neo5j", "Neo4j password")
+	cmd.PersistentFlags().StringP("bloodhound-user", "", "", "Bloodhound user")
+	cmd.PersistentFlags().StringP("bloodhound-password", "", "", "Bloodhound password")
+	cmd.PersistentFlags().StringP("bloodhound-server-url", "", "", "Bloodhound server base URL, ex: http://127.0.0.1:8001")
 	cmd.PersistentFlags().BoolP("update-bloodhound", "", false, "update bloodhound neo4j database with breach data")
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "Verbose output")
 
@@ -52,6 +56,37 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.UpdateBloodhound = cmdUpdateBloodhound
+
+	// string options that are available via config.yaml parsed by viper
+	bloodhoundUser, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:       "bloodhound-user",
+		IsFilePath: false,
+		Opts:       opts.BloodhoundUser,
+	})
+	if err != nil {
+		return err
+	}
+	opts.BloodhoundUser = bloodhoundUser.(string)
+
+	bloodhoundPassword, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:       "bloodhound-password",
+		IsFilePath: false,
+		Opts:       opts.BloodhoundPassword,
+	})
+	if err != nil {
+		return err
+	}
+	opts.BloodhoundPassword = bloodhoundPassword.(string)
+
+	bloodhoundServer, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:       "bloodhound-server-url",
+		IsFilePath: false,
+		Opts:       opts.BloodhoundServerURL,
+	})
+	if err != nil {
+		return err
+	}
+	opts.BloodhoundServerURL = bloodhoundServer.(string)
 
 	bloodHoundUsersJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "bloodhound-users-json-file",
@@ -82,16 +117,6 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.GoldmineCredsByDomainJSONFile = GoldmineCredsByDomainJSONFile.(string)
-
-	LinkedinScrapeJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
-		Flag:       "linkedin-scrape-json-file",
-		IsFilePath: true,
-		Opts:       opts.LinkedinScrapeJSONFile,
-	})
-	if err != nil {
-		return err
-	}
-	opts.LinkedinScrapeJSONFile = LinkedinScrapeJSONFile.(string)
 
 	outputDir, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "output-dir",

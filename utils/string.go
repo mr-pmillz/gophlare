@@ -5,6 +5,7 @@ import (
 	valid "github.com/asaskevich/govalidator"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -52,6 +53,137 @@ func EpochOrDateToTime(epoch interface{}) (time.Time, error) {
 	}
 }
 
+// FindClosestEpochToNow returns the closest epoch from a slice of epochs to the current time
+func FindClosestEpochToNow(epochs []interface{}) (interface{}, error) {
+	if len(epochs) == 0 {
+		return nil, fmt.Errorf("epochs slice cannot be empty")
+	}
+
+	now := time.Now()
+	var closestEpoch interface{}
+	var smallestDiff time.Duration
+	var found bool
+
+	for _, epoch := range epochs {
+		// Convert epoch to time.Time
+		epochTime, err := EpochOrDateToTime(epoch)
+		if err != nil {
+			// Skip invalid epochs but continue processing
+			continue
+		}
+
+		// Calculate absolute difference from current time
+		diff := now.Sub(epochTime)
+		if diff < 0 {
+			diff = -diff // Make it absolute
+		}
+
+		// Check if this is the closest so far
+		if !found || diff < smallestDiff {
+			closestEpoch = epoch
+			smallestDiff = diff
+			found = true
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("no valid epochs found in the slice")
+	}
+
+	return closestEpoch, nil
+}
+
+// FindMostRecentEpoch returns the most recent (latest) epoch from a slice of epochs
+// relative to the current time. If all epochs are in the future, returns the closest one.
+func FindMostRecentEpoch(epochs []interface{}) (interface{}, error) {
+	if len(epochs) == 0 {
+		return nil, fmt.Errorf("epochs slice cannot be empty")
+	}
+
+	now := time.Now().UTC()
+	var mostRecentEpoch interface{}
+	var mostRecentTime time.Time
+	var found bool
+
+	// First pass: look for the most recent past epoch
+	for _, epoch := range epochs {
+		epochTime, err := EpochOrDateToTime(epoch)
+		if err != nil {
+			continue
+		}
+
+		// If it's in the past and more recent than our current best
+		if epochTime.Before(now) && (!found || epochTime.After(mostRecentTime)) {
+			mostRecentEpoch = epoch
+			mostRecentTime = epochTime
+			found = true
+		}
+	}
+
+	// If we found a past epoch, return it
+	if found {
+		return mostRecentEpoch, nil
+	}
+
+	// If all epochs are in the future, find the closest one
+	var closestEpoch interface{}
+	var smallestDiff time.Duration
+	found = false
+
+	for _, epoch := range epochs {
+		epochTime, err := EpochOrDateToTime(epoch)
+		if err != nil {
+			continue
+		}
+
+		diff := epochTime.Sub(now)
+		if !found || diff < smallestDiff {
+			closestEpoch = epoch
+			smallestDiff = diff
+			found = true
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("no valid epochs found in the slice")
+	}
+
+	return closestEpoch, nil
+}
+
+
+// EpochToFloat64 ...
+func EpochToFloat64(epoch interface{}) (float64, error) {
+	switch v := epoch.(type) {
+	case int64:
+		return float64(v), nil
+	case int:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	case float32:
+		return float64(v), nil
+	case time.Time:
+		return float64(v.UTC().Unix()), nil
+	case string:
+		// Try to parse string as int64 first
+		if intVal, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return float64(intVal), nil
+		}
+		// If that fails, try to parse as float64
+		if floatVal, err := strconv.ParseFloat(v, 64); err == nil {
+			return floatVal, nil
+		}
+		return 0, fmt.Errorf("unable to parse string '%s' as numeric value", v)
+	case nil:
+		return 0, fmt.Errorf("epoch cannot be nil")
+	default:
+		return 0, fmt.Errorf("unsupported type: %T", v)
+	}
+}
+
 // CompareBreachedAtToPasswordLastSetDate compares if the breachedAt date is after the passwordLastSet date
 // returns true if breachedAt is after passwordLastSet, false otherwise
 // returns the difference between breachedAt and passwordLastSet in string format
@@ -71,8 +203,19 @@ func CompareBreachedAtToPasswordLastSetDate(breachedAt, passwordLastSet interfac
 	}
 	isAfter := breachedAtTime.After(pwLastSetTime)
 	diff := breachedAtTime.Sub(pwLastSetTime)
-	// format diff to human-readable duration format: X year, X months, X days, X hours, X minutes, X seconds
-	pwLastSetSinceBreach := fmt.Sprintf("%d years, %d months, %d days, %d hours, %d minutes, %d seconds", diff/31536000, (diff%31536000)/2592000, ((diff%31536000)%2592000)/86400, (((diff%31536000)%2592000)%86400)/3600, ((((diff%31536000)%2592000)%86400)%3600)/60, ((((diff%31536000)%2592000)%86400)%3600)%60)
+
+	// Convert duration to total seconds
+	totalSeconds := int64(diff.Seconds())
+
+	// Calculate time components
+	years := totalSeconds / 31536000 // seconds in a year (365 days)
+	remainingAfterYears := totalSeconds % 31536000
+	months := remainingAfterYears / 2592000 // seconds in a month (30 days)
+	remainingAfterMonths := remainingAfterYears % 2592000
+	days := remainingAfterMonths / 86400 // seconds in a day
+
+	// Format diff to human-readable duration format
+	pwLastSetSinceBreach := fmt.Sprintf("%d years, %d months, %d days", years, months, days)
 
 	return isAfter, pwLastSetSinceBreach, nil
 }
@@ -156,9 +299,9 @@ func IsUserIDFormatMatch(credentialUsername, userIDFormat string) bool {
 func IsUserID(username string) bool {
 	// Define regex patterns for different user ID formats
 	patterns := []string{
-		`^[A-Za-z]{1,3}\d{1,6}$`,                   // Simple format: up to 3 letters followed by up to 6 numbers
-		`^[A-Za-z]+\\[A-Za-z]+\d+$`,        // Domain\Username format with letter(s) followed by number(s)
-		`^[A-Za-z]+\\[A-Za-z0-9]+$`,        // Domain\Username format with alphanumeric username
+		`^[A-Za-z]{1,3}\d{1,6}$`,    // Simple format: up to 3 letters followed by up to 6 numbers
+		`^[A-Za-z]+\\[A-Za-z]+\d+$`, // Domain\Username format with letter(s) followed by number(s)
+		`^[A-Za-z]+\\[A-Za-z0-9]+$`, // Domain\Username format with alphanumeric username
 	}
 
 	// Check username against each pattern

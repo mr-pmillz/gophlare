@@ -20,9 +20,23 @@ func ProcessData(opts *bloodhound.Options) error {
 	if err = WriteCredStuffingFiles(correlatedBHUserData, opts.OutputDir); err != nil {
 		return utils.LogError(err)
 	}
+	// write updated BloodHound data to CSV file for review
+	updatedBHUserDataCSVFile := fmt.Sprintf("%s/bloodhound-users-flare-correlation.csv", opts.OutputDir)
+	if err = utils.WriteInterfaceToCSV(correlatedBHUserData.Data, updatedBHUserDataCSVFile); err != nil {
+		return utils.LogError(err)
+	}
+	// convert csv file to xlsx
+	updatedBHUserDataXLSFile := fmt.Sprintf("%s/bloodhound-users-flare-correlation.xlsx", opts.OutputDir)
+	if err = utils.CSVsToExcel([]string{updatedBHUserDataCSVFile}, updatedBHUserDataXLSFile); err != nil {
+		return utils.LogError(err)
+	}
 
 	if opts.UpdateBloodhound {
-		if err = UpdateBloodHoundUserData(opts); err != nil {
+		if err = UpdateBloodHoundUserData(opts, correlatedBHUserData); err != nil {
+			return utils.LogError(err)
+		}
+		// create custom Bloodhound queries for leak data
+		if err = CreateShortestPathsFromBreachedCredentialsQueriesBHCE(opts); err != nil {
 			return utils.LogError(err)
 		}
 	}
@@ -30,9 +44,76 @@ func ProcessData(opts *bloodhound.Options) error {
 	return nil
 }
 
+// CreateShortestPathsFromBreachedCredentialsQueriesBHCE ...
+func CreateShortestPathsFromBreachedCredentialsQueriesBHCE(opts *bloodhound.Options) error {
+	bhAPIOpts := bloodhound.NewBloodHoundAPIOptions(opts.BloodhoundServerURL, opts.BloodhoundUser, opts.BloodhoundPassword)
+	bhClient, err := bloodhound.NewBloodHoundAPIClient(bhAPIOpts)
+	if err != nil {
+		return utils.LogError(err)
+	}
+
+	utils.InfoLabelWithColorf("BLOODHOUND API", "cyan", "Creating custom Bloodhound query for leak data")
+	shortestPathsToDomainAdminsFromBreachedCredentialsAfterPwdLastSetQueryName := "Shortest Paths to Domain Admins from Breached Credential After PwdLastSet Users"
+	shortestPathsToDomainAdminsFromBreachedCredentialsAfterPwdLastSetQuery := "MATCH p=shortestPath((t:Group)<-[:Owns|GenericAll|GenericWrite|WriteOwner|WriteDacl|MemberOf|ForceChangePassword|AllExtendedRights|AddMember|HasSession|GPLink|AllowedToDelegate|CoerceToTGT|AllowedToAct|AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|HasSIDHistory|AddSelf|DCSync|ReadLAPSPassword|ReadGMSAPassword|DumpSMSAPassword|SQLAdmin|AddAllowedToAct|WriteSPN|AddKeyCredentialLink|SyncLAPSPassword|WriteAccountRestrictions|WriteGPLink|GoldenCert|ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13|SyncedToEntraUser|CoerceAndRelayNTLMToSMB|CoerceAndRelayNTLMToADCS|WriteOwnerLimitedRights|OwnsLimitedRights|CoerceAndRelayNTLMToLDAP|CoerceAndRelayNTLMToLDAPS|Contains|DCFor|TrustedBy*1..]-(s:Base)) WHERE t.objectid ENDS WITH '-512' AND s.hasbreachdata = true AND s.hasbreachdataafterpwdlastset = true AND s<>t RETURN p LIMIT 1000"
+
+	if err = bhClient.SaveCustomQueryBloodHoundCE(shortestPathsToDomainAdminsFromBreachedCredentialsAfterPwdLastSetQueryName, shortestPathsToDomainAdminsFromBreachedCredentialsAfterPwdLastSetQuery); err != nil {
+		return utils.LogError(err)
+	}
+
+	shortestPathsToDomainAdminsFromBreachedCredentialsQueryName := "Shortest Paths to Domain Admins from Breached Credential Users"
+	shortestPathsToDomainAdminsFromBreachedCredentialsQuery := "MATCH p=shortestPath((t:Group)<-[:Owns|GenericAll|GenericWrite|WriteOwner|WriteDacl|MemberOf|ForceChangePassword|AllExtendedRights|AddMember|HasSession|GPLink|AllowedToDelegate|CoerceToTGT|AllowedToAct|AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|HasSIDHistory|AddSelf|DCSync|ReadLAPSPassword|ReadGMSAPassword|DumpSMSAPassword|SQLAdmin|AddAllowedToAct|WriteSPN|AddKeyCredentialLink|SyncLAPSPassword|WriteAccountRestrictions|WriteGPLink|GoldenCert|ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13|SyncedToEntraUser|CoerceAndRelayNTLMToSMB|CoerceAndRelayNTLMToADCS|WriteOwnerLimitedRights|OwnsLimitedRights|CoerceAndRelayNTLMToLDAP|CoerceAndRelayNTLMToLDAPS|Contains|DCFor|TrustedBy*1..]-(s:Base)) WHERE t.objectid ENDS WITH '-512' AND s.hasbreachdata = true AND s<>t RETURN p LIMIT 1000"
+
+	if err = bhClient.SaveCustomQueryBloodHoundCE(shortestPathsToDomainAdminsFromBreachedCredentialsQueryName, shortestPathsToDomainAdminsFromBreachedCredentialsQuery); err != nil {
+		return utils.LogError(err)
+	}
+
+	shortestPathsFromBreachedCredentialsAfterPwdLastSetQueryName := "Shortest Paths from Breached Credential After PwdLastSet Users"
+	shortestPathsFromBreachedCredentialsAfterPwdLastSetQuery := "MATCH p=shortestPath((s)-[:Owns|GenericAll|GenericWrite|WriteOwner|WriteDacl|MemberOf|ForceChangePassword|AllExtendedRights|AddMember|HasSession|GPLink|AllowedToDelegate|CoerceToTGT|AllowedToAct|AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|HasSIDHistory|AddSelf|DCSync|ReadLAPSPassword|ReadGMSAPassword|DumpSMSAPassword|SQLAdmin|AddAllowedToAct|WriteSPN|AddKeyCredentialLink|SyncLAPSPassword|WriteAccountRestrictions|WriteGPLink|GoldenCert|ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13|SyncedToEntraUser|CoerceAndRelayNTLMToSMB|CoerceAndRelayNTLMToADCS|WriteOwnerLimitedRights|OwnsLimitedRights|CoerceAndRelayNTLMToLDAP|CoerceAndRelayNTLMToLDAPS|Contains|DCFor|TrustedBy*1..]->(t)) WHERE s.hasbreachdata = true AND s.hasbreachdataafterpwdlastset = true AND s<>t RETURN p LIMIT 1000"
+	if err = bhClient.SaveCustomQueryBloodHoundCE(shortestPathsFromBreachedCredentialsAfterPwdLastSetQueryName, shortestPathsFromBreachedCredentialsAfterPwdLastSetQuery); err != nil {
+		return utils.LogError(err)
+	}
+
+	shortestPathsFromBreachedCredentialsQueryName := "Shortest Paths from Breached Credentials"
+	shortestPathsFromBreachedCredentialsQuery := "MATCH p=shortestPath((s)-[:Owns|GenericAll|GenericWrite|WriteOwner|WriteDacl|MemberOf|ForceChangePassword|AllExtendedRights|AddMember|HasSession|GPLink|AllowedToDelegate|CoerceToTGT|AllowedToAct|AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|HasSIDHistory|AddSelf|DCSync|ReadLAPSPassword|ReadGMSAPassword|DumpSMSAPassword|SQLAdmin|AddAllowedToAct|WriteSPN|AddKeyCredentialLink|SyncLAPSPassword|WriteAccountRestrictions|WriteGPLink|GoldenCert|ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13|SyncedToEntraUser|CoerceAndRelayNTLMToSMB|CoerceAndRelayNTLMToADCS|WriteOwnerLimitedRights|OwnsLimitedRights|CoerceAndRelayNTLMToLDAP|CoerceAndRelayNTLMToLDAPS|Contains|DCFor|TrustedBy*1..]->(t)) WHERE s.hasbreachdata = true AND s<>t RETURN p LIMIT 1000"
+	if err = bhClient.SaveCustomQueryBloodHoundCE(shortestPathsFromBreachedCredentialsQueryName, shortestPathsFromBreachedCredentialsQuery); err != nil {
+		return utils.LogError(err)
+	}
+
+	return nil
+}
+
 // UpdateBloodHoundUserData ...
-func UpdateBloodHoundUserData(opts *bloodhound.Options) error {
-	fmt.Println("Updating bloodhound users data...TODO")
+func UpdateBloodHoundUserData(opts *bloodhound.Options, data *bloodhound.BHCEUserData) error {
+	utils.InfoLabelWithColorf("BLOODHOUND NEO4J", "cyan", "Updating bloodhound neo4j users data with leak data indicators")
+	// Set up a neo4j database connection
+	neo4jOpts := bloodhound.NewNeo4jDBOptions(opts.Neo4jHost, opts.Neo4jPort, opts.Neo4jUser, opts.Neo4jPassword)
+	db, err := bloodhound.NewNeo4jDBConnection(neo4jOpts)
+	if err != nil {
+		return utils.LogError(err)
+	}
+
+	for _, user := range data.Data {
+		markUserAsPotentiallyCompromised := false
+		if user.Properties.HasBreachData {
+			for _, leak := range user.BreachData {
+				if leak.Password != "" {
+					markUserAsPotentiallyCompromised = true
+				}
+			}
+			if markUserAsPotentiallyCompromised {
+				props := map[string]interface{}{
+					"hasbreachdata":                user.Properties.HasBreachData,
+					"hasbreachdataafterpwdlastset": user.Properties.HasBreachDataAfterPwdLastSet,
+					"pwdlastsetbeforebreach":       user.Properties.PwdLastSetBeforeBreach,
+					"breachedat":                   user.Properties.BreachedAt,
+					"breachsources":                user.Properties.BreachSources,
+				}
+				if err = db.AddUserMetadata(user.Properties.Name, props); err != nil {
+					return utils.LogError(err)
+				}
+			}
+		}
+	}
 
 	return nil
 }
@@ -148,7 +229,9 @@ func getLeaksByIdentityMap(flareLeaksByDomainData *bloodhound.FlareCreds) map[st
 			leaksByDomainAndIdentity[domainKey][identityKey],
 			bloodhound.LeakInfo{
 				Password:   leakData.Password,
+				Hash:       leakData.Hash,
 				BreachedAt: leakData.BreachedAt,
+				SourceID:   leakData.SourceID,
 			},
 		)
 	}
@@ -171,26 +254,52 @@ func processUsersSequentially(users []bloodhound.Data, leaksByDomainAndIdentity 
 
 		domainKey := strings.ToLower(baseADDomain)
 		emailKey := strings.ToLower(user.Properties.Email)
+		breachedAtEpochDates := make([]interface{}, 0)
+		breachSourceIDs := make([]string, 0)
 
 		// Check if we have leaks for this domain and email with O(1) lookups
 		if leaksByDomain, ok := leaksByDomainAndIdentity[domainKey]; ok {
 			for _, leak := range leaksByDomain[emailKey] {
 				user.BreachData = append(user.BreachData, bloodhound.LeakInfo{
 					Password:   leak.Password,
+					Hash:       leak.Hash,
 					BreachedAt: leak.BreachedAt,
+					SourceID:   leak.SourceID,
 				})
-				breachHappenedAfterPWLastSetDate, _, err := utils.CompareBreachedAtToPasswordLastSetDate(leak.BreachedAt, user.Properties.Pwdlastset)
-				if err != nil {
-					return nil, utils.LogError(err)
-				}
-				if breachHappenedAfterPWLastSetDate {
-					user.Properties.HasBreachDataAfterPwdLastSet = true
-				}
+				breachedAtEpochDates = append(breachedAtEpochDates, leak.BreachedAt)
+				breachSourceIDs = append(breachSourceIDs, leak.SourceID)
 			}
 			if len(user.BreachData) > 0 {
 				user.Properties.HasBreachData = true
-				updatedUsersData = append(updatedUsersData, user)
+				user.Properties.BreachSources = utils.SortUnique(breachSourceIDs)
+				latestEpoch, err := utils.FindMostRecentEpoch(breachedAtEpochDates)
+				if err != nil {
+					user.Properties.HasBreachDataAfterPwdLastSet = false
+					user.Properties.PwdLastSetBeforeBreach = "0"
+					updatedUsersData = append(updatedUsersData, user)
+					continue
+				}
+				latestEpochFloat64, err := utils.EpochToFloat64(latestEpoch)
+				if err != nil {
+					user.Properties.HasBreachDataAfterPwdLastSet = false
+					user.Properties.PwdLastSetBeforeBreach = "0"
+					updatedUsersData = append(updatedUsersData, user)
+					continue
+				}
+				user.Properties.BreachedAt = latestEpochFloat64
+				breachHappenedAfterPWLastSetDate, pwLastSetSinceBreach, err := utils.CompareBreachedAtToPasswordLastSetDate(latestEpoch, user.Properties.Pwdlastset)
+				if err != nil {
+					user.Properties.HasBreachDataAfterPwdLastSet = false
+					user.Properties.PwdLastSetBeforeBreach = "0"
+					updatedUsersData = append(updatedUsersData, user)
+					continue
+				}
+				user.Properties.HasBreachDataAfterPwdLastSet = breachHappenedAfterPWLastSetDate
+				user.Properties.PwdLastSetBeforeBreach = pwLastSetSinceBreach
+			} else {
+				user.Properties.HasBreachData = false
 			}
+			updatedUsersData = append(updatedUsersData, user)
 		}
 	}
 	return &updatedUsersData, nil
@@ -225,26 +334,51 @@ func processUsersInParallel(users []bloodhound.Data, leaksByDomainAndIdentity ma
 
 				domainKey := strings.ToLower(baseADDomain)
 				emailKey := strings.ToLower(user.Properties.Email)
+				breachedAtEpochDates := make([]interface{}, 0)
+				breachSourceIDs := make([]string, 0)
 
 				// Check if we have leaks for this domain and email with O(1) lookups
 				if leaksByDomain, ok := leaksByDomainAndIdentity[domainKey]; ok {
 					for _, leak := range leaksByDomain[emailKey] {
 						user.BreachData = append(user.BreachData, bloodhound.LeakInfo{
 							Password:   leak.Password,
+							Hash:       leak.Hash,
 							BreachedAt: leak.BreachedAt,
 						})
-						breachHappenedAfterPWLastSetDate, _, err := utils.CompareBreachedAtToPasswordLastSetDate(leak.BreachedAt, user.Properties.Pwdlastset)
-						if err != nil {
-							continue
-						}
-						if breachHappenedAfterPWLastSetDate {
-							user.Properties.HasBreachDataAfterPwdLastSet = true
-						}
+						breachedAtEpochDates = append(breachedAtEpochDates, leak.BreachedAt)
+						breachSourceIDs = append(breachSourceIDs, leak.SourceID)
 					}
 					if len(user.BreachData) > 0 {
 						user.Properties.HasBreachData = true
-						resultChan <- user
+						user.Properties.BreachSources = utils.SortUnique(breachSourceIDs)
+						latestEpoch, err := utils.FindMostRecentEpoch(breachedAtEpochDates)
+						if err != nil {
+							user.Properties.HasBreachDataAfterPwdLastSet = false
+							user.Properties.PwdLastSetBeforeBreach = "0"
+							resultChan <- user
+							continue
+						}
+						latestEpochFloat64, err := utils.EpochToFloat64(latestEpoch)
+						if err != nil {
+							user.Properties.HasBreachDataAfterPwdLastSet = false
+							user.Properties.PwdLastSetBeforeBreach = "0"
+							resultChan <- user
+							continue
+						}
+						user.Properties.BreachedAt = latestEpochFloat64
+						breachHappenedAfterPWLastSetDate, pwLastSetSinceBreach, err := utils.CompareBreachedAtToPasswordLastSetDate(latestEpoch, user.Properties.Pwdlastset)
+						if err != nil {
+							user.Properties.HasBreachDataAfterPwdLastSet = false
+							user.Properties.PwdLastSetBeforeBreach = "0"
+							resultChan <- user
+							continue
+						}
+						user.Properties.HasBreachDataAfterPwdLastSet = breachHappenedAfterPWLastSetDate
+						user.Properties.PwdLastSetBeforeBreach = pwLastSetSinceBreach
+					} else {
+						user.Properties.HasBreachData = false
 					}
+					resultChan <- user
 				}
 			}
 		}(chunk)

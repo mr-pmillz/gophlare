@@ -41,6 +41,9 @@ type Properties struct {
 	ObjectID                     interface{}   `json:"objectid,omitempty"`
 	HasBreachData                bool          `json:"hasbreachdata,omitempty"`
 	HasBreachDataAfterPwdLastSet bool          `json:"hasbreachdataafterpwdlastset,omitempty"`
+	BreachedAt                   float64       `json:"breachedat,omitempty"`
+	BreachSources                []string      `json:"breachsource,omitempty"`
+	PwdLastSetBeforeBreach       string        `json:"pwdlastsetbeforebreach,omitempty"`
 }
 type Aces struct {
 	PrincipalSID  string `json:"PrincipalSID,omitempty"`
@@ -66,8 +69,10 @@ type Data struct {
 }
 
 type LeakInfo struct {
-	Password       string
+	Password   string
+	Hash       string
 	BreachedAt interface{}
+	SourceID   string
 }
 
 // FlareCredentialPairs ...
