@@ -3,13 +3,11 @@ package search
 import (
 	"bufio"
 	"fmt"
-	valid "github.com/asaskevich/govalidator"
 	"github.com/mr-pmillz/gophlare/phlare"
 	"github.com/mr-pmillz/gophlare/utils"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -587,9 +585,9 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		// this catches most likely non cleartext passwords. some URLs come through but who knows whatsagoinon'....
 		// ToDo: Feature request differentiation to Flare peeps...
 		switch {
-		case isHash(v.Hash):
+		case utils.IsHash(v.Hash):
 			flareData.Hash = v.Hash
-		case isLikelyAnEncryptedValue(v.Hash):
+		case utils.IsLikelyAnEncryptedValue(v.Hash):
 			flareData.Hash = v.Hash
 		default:
 			if !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, ",null", "(null)", "nil", "<nil>", "", " "}, v.Hash) {
@@ -623,53 +621,6 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		flareCreds.Data = append(flareCreds.Data, flareData)
 	}
 	return flareCreds
-}
-
-// isLikelyAnEncryptedValue checks if the given input string is likely an encrypted value by evaluating its format.
-func isLikelyAnEncryptedValue(input string) bool {
-	// Normalize input by trimming whitespace and converting to lowercase
-	input = strings.TrimSpace(strings.ToLower(input))
-	if strings.HasSuffix(input, "=") && valid.IsBase64(input) {
-		// likely an encrypted value that flare includes in the Items[n].Hash key...
-		return true
-	}
-
-	return false
-}
-
-// isHash checks if the input string matches the format of common hash algorithm formats.
-// hopefully a temporary work-around since flare does not distinguish by credential type and groups hashes and cleartext passwords into the same hash key.
-// this is to reduce non cleartext password results noise that can muddy up the cred stuffing auto generated lists...
-func isHash(input string) bool {
-	// Normalize input by trimming whitespace and converting to lowercase
-	input = strings.TrimSpace(strings.ToLower(input))
-
-	// Define regex patterns for hash formats
-	hashPatterns := map[string]string{
-		"MD5":       "^[a-f0-9]{32}$",
-		"SHA-1":     "^[a-f0-9]{40}$",
-		"TIGER-192": "^[a-f0-9]{48}$",
-		"SHA-3-224": "^[a-f0-9]{56}$",
-		"SHA-256":   "^[a-f0-9]{64}$",
-		"SHA-384":   "^[a-f0-9]{96}$",
-		"SHA-512":   "^[a-f0-9]{128}$",
-		"Blowfish":  `^\$2[aby]?\$\d{1,2}\$[./a-zA-Z0-9]{53}$`, // Blowfish ($2a$, $2b$, $2y$)
-	}
-
-	// Check the input against each pattern
-	for _, pattern := range hashPatterns {
-		match, _ := regexp.MatchString(pattern, input)
-		if match {
-			return true
-		}
-	}
-
-	// additional checks for sampled hash values
-	if utils.ContainsPrefix([]string{"pbkdf2_sha256", "pbkdf2_sha512", "c2NyeXB0AA4AAAAIAAAA", "$S$D", "$P$B", "sha1$2", "sha1$4"}, input) && len(input) >= 32 {
-		return true
-	}
-
-	return false
 }
 
 // SearchEmailsInBulk performs a bulk lookup of email credentials using the Flare API and outputs results in CSV and XLSX formats.
@@ -724,9 +675,9 @@ func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *phlare.FlareListByBul
 					Email: email,
 				}
 				switch {
-				case isHash(password.Hash):
+				case utils.IsHash(password.Hash):
 					cred.Hash = password.Hash
-				case isLikelyAnEncryptedValue(password.Hash):
+				case utils.IsLikelyAnEncryptedValue(password.Hash):
 					cred.Hash = password.Hash
 				default:
 					if !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, ",null", "(null)", "nil", "<nil>", "", " "}, password.Hash) {
