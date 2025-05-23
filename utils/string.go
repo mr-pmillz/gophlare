@@ -53,46 +53,6 @@ func EpochOrDateToTime(epoch interface{}) (time.Time, error) {
 	}
 }
 
-// FindClosestEpochToNow returns the closest epoch from a slice of epochs to the current time
-func FindClosestEpochToNow(epochs []interface{}) (interface{}, error) {
-	if len(epochs) == 0 {
-		return nil, fmt.Errorf("epochs slice cannot be empty")
-	}
-
-	now := time.Now()
-	var closestEpoch interface{}
-	var smallestDiff time.Duration
-	var found bool
-
-	for _, epoch := range epochs {
-		// Convert epoch to time.Time
-		epochTime, err := EpochOrDateToTime(epoch)
-		if err != nil {
-			// Skip invalid epochs but continue processing
-			continue
-		}
-
-		// Calculate absolute difference from current time
-		diff := now.Sub(epochTime)
-		if diff < 0 {
-			diff = -diff // Make it absolute
-		}
-
-		// Check if this is the closest so far
-		if !found || diff < smallestDiff {
-			closestEpoch = epoch
-			smallestDiff = diff
-			found = true
-		}
-	}
-
-	if !found {
-		return nil, fmt.Errorf("no valid epochs found in the slice")
-	}
-
-	return closestEpoch, nil
-}
-
 // FindMostRecentEpoch returns the most recent (latest) epoch from a slice of epochs
 // relative to the current time. If all epochs are in the future, returns the closest one.
 func FindMostRecentEpoch(epochs []interface{}) (interface{}, error) {

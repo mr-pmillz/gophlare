@@ -52,7 +52,7 @@ func CreateShortestPathsFromBreachedCredentialsQueriesBHCE(opts *bloodhound.Opti
 		return utils.LogError(err)
 	}
 
-	utils.InfoLabelWithColorf("BLOODHOUND API", "cyan", "Creating custom Bloodhound query for leak data")
+	utils.InfoLabelWithColorf("BLOODHOUND API", "cyan", "Creating custom Bloodhound queries for leak data")
 	shortestPathsToDomainAdminsFromBreachedCredentialsAfterPwdLastSetQueryName := "Shortest Paths to Domain Admins from Breached Credential After PwdLastSet Users"
 	shortestPathsToDomainAdminsFromBreachedCredentialsAfterPwdLastSetQuery := "MATCH p=shortestPath((t:Group)<-[:Owns|GenericAll|GenericWrite|WriteOwner|WriteDacl|MemberOf|ForceChangePassword|AllExtendedRights|AddMember|HasSession|GPLink|AllowedToDelegate|CoerceToTGT|AllowedToAct|AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|HasSIDHistory|AddSelf|DCSync|ReadLAPSPassword|ReadGMSAPassword|DumpSMSAPassword|SQLAdmin|AddAllowedToAct|WriteSPN|AddKeyCredentialLink|SyncLAPSPassword|WriteAccountRestrictions|WriteGPLink|GoldenCert|ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13|SyncedToEntraUser|CoerceAndRelayNTLMToSMB|CoerceAndRelayNTLMToADCS|WriteOwnerLimitedRights|OwnsLimitedRights|CoerceAndRelayNTLMToLDAP|CoerceAndRelayNTLMToLDAPS|Contains|DCFor|TrustedBy*1..]-(s:Base)) WHERE t.objectid ENDS WITH '-512' AND s.hasbreachdata = true AND s.hasbreachdataafterpwdlastset = true AND s<>t RETURN p LIMIT 1000"
 
@@ -153,8 +153,6 @@ func WriteCredStuffingFiles(data *bloodhound.BHCEUserData, outputDir string) err
 
 // CorrelateLeakDataWithBloodHoundData processes user data against leak data with optimized performance
 func CorrelateLeakDataWithBloodHoundData(opts *bloodhound.Options) (*bloodhound.BHCEUserData, error) {
-	// TODO: check goldmine data
-
 	// Parse leak data
 	flareLeaksByDomainData, err := bloodhound.ParseFlareLeaksByDomainFile(opts.FlareCredsByDomainJSONFile)
 	if err != nil {

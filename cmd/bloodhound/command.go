@@ -48,6 +48,12 @@ Example Commands:
 		switch {
 		case opts.bloodhoundOptions.OutputDir == "":
 			utils.LogFatalf("OUTPUT_DIR cannot be empty!")
+		case opts.bloodhoundOptions.FlareCredsByDomainJSONFile == "":
+			utils.LogFatalf("FLARE_CREDS_BY_DOMAIN_JSON_FILE cannot be empty!")
+		case opts.bloodhoundOptions.UpdateBloodhound && opts.bloodhoundOptions.BloodhoundUser == "" || opts.bloodhoundOptions.BloodhoundPassword == "" || opts.bloodhoundOptions.BloodhoundServerURL == "":
+			utils.LogFatalf("to update bloodhound, bloodhound web user, password, and server URL must be set!")
+		case opts.bloodhoundOptions.UpdateBloodhound && opts.bloodhoundOptions.Neo4jUser == "" || opts.bloodhoundOptions.Neo4jPassword == "" || opts.bloodhoundOptions.Neo4jHost == "" || opts.bloodhoundOptions.Neo4jPort == "":
+			utils.LogFatalf("to update bloodhound, bloodhound neo4j user, password, server, and port must be set!")
 		}
 
 		if err = os.MkdirAll(opts.bloodhoundOptions.OutputDir, 0750); err != nil {

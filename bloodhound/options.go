@@ -9,7 +9,6 @@ import (
 type Options struct {
 	BloodhoundUsersJSONFile       string
 	FlareCredsByDomainJSONFile    string
-	GoldmineCredsByDomainJSONFile string
 	OutputDir                     string
 	Neo4jHost                     string
 	Neo4jPort                     string
@@ -26,12 +25,11 @@ type Options struct {
 func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("bloodhound-users-json-file", "b", "", "Bloodhound JSON file")
 	cmd.PersistentFlags().StringP("flare-creds-by-domain-json-file", "f", "", "Flare credentials by domain JSON file")
-	cmd.PersistentFlags().StringP("goldmine-creds-by-domain-json-file", "g", "", "Goldmine credentials by domain JSON file")
 	cmd.PersistentFlags().StringP("output-dir", "o", "", "Output directory")
-	cmd.PersistentFlags().StringP("neo4j-host", "", "127.0.0.1", "Neo4j host")
-	cmd.PersistentFlags().StringP("neo4j-port", "", "7687", "Neo4j port")
-	cmd.PersistentFlags().StringP("neo4j-user", "", "neo4j", "Neo4j user")
-	cmd.PersistentFlags().StringP("neo4j-password", "", "neo5j", "Neo4j password")
+	cmd.PersistentFlags().StringP("neo4j-host", "", "", "Neo4j host")
+	cmd.PersistentFlags().StringP("neo4j-port", "", "", "Neo4j port")
+	cmd.PersistentFlags().StringP("neo4j-user", "", "", "Neo4j user")
+	cmd.PersistentFlags().StringP("neo4j-password", "", "", "Neo4j password")
 	cmd.PersistentFlags().StringP("bloodhound-user", "", "", "Bloodhound user")
 	cmd.PersistentFlags().StringP("bloodhound-password", "", "", "Bloodhound password")
 	cmd.PersistentFlags().StringP("bloodhound-server-url", "", "", "Bloodhound server base URL, ex: http://127.0.0.1:8001")
@@ -107,16 +105,6 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.FlareCredsByDomainJSONFile = flareCredsByDomainJSONFile.(string)
-
-	GoldmineCredsByDomainJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
-		Flag:       "goldmine-creds-by-domain-json-file",
-		IsFilePath: true,
-		Opts:       opts.GoldmineCredsByDomainJSONFile,
-	})
-	if err != nil {
-		return err
-	}
-	opts.GoldmineCredsByDomainJSONFile = GoldmineCredsByDomainJSONFile.(string)
 
 	outputDir, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "output-dir",

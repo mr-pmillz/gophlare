@@ -18,9 +18,6 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		flareData := FlareCredentialPairs{}
 		flareData.Email = v.IdentityName
 		// check if the v.Hash value is a password or a hash...
-		// this is a funky work around because Flare currently does not differentiate between hashes, passwords, or encrypted values...
-		// this catches most likely non cleartext passwords. some URLs come through but who knows whatsagoinon'....
-		// ToDo: Feature request differentiation to Flare peeps...
 		switch {
 		case utils.IsHash(v.Hash):
 			flareData.Hash = v.Hash
@@ -69,23 +66,6 @@ func ParseFlareLeaksByDomainFile(filePath string) (*FlareCreds, error) {
 	flareCreds := setFlareCredentialPairsStructFromFlareData(&data)
 
 	return flareCreds, nil
-}
-
-// ParseOldBloodHoundUsersFile ...
-func ParseOldBloodHoundUsersFile(filePath string) (*OldBloodHoundUserNodes, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var data OldBloodHoundUserNodes
-	if err = json.NewDecoder(file).Decode(&data); err != nil {
-		log.Println("Error parsing JSON")
-		return nil, err
-	}
-
-	return &data, nil
 }
 
 // ParseBloodHoundUsersFile ...
