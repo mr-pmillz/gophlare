@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.3](https://github.com/mr-pmillz/gophlare/compare/v1.2.2...v1.2.3) - 2025-05-23
+
+### 📚 Documentation
+
+- Docs update readme - ([019bed9](https://github.com/mr-pmillz/gophlare/commit/019bed9b30ea7b951615ca6f80f867985edd95ce))
+- Docs update - ([6258eac](https://github.com/mr-pmillz/gophlare/commit/6258eac8e2f79027f15127709bd7e8f0f6dce1a3))
+
+### ⚙️  Miscellaneous
+
+- Version bump - ([c43e923](https://github.com/mr-pmillz/gophlare/commit/c43e923e735857c51d8754d77ca8e6b6cef42c6e))
+- Merge pull request #1 from mr-pmillz/bloodhound
+
+Draft: Bloodhound integration - ([7a1bc94](https://github.com/mr-pmillz/gophlare/commit/7a1bc9494e4028f877f966a3aab434c0f804bdfe))
+- Removed unused code and cleanup - ([1dff448](https://github.com/mr-pmillz/gophlare/commit/1dff4489241af13c685f7cde7ef49f566248a0d2))
+- Bloodhound integration PoC shortest paths from breached credentials - ([a9c8ac5](https://github.com/mr-pmillz/gophlare/commit/a9c8ac504419b9e722da317362ea0685c45776b5))
+- Resolved linter warnings - ([7034a62](https://github.com/mr-pmillz/gophlare/commit/7034a6223fb628f7ffbc6c0da010b5340b6f18c5))
+- :cyclone: Completed Phase 2 :crystal_ball: - ([abcfa97](https://github.com/mr-pmillz/gophlare/commit/abcfa97d640a0d232237d2e1c7488b6c1ecf5983))
+- Initial bloodhound integration testing - ([afca637](https://github.com/mr-pmillz/gophlare/commit/afca6375c6c49f84cd4b8360b7d420bcdcf07189))
+- Update changelog - ([0198c65](https://github.com/mr-pmillz/gophlare/commit/0198c65794cb82d4110ddf4021e53e7ada2b6759))
+
 ## [1.2.2](https://github.com/mr-pmillz/gophlare/compare/v1.2.1...v1.2.2) - 2025-04-25
 
 ### ✨ New features
