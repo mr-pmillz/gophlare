@@ -178,17 +178,50 @@ func main() {
 }
 ```
 
-## BloodHound Data Correlation
+## Bloodhound Data Correlation
 
-This feature has only been developed and tested using BloodHound-CE (Community Edition)
+This feature only supports Bloodhound-CE (Community Edition)
 
 ### Quick-Start
 
 Use https://github.com/Tanguy-Boisset/bloodhound-automation and uncomment the postgresql port and volume declaration in templates/docker-compose.yml
 
+### Bloodhound Usage
+
+```shell
+correlate breach data with bloodhound data and optionally update bloodhound neo4j database with breach data and create custom cypher queries for further analysis in bloodhound
+
+Example Commands:
+        gophlare bloodhound --config config.yaml
+        gophlare bloodhound --config config.yaml -f flare-leaks.json -o some_dir --update-bloodhound
+
+Usage:
+  gophlare bloodhound [flags]
+
+Flags:
+      --bloodhound-password string               Bloodhound password
+      --bloodhound-server-url string             Bloodhound server base URL, ex: http://127.0.0.1:8001
+      --bloodhound-user string                   Bloodhound user
+  -b, --bloodhound-users-json-file string        Bloodhound JSON file
+  -c, --configfileset                            Config file set
+  -f, --flare-creds-by-domain-json-file string   Flare credentials by domain JSON file
+  -h, --help                                     help for bloodhound
+      --neo4j-host string                        Neo4j host
+      --neo4j-password string                    Neo4j password
+      --neo4j-port string                        Neo4j port
+      --neo4j-user string                        Neo4j user
+  -o, --output-dir string                        Output directory
+      --update-bloodhound                        update bloodhound neo4j database with breach data
+  -v, --verbose                                  Verbose output
+
+Global Flags:
+      --config string   config file default location for viper to look is ~/.config/gophlare/config.yaml
+```
+
 ## ToDo
 
 - [ ] Implement remaining API endpoints
+- [X] Integrate bloodhound for breach data correlation. (Useful for UserID correlation and shortest paths from breach credentials finding)
 - [X] Enhance cookies search
 - [X] Export cookies to separate cookie bro output JSON files per stealer log ID
 - [X] Add Dockerfile and push to ghcr.io container registry
