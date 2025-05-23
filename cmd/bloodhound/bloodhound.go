@@ -154,6 +154,7 @@ func WriteCredStuffingFiles(data *bloodhound.BHCEUserData, outputDir string) err
 // CorrelateLeakDataWithBloodHoundData processes user data against leak data with optimized performance
 func CorrelateLeakDataWithBloodHoundData(opts *bloodhound.Options) (*bloodhound.BHCEUserData, error) {
 	// Parse leak data
+	utils.InfoLabelWithColorf("GOPHLARE", "cyan", "Processing leak data")
 	flareLeaksByDomainData, err := bloodhound.ParseFlareLeaksByDomainFile(opts.FlareCredsByDomainJSONFile)
 	if err != nil {
 		return nil, utils.LogError(err)
@@ -176,6 +177,7 @@ func CorrelateLeakDataWithBloodHoundData(opts *bloodhound.Options) (*bloodhound.
 		}
 
 		// Get user data
+		utils.InfoLabelWithColorf("BLOODHOUND NEO4J", "cyan", "Getting bloodhound neo4j users data")
 		users, err := db.GetAllUserData()
 		if err != nil {
 			return nil, utils.LogError(err)
@@ -183,6 +185,7 @@ func CorrelateLeakDataWithBloodHoundData(opts *bloodhound.Options) (*bloodhound.
 		bhUsersData = users
 	}
 
+	utils.InfoLabelWithColorf("FLAREHOUND", "cyan", "Correlating data")
 	// Create an optimized map of leak data for O(1) lookups
 	leaksByDomainAndIdentity := getLeaksByIdentityMap(flareLeaksByDomainData)
 

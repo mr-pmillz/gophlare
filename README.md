@@ -184,7 +184,7 @@ This feature only supports Bloodhound-CE (Community Edition)
 Correlate flare breach data with Bloodhound data. Useful for mapping UserID's from AD to breach data.
 Four custom cypher queries will be created when using the --update-bloodhound option
 
-![Shortest Paths from Breached Credentials](docs/img/gophlare-bloodhound-custom-cypher-queries.png)
+![Shortest Paths from Breached Credentials](docs/img/Bloodhound_Integration.png)
 
 ### Quick-Start
 
