@@ -188,7 +188,7 @@ Four custom cypher queries will be created when using the --update-bloodhound op
 
 ### Quick-Start
 
-Use https://github.com/Tanguy-Boisset/bloodhound-automation and uncomment the postgresql port and volume declaration in templates/docker-compose.yml
+Use https://github.com/Tanguy-Boisset/bloodhound-automation 
 
 ### Bloodhound Usage
 
