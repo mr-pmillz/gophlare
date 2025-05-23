@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.4](https://github.com/mr-pmillz/gophlare/compare/v1.2.3...v1.2.4) - 2025-05-23
+
+### 📚 Documentation
+
+- Docs update readme - ([c7502a5](https://github.com/mr-pmillz/gophlare/commit/c7502a5e2aa7ddda5ae8ed0ba601b555e8d3ef41))
+
+### 🛠 Improvements
+
+- Update readme - ([7ae3e4a](https://github.com/mr-pmillz/gophlare/commit/7ae3e4a705fe246f621a09f5ac822d2043946833))
+
+### ⚙️  Miscellaneous
+
+- :goat: increased verbosity :dog2: version bump - ([236c876](https://github.com/mr-pmillz/gophlare/commit/236c87645539fbb072b3d075126e03a9dfcce12f))
+- Update changelog - ([04a1d8d](https://github.com/mr-pmillz/gophlare/commit/04a1d8db532a74bb0a1ac8f7063e0e9887013507))
+
 ## [1.2.3](https://github.com/mr-pmillz/gophlare/compare/v1.2.2...v1.2.3) - 2025-05-23
 
 ### 📚 Documentation
