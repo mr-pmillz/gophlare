@@ -26,10 +26,11 @@ var Command = &cobra.Command{
 	Use:   "bloodhound",
 	Args:  cobra.MinimumNArgs(0),
 	Short: "correlate breach data with bloodhound data",
-	Long: `correlate breach data with bloodhound data
+	Long: `correlate breach data with bloodhound data and optionally update bloodhound neo4j database with breach data and create custom cypher queries for further analysis in bloodhound
 
 Example Commands:
 	gophlare bloodhound --config config.yaml
+	gophlare bloodhound --config config.yaml -f flare-leaks.json -o some_dir --update-bloodhound
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if configFileSet, err := cmd.Flags().GetBool("configfileset"); !configFileSet && err == nil {
