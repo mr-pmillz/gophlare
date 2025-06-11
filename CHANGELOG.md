@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.5](https://github.com/mr-pmillz/gophlare/compare/v1.2.4...v1.2.5) - 2025-06-11
+
+### ✨ New features
+
+- Add Autofills.txt to stealerlog downloaded files - ([7d5720b](https://github.com/mr-pmillz/gophlare/commit/7d5720bdca0bd3c9991c07c8dbd95a9fedcdfb90))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([81f0094](https://github.com/mr-pmillz/gophlare/commit/81f0094d559edc67cd05c3ee77ec9bcd2bd15fe8))
+
 ## [1.2.4](https://github.com/mr-pmillz/gophlare/compare/v1.2.3...v1.2.4) - 2025-05-23
 
 ### 📚 Documentation
