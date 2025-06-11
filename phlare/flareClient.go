@@ -10,7 +10,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.2.4"
+	gophlareClientVersion = "v1.2.5"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -139,6 +139,7 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 		"All Passwords.txt": {},
 		"Passwords.txt":     {},
 		"passwords.txt":     {},
+		"Autofills.txt":     {},
 	}
 	downloadedFilePaths := make([]string, 0)
 	for _, stealerLogsFile := range data.Activity.Data.Files {
