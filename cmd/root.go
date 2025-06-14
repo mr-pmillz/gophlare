@@ -16,7 +16,7 @@ import (
 
 var (
 	cfgFile       string
-	version       = "v1.2.5"
+	version       = "v1.2.6"
 	configFileSet bool
 )
 

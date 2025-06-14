@@ -200,3 +200,29 @@ func Test_hasBaseDomainWithoutTLDPrefix(t *testing.T) {
 		})
 	}
 }
+
+// func TestBuildStrictRegex(t *testing.T) {
+//	type args struct {
+//		s string
+//	}
+//	tests := []struct {
+//		name    string
+//		args    args
+//		want    string
+//		wantErr bool
+//	}{
+//		{name: "test regex", args: args{s: "abc123456"}, want: "(?i)(^|[^a-zA-Z0-9])abc[0-9]{6}([^a-zA-Z0-9]|$)", wantErr: false},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			got, err := BuildStrictRegex(tt.args.s)
+//			if (err != nil) != tt.wantErr {
+//				t.Errorf("BuildStrictRegex() error = %v, wantErr %v", err, tt.wantErr)
+//				return
+//			}
+//			if got != tt.want {
+//				t.Errorf("BuildStrictRegex() got = %v, want %v", got, tt.want)
+//			}
+//		})
+//	}
+// }

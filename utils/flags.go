@@ -116,7 +116,11 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 						lfcOpts.Opts = val
 						return lfcOpts.Opts, nil
 					}
-					lfcOpts.Opts = cmdFlag
+					absCmdFlag, err := ResolveAbsPath(cmdFlag)
+					if err != nil {
+						return nil, err
+					}
+					lfcOpts.Opts = absCmdFlag
 				}
 			} else {
 				if strings.Contains(cmdFlag, ",") && lfcOpts.CommaInStringToSlice {

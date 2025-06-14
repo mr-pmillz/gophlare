@@ -111,7 +111,6 @@ func FindMostRecentEpoch(epochs []interface{}) (interface{}, error) {
 	return closestEpoch, nil
 }
 
-
 // EpochToFloat64 ...
 func EpochToFloat64(epoch interface{}) (float64, error) {
 	switch v := epoch.(type) {
@@ -403,3 +402,21 @@ func HasBaseDomainWithoutTLDPrefix(credentialUsername, domain string) bool {
 	baseDomainNoTLD := domainParts[0]
 	return strings.HasPrefix(strings.ToLower(credentialUsername), strings.ToLower(baseDomainNoTLD))
 }
+
+//// BuildStrictRegex ...
+// func BuildStrictRegex(s string) (string, error) {
+//	matches := regexp.MustCompile(`(?i)^([a-z]+)(\d+)$`).FindStringSubmatch(s)
+//	if matches == nil {
+//		return "", fmt.Errorf("input must be letter(s) followed by digits, like 'abc123456'")
+//	}
+//
+//	prefix := strings.ToLower(matches[1])
+//	digitCount := len(matches[2])
+//
+//	// Escape the prefix in case it contains any special regex characters
+//	escapedPrefix := regexp.QuoteMeta(prefix)
+//
+//	// Build strict pattern: word-boundary-like match
+//	pattern := fmt.Sprintf(`(?i)(^|[^a-zA-Z0-9])%s[0-9]{%d}([^a-zA-Z0-9]|$)`, escapedPrefix, digitCount)
+//	return pattern, nil
+// }

@@ -68,6 +68,7 @@ type Data struct {
 	BreachData        []LeakInfo    `json:"breachData,omitempty"` // Custom field for breach data correlation
 }
 
+// LeakInfo ...
 type LeakInfo struct {
 	Password   string
 	Hash       string
@@ -78,6 +79,7 @@ type LeakInfo struct {
 // FlareCredentialPairs ...
 type FlareCredentialPairs struct {
 	Email      string
+	UserID     string
 	Password   string
 	Hash       string
 	SourceID   string
@@ -90,4 +92,27 @@ type FlareCredentialPairs struct {
 // FlareCreds ...
 type FlareCreds struct {
 	Data []FlareCredentialPairs
+}
+
+// HoardClientHostLeaksJSONL ...
+type HoardClientHostLeaksJSONL struct {
+	ImportTimestamp time.Time `json:"import_timestamp,omitempty"`
+	Password        string    `json:"password,omitempty"`
+	ArchiveName     string    `json:"archive_name,omitempty"`
+	Domain          string    `json:"domain,omitempty"`
+	Host            string    `json:"host,omitempty"`
+	Username        string    `json:"username,omitempty"`
+}
+
+// StealerCreds ...
+type StealerCreds struct {
+	Data []StealerLogsCredentialCSVFile
+}
+
+// StealerLogsCredentialCSVFile represents the parsed stealer log csv file structure
+type StealerLogsCredentialCSVFile struct {
+	Software string `csv:"Software,omitempty"`
+	URL      string `csv:"URL,omitempty"`
+	Username string `csv:"Username,omitempty"`
+	Password string `csv:"Password,omitempty"`
 }

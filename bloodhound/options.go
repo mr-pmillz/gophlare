@@ -7,24 +7,28 @@ import (
 
 // Options ...
 type Options struct {
-	BloodhoundUsersJSONFile       string
-	FlareCredsByDomainJSONFile    string
-	OutputDir                     string
-	Neo4jHost                     string
-	Neo4jPort                     string
-	Neo4jUser                     string
-	Neo4jPassword                 string
-	BloodhoundUser                string
-	BloodhoundPassword            string
-	BloodhoundServerURL           string
-	UpdateBloodhound              bool
-	Verbose                       bool
+	BloodhoundUsersJSONFile    string
+	FlareCredsByDomainJSONFile string
+	StealerLogsLeaksCSVFile    string
+	HostLeaksJSONFile          string // custom leak data file
+	OutputDir                  string
+	Neo4jHost                  string
+	Neo4jPort                  string
+	Neo4jUser                  string
+	Neo4jPassword              string
+	BloodhoundUser             string
+	BloodhoundPassword         string
+	BloodhoundServerURL        string
+	UpdateBloodhound           bool
+	Verbose                    bool
 }
 
 // ConfigureCommand ...
 func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("bloodhound-users-json-file", "b", "", "Bloodhound JSON file")
 	cmd.PersistentFlags().StringP("flare-creds-by-domain-json-file", "f", "", "Flare credentials by domain JSON file")
+	cmd.PersistentFlags().StringP("stealer-logs-leaks-csv-file", "", "", "Flare stealer logs leaks CSV file")
+	cmd.PersistentFlags().StringP("host-leaks-json-file", "", "", "Host leaks JSON file") // custom leak data file
 	cmd.PersistentFlags().StringP("output-dir", "o", "", "Output directory")
 	cmd.PersistentFlags().StringP("neo4j-host", "", "", "Neo4j host")
 	cmd.PersistentFlags().StringP("neo4j-port", "", "", "Neo4j port")
@@ -105,6 +109,26 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.FlareCredsByDomainJSONFile = flareCredsByDomainJSONFile.(string)
+
+	stealerLogsLeaksCSVFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:       "stealer-logs-leaks-csv-file",
+		IsFilePath: true,
+		Opts:       opts.StealerLogsLeaksCSVFile,
+	})
+	if err != nil {
+		return err
+	}
+	opts.StealerLogsLeaksCSVFile = stealerLogsLeaksCSVFile.(string)
+
+	hostLeaksJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:       "host-leaks-json-file",
+		IsFilePath: true,
+		Opts:       opts.HostLeaksJSONFile,
+	})
+	if err != nil {
+		return err
+	}
+	opts.HostLeaksJSONFile = hostLeaksJSONFile.(string)
 
 	outputDir, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "output-dir",

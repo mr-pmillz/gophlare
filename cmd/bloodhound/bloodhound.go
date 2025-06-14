@@ -17,6 +17,10 @@ func ProcessData(opts *bloodhound.Options) error {
 	if err != nil {
 		return utils.LogError(err)
 	}
+	if len(correlatedBHUserData.Data) == 0 {
+		utils.LogWarningf("No matching correlatable breach data found for Active Directory users..")
+		return nil
+	}
 	if err = WriteCredStuffingFiles(correlatedBHUserData, opts.OutputDir); err != nil {
 		return utils.LogError(err)
 	}
@@ -135,12 +139,12 @@ func WriteCredStuffingFiles(data *bloodhound.BHCEUserData, outputDir string) err
 			}
 		}
 	}
-	userIDCredStuffingOutputTextFile := fmt.Sprintf("%s/userID-cred-stuffing.txt", outputDir)
-	userIDNoAtDomainCredStuffingOutputTextFile := fmt.Sprintf("%s/SamAccountName-cred-stuffing.txt", outputDir)
-	if err := utils.WriteLines(utils.SortUnique(lines), userIDCredStuffingOutputTextFile); err != nil {
+	userIDBruteForcingOutputTextFile := fmt.Sprintf("%s/userID-brute-forcing.txt", outputDir)
+	userIDNoAtDomainBruteForcingOutputTextFile := fmt.Sprintf("%s/SamAccountName-brute-forcing.txt", outputDir)
+	if err := utils.WriteLines(utils.SortUnique(lines), userIDBruteForcingOutputTextFile); err != nil {
 		return utils.LogError(err)
 	}
-	if err := utils.WriteLines(utils.SortUnique(linesNoAtDomain), userIDNoAtDomainCredStuffingOutputTextFile); err != nil {
+	if err := utils.WriteLines(utils.SortUnique(linesNoAtDomain), userIDNoAtDomainBruteForcingOutputTextFile); err != nil {
 		return utils.LogError(err)
 	}
 	// create credential stuffing wave files
@@ -158,6 +162,22 @@ func CorrelateLeakDataWithBloodHoundData(opts *bloodhound.Options) (*bloodhound.
 	flareLeaksByDomainData, err := bloodhound.ParseFlareLeaksByDomainFile(opts.FlareCredsByDomainJSONFile)
 	if err != nil {
 		return nil, utils.LogError(err)
+	}
+
+	if opts.StealerLogsLeaksCSVFile != "" {
+		stealerLogLeaksByDomainData, err := bloodhound.ParseStealerLogsHostLeaksFile(opts.StealerLogsLeaksCSVFile)
+		if err != nil {
+			return nil, utils.LogError(err)
+		}
+		flareLeaksByDomainData.Data = append(flareLeaksByDomainData.Data, stealerLogLeaksByDomainData.Data...)
+	}
+
+	if opts.HostLeaksJSONFile != "" {
+		hoardClientStealerLogLeaksByDomainData, err := bloodhound.ParseHostLeaksJSONFile(opts.HostLeaksJSONFile)
+		if err != nil {
+			return nil, utils.LogError(err)
+		}
+		flareLeaksByDomainData.Data = append(flareLeaksByDomainData.Data, hoardClientStealerLogLeaksByDomainData.Data...)
 	}
 
 	bhUsersData := &bloodhound.BHCEUserData{}
@@ -220,21 +240,26 @@ func getLeaksByIdentityMap(flareLeaksByDomainData *bloodhound.FlareCreds) map[st
 	// Map structure: domain -> email -> []LeakInfo{Hash, BreachedAt}
 	leaksByDomainAndIdentity := make(map[string]map[string][]bloodhound.LeakInfo)
 	for _, leakData := range flareLeaksByDomainData.Data {
-		domainKey := strings.ToLower(leakData.Domain)
-		identityKey := strings.ToLower(leakData.Email)
+		switch {
+		case leakData.Domain == "" && leakData.Email == "" && leakData.UserID != "":
+			// Do nothing
+		default:
+			domainKey := strings.ToLower(leakData.Domain)
+			identityKey := strings.ToLower(leakData.Email)
 
-		if _, exists := leaksByDomainAndIdentity[domainKey]; !exists {
-			leaksByDomainAndIdentity[domainKey] = make(map[string][]bloodhound.LeakInfo)
+			if _, exists := leaksByDomainAndIdentity[domainKey]; !exists {
+				leaksByDomainAndIdentity[domainKey] = make(map[string][]bloodhound.LeakInfo)
+			}
+			leaksByDomainAndIdentity[domainKey][identityKey] = append(
+				leaksByDomainAndIdentity[domainKey][identityKey],
+				bloodhound.LeakInfo{
+					Password:   leakData.Password,
+					Hash:       leakData.Hash,
+					BreachedAt: leakData.BreachedAt,
+					SourceID:   leakData.SourceID,
+				},
+			)
 		}
-		leaksByDomainAndIdentity[domainKey][identityKey] = append(
-			leaksByDomainAndIdentity[domainKey][identityKey],
-			bloodhound.LeakInfo{
-				Password:   leakData.Password,
-				Hash:       leakData.Hash,
-				BreachedAt: leakData.BreachedAt,
-				SourceID:   leakData.SourceID,
-			},
-		)
 	}
 	return leaksByDomainAndIdentity
 }
@@ -309,6 +334,7 @@ func processUsersSequentially(users []bloodhound.Data, leaksByDomainAndIdentity 
 // processUsersInParallel processes users using multiple goroutines for improved performance
 //
 //nolint:gocognit
+//nolint:dupl
 func processUsersInParallel(users []bloodhound.Data, leaksByDomainAndIdentity map[string]map[string][]bloodhound.LeakInfo, numWorkers int) (*[]bloodhound.Data, error) {
 	updatedUsersData := make([]bloodhound.Data, 0, len(users))
 	// Split users into chunks for parallel processing
@@ -339,7 +365,7 @@ func processUsersInParallel(users []bloodhound.Data, leaksByDomainAndIdentity ma
 				breachSourceIDs := make([]string, 0)
 
 				// Check if we have leaks for this domain and email with O(1) lookups
-				if leaksByDomain, ok := leaksByDomainAndIdentity[domainKey]; ok {
+				if leaksByDomain, ok := leaksByDomainAndIdentity[domainKey]; ok { //nolint:dupl
 					for _, leak := range leaksByDomain[emailKey] {
 						user.BreachData = append(user.BreachData, bloodhound.LeakInfo{
 							Password:   leak.Password,
@@ -380,6 +406,51 @@ func processUsersInParallel(users []bloodhound.Data, leaksByDomainAndIdentity ma
 						user.Properties.HasBreachData = false
 					}
 					resultChan <- user
+				} else if strings.Contains(emailKey, "@") {
+					emailDomainKeyParts := strings.Split(emailKey, "@")
+					emailDomainKey := emailDomainKeyParts[1]
+					if leaksByDomain, ok := leaksByDomainAndIdentity[emailDomainKey]; ok { //nolint:dupl
+						for _, leak := range leaksByDomain[emailKey] {
+							user.BreachData = append(user.BreachData, bloodhound.LeakInfo{
+								Password:   leak.Password,
+								Hash:       leak.Hash,
+								BreachedAt: leak.BreachedAt,
+							})
+							breachedAtEpochDates = append(breachedAtEpochDates, leak.BreachedAt)
+							breachSourceIDs = append(breachSourceIDs, leak.SourceID)
+						}
+						if len(user.BreachData) > 0 {
+							user.Properties.HasBreachData = true
+							user.Properties.BreachSources = utils.SortUnique(breachSourceIDs)
+							latestEpoch, err := utils.FindMostRecentEpoch(breachedAtEpochDates)
+							if err != nil {
+								user.Properties.HasBreachDataAfterPwdLastSet = false
+								user.Properties.PwdLastSetBeforeBreach = "0"
+								resultChan <- user
+								continue
+							}
+							latestEpochFloat64, err := utils.EpochToFloat64(latestEpoch)
+							if err != nil {
+								user.Properties.HasBreachDataAfterPwdLastSet = false
+								user.Properties.PwdLastSetBeforeBreach = "0"
+								resultChan <- user
+								continue
+							}
+							user.Properties.BreachedAt = latestEpochFloat64
+							breachHappenedAfterPWLastSetDate, pwLastSetSinceBreach, err := utils.CompareBreachedAtToPasswordLastSetDate(latestEpoch, user.Properties.Pwdlastset)
+							if err != nil {
+								user.Properties.HasBreachDataAfterPwdLastSet = false
+								user.Properties.PwdLastSetBeforeBreach = "0"
+								resultChan <- user
+								continue
+							}
+							user.Properties.HasBreachDataAfterPwdLastSet = breachHappenedAfterPWLastSetDate
+							user.Properties.PwdLastSetBeforeBreach = pwLastSetSinceBreach
+						} else {
+							user.Properties.HasBreachData = false
+						}
+						resultChan <- user
+					}
 				}
 			}
 		}(chunk)

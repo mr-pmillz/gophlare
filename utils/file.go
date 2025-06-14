@@ -236,6 +236,74 @@ func WriteStructToCSVFile(data interface{}, outputFile string) error {
 	return nil
 }
 
+// UnmarshalCSVFile ...
+func UnmarshalCSVFile(filePath string, data interface{}) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return LogError(err)
+	}
+	defer file.Close()
+
+	gocsv.SetCSVReader(func(in io.Reader) gocsv.CSVReader {
+		r := csv.NewReader(in)
+		r.LazyQuotes = true
+		r.Comma = ','
+		r.FieldsPerRecord = -1
+		return r
+	})
+
+	if err = gocsv.UnmarshalFile(file, data); err != nil {
+		return LogError(err)
+	}
+	return nil
+}
+
+// UnmarshalJSONLines ...
+func UnmarshalJSONLines(inputFile string, outStruct interface{}) (interface{}, error) {
+	t := reflect.TypeOf(outStruct)
+	if t.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("provided interface is not a struct")
+	}
+
+	file, err := os.Open(inputFile)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file: %w", err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	slice := reflect.MakeSlice(reflect.SliceOf(t), 0, 0)
+
+	for {
+		line, isPrefix, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error reading line: %w", err)
+		}
+
+		var completeLine []byte
+		completeLine = append(completeLine, line...)
+		for isPrefix {
+			line, isPrefix, err = reader.ReadLine()
+			if err != nil {
+				return nil, fmt.Errorf("error reading line continuation: %w", err)
+			}
+			completeLine = append(completeLine, line...)
+		}
+
+		itemPtr := reflect.New(t).Interface()
+		if err := json.Unmarshal(completeLine, itemPtr); err != nil {
+			return nil, fmt.Errorf("error unmarshaling JSON: %w", err)
+		}
+
+		slice = reflect.Append(slice, reflect.ValueOf(itemPtr).Elem())
+	}
+
+	return slice.Interface(), nil
+}
+
 // UnmarshalJSONFile unmarshal a JSON file into a struct
 func UnmarshalJSONFile(filePath string, v interface{}) error {
 	f, err := os.Open(filePath)
