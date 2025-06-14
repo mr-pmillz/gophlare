@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.6](https://github.com/mr-pmillz/gophlare/compare/v1.2.5...v1.2.6) - 2025-06-14
+
+### ✨ New features
+
+- Added :rabbit2: additional leak data ingestors 4 bloodhound - ([2f4a6fa](https://github.com/mr-pmillz/gophlare/commit/2f4a6fa77657f7ab08d4b58582b6c49bce1d6c37))
+
+### 📚 Documentation
+
+- Docs update - ([d83b278](https://github.com/mr-pmillz/gophlare/commit/d83b278437dde73c3878f87bdcaa4bcbb9f67852))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([0cb90ce](https://github.com/mr-pmillz/gophlare/commit/0cb90ce61d3106d4a5a7ca6c71db534bc1963f90))
+
 ## [1.2.5](https://github.com/mr-pmillz/gophlare/compare/v1.2.4...v1.2.5) - 2025-06-11
 
 ### ✨ New features
