@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.7](https://github.com/mr-pmillz/gophlare/compare/v1.2.6...v1.2.7) - 2025-07-02
+
+### 🐛 Bug fixes
+
+- Fixed missing cmd loader for custom query :bug: - ([36183be](https://github.com/mr-pmillz/gophlare/commit/36183be856d57b0b26df8f95bc52be627c0e183a))
+
+### 📚 Documentation
+
+- Docs update - ([037483d](https://github.com/mr-pmillz/gophlare/commit/037483d6da174cbadcb7ea9913ab8a59c5a7b96a))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([d19d4b0](https://github.com/mr-pmillz/gophlare/commit/d19d4b0d757889fbf06015674c0e04e801ef9201))
+
 ## [1.2.6](https://github.com/mr-pmillz/gophlare/compare/v1.2.5...v1.2.6) - 2025-06-14
 
 ### ✨ New features
