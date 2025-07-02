@@ -10,7 +10,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.2.6"
+	gophlareClientVersion = "v1.2.7"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -90,8 +90,8 @@ func (fc *FlareClient) RefreshAPIToken() (*FlareClient, error) {
 }
 
 // QueryGlobalEvents performs a search for global events by domain and returns the results *FlareEventsGlobalSearchResults
-func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to string, severity, eventFilterTypes []string) (*FlareEventsGlobalSearchResults, error) {
-	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to, severity, eventFilterTypes)
+func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain bool) (*FlareEventsGlobalSearchResults, error) {
+	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to, severity, eventFilterTypes, searchStealerLogsByHostDomain)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -282,15 +282,18 @@ func getPastISO8601Date(yearsAgo int) string {
 // Returns aggregated search results or an error in case the operation fails.
 //
 //nolint:gocognit
-func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string) (*FlareEventsGlobalSearchResults, error) {
+func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain bool) (*FlareEventsGlobalSearchResults, error) {
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
 	size := 10
 	var queryString string
-	if query != "" {
+	switch {
+	case query != "":
 		queryString = query
-	} else {
+	case searchStealerLogsByHostDomain:
+		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.domains:%s", domain)
+	default:
 		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.emails:*@%s", domain)
 	}
 	var fromDate string
@@ -363,6 +366,11 @@ flarePaginate:
 	}
 
 	utils.InfoLabelWithColorf("FlareEventsGlobalSearch", "blue", "found %d hits for query: %s", len(allData.Items), queryString)
+	// check if domain is empty string
+	if domain == "" {
+		// if domain was empty, this means a custom query was likely provided without a value provided for the domain flag. in this case generate a file-safe timestamp to be used in the output file name.
+		domain = fmt.Sprintf("custom-query_%d", time.Now().Unix())
+	}
 	// write full events results data to json file
 	if err := utils.WriteStructToJSONFile(allData, fmt.Sprintf("%s/flare-events-stealerlogs-emails-%s.json", outputDir, domain)); err != nil {
 		return nil, utils.LogError(err)

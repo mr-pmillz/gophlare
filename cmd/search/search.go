@@ -46,37 +46,63 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 	}
 
 	allCSVFiles := make([]string, 0)
-	for _, domain := range scope.Domains {
-		utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for %s", domain)
-
-		results, err := phlare.QueryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes)
+	if len(scope.Domains) == 0 && opts.Query != "" {
+		utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for using custom query: %s \n\tFrom: %s To: %s", opts.Query, opts.From, opts.To)
+		results, err := phlare.QueryGlobalEvents(fc, "", flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain)
 		if err != nil {
 			return utils.LogError(err)
 		}
 		numResults := len(results.Items)
 		if numResults == 0 {
-			utils.InfoLabelWithColorf("FLARE", "yellow", "No Stealer Logs found for %s", domain)
-			continue
+			utils.InfoLabelWithColorf("FLARE", "yellow", "No Stealer Logs found for using custom query: %s", opts.Query)
+			return nil
 		}
 		utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
-
-		allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles)
+		_, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, "", scope.UserIDFormats, opts.KeepZipFiles)
 		if err != nil {
 			return utils.LogError(err)
 		}
 
-		csvFileName, err := writeCredentialsToCSV(allFlareStealerLogInScopeCredentials, flareOutputDir, "in-scope", domain)
-		if err != nil {
-			return utils.LogError(err)
-		}
 		// also write all credentials to a CSV file
-		allCredsCSVFileName, err := writeCredentialsToCSV(allFlareStealerLogCredentials, flareOutputDir, "all", domain)
+		allCredsCSVFileName, err := writeCredentialsToCSV(allFlareStealerLogCredentials, flareOutputDir, "all", "")
 		if err != nil {
 			return utils.LogError(err)
 		}
 
-		allCSVFiles = append(allCSVFiles, csvFileName)
 		allCSVFiles = append(allCSVFiles, allCredsCSVFileName)
+	} else {
+		for _, domain := range scope.Domains {
+			utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for %s From: %s To: %s", domain, opts.From, opts.To)
+
+			results, err := phlare.QueryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain)
+			if err != nil {
+				return utils.LogError(err)
+			}
+			numResults := len(results.Items)
+			if numResults == 0 {
+				utils.InfoLabelWithColorf("FLARE", "yellow", "No Stealer Logs found for %s", domain)
+				continue
+			}
+			utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
+
+			allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles)
+			if err != nil {
+				return utils.LogError(err)
+			}
+
+			csvFileName, err := writeCredentialsToCSV(allFlareStealerLogInScopeCredentials, flareOutputDir, "in-scope", domain)
+			if err != nil {
+				return utils.LogError(err)
+			}
+			// also write all credentials to a CSV file
+			allCredsCSVFileName, err := writeCredentialsToCSV(allFlareStealerLogCredentials, flareOutputDir, "all", domain)
+			if err != nil {
+				return utils.LogError(err)
+			}
+
+			allCSVFiles = append(allCSVFiles, csvFileName)
+			allCSVFiles = append(allCSVFiles, allCredsCSVFileName)
+		}
 	}
 
 	if err = exportCSVToExcel(allCSVFiles, flareOutputDir); err != nil {
@@ -332,6 +358,10 @@ func isCredentialValid(cred phlare.FlareStealerLogsCredential) bool {
 // 5. The username is a valid user ID or Domain\username format
 func filterInScopeCredentials(credentials []phlare.FlareStealerLogsCredential, domain string, userIDFormats []string) []phlare.FlareStealerLogsCredential {
 	var filtered []phlare.FlareStealerLogsCredential
+	// if domain is an empty string return all creds
+	if domain == "" {
+		return credentials
+	}
 
 	for _, cred := range credentials {
 		// First, check domain-related matches (independent of userIDFormats)
@@ -375,6 +405,9 @@ func isUsernameEmailDomainMatch(credentialUsername, domain string) bool {
 
 // writeCredentialsToCSV writes credentials to a CSV file
 func writeCredentialsToCSV(credentials []phlare.FlareStealerLogsCredential, outputDir, fileNameLabel, domain string) (string, error) {
+	if domain == "" {
+		domain = fmt.Sprintf("custom-query_%d", time.Now().Unix())
+	}
 	fileName := fmt.Sprintf("%s/FSL-%s-%s.csv", outputDir, fileNameLabel, domain)
 	if err := utils.WriteStructToCSVFile(credentials, fileName); err != nil {
 		return "", utils.LogError(err)

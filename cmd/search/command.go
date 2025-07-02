@@ -30,12 +30,14 @@ var Command = &cobra.Command{
 
 Example Commands:
 	gophlare search --config config.yaml --search-credentials-by-domain
+	gophlare search --config config.yaml --search-stealer-logs-by-host-domain
 	gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0
+	gophlare search --config config.yaml --search-stealer-logs-by-domain --query 'metadata.source:stealer_logs* AND features.FOO:BAR'
 	gophlare search --config config.yaml --search-emails-in-bulk -e emails.txt -o output-directory
 `,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if configFileSet, err := cmd.Flags().GetBool("configfileset"); !configFileSet && err == nil {
-			_ = cmd.MarkPersistentFlagRequired("domain")
+			// _ = cmd.MarkPersistentFlagRequired("domain")
 			_ = cmd.MarkPersistentFlagRequired("output")
 		}
 		return nil
@@ -52,8 +54,8 @@ Example Commands:
 		case opts.gophlareOptions.Output == "":
 			utils.LogFatalf("OUTPUT cannot be empty!")
 		case reflect.TypeOf(opts.gophlareOptions.Domain).Kind() == reflect.String:
-			if opts.gophlareOptions.Domain.(string) == "" {
-				utils.LogFatalf("DOMAIN cannot be empty!")
+			if opts.gophlareOptions.Domain.(string) == "" && opts.gophlareOptions.Query == "" {
+				utils.LogFatalf("DOMAIN and QUERY cannot both be empty!")
 			}
 		}
 
@@ -70,7 +72,7 @@ Example Commands:
 			utils.LogFatalf("Flare API Key and Flare Tenant ID are required to use this tool!")
 		}
 
-		if opts.gophlareOptions.SearchStealerLogsByDomain {
+		if opts.gophlareOptions.SearchStealerLogsByDomain || opts.gophlareOptions.SearchStealerLogsByHostDomain {
 			if err := DownloadAllStealerLogPasswordFiles(&opts.gophlareOptions, scope); err != nil {
 				utils.LogFatalf("Could not download all stealer log password files %s\n", err)
 			}

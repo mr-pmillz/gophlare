@@ -27,8 +27,8 @@ type Options struct {
 func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("bloodhound-users-json-file", "b", "", "Bloodhound JSON file")
 	cmd.PersistentFlags().StringP("flare-creds-by-domain-json-file", "f", "", "Flare credentials by domain JSON file")
-	cmd.PersistentFlags().StringP("stealer-logs-leaks-csv-file", "", "", "Flare stealer logs leaks CSV file")
-	cmd.PersistentFlags().StringP("host-leaks-json-file", "", "", "Host leaks JSON file") // custom leak data file
+	cmd.PersistentFlags().StringP("stealer-logs-leaks-csv-file", "", "", "Flare stealer logs leaks CSV file, optional")
+	cmd.PersistentFlags().StringP("host-leaks-json-file", "", "", "Host leaks JSON file, optional, custom from hoard client, you probs shouldn't use this option unless you know what you're doing") // custom leak data file
 	cmd.PersistentFlags().StringP("output-dir", "o", "", "Output directory")
 	cmd.PersistentFlags().StringP("neo4j-host", "", "", "Neo4j host")
 	cmd.PersistentFlags().StringP("neo4j-port", "", "", "Neo4j port")

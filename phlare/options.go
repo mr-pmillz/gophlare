@@ -34,6 +34,7 @@ type Options struct {
 	SearchCredentialsByDomain       bool
 	SearchEmailsInBulk              bool
 	DownloadSpecificStealerLogFiles bool // not yet implemented
+	SearchStealerLogsByHostDomain   bool
 }
 
 // todaysDate gets today's date as a string in RFC3339 format
@@ -62,17 +63,20 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().IntP("timeout", "", 900, "timeout duration for API requests in seconds")
 	cmd.PersistentFlags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files.")
 	// booleans
-	cmd.PersistentFlags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by domain, download and parse all the matching zip files for passwords and live cookies")
+	cmd.PersistentFlags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by *@email domain(s), download and parse all the matching zip files for passwords and live cookies")
 	cmd.PersistentFlags().BoolP("keep-zip-files", "", false, "keep all the matching downloaded zip files from the stealer logs")
 	cmd.PersistentFlags().BoolP("search-credentials-by-domain", "", false, "search for credentials by domain")
 	cmd.PersistentFlags().BoolP("search-emails-in-bulk", "", false, "search list of emails for credentials.")
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose output")
+	cmd.PersistentFlags().BoolP("search-stealer-logs-by-host-domain", "", false, "search the stealer logs by host domain(s), download and parse all the matching zip files for passwords and live cookies")
 
 	cmd.MarkFlagsRequiredTogether("search-emails-in-bulk", "emails")
 	return nil
 }
 
 // LoadFromCommand loads command-line arguments and flags into the Options struct. It validates and processes the provided inputs.
+//
+//nolint:gocognit
 func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	apiKeys, err := config.LoadAPIKeys()
 	if err != nil {
@@ -88,6 +92,12 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.Verbose = cmdVerbose
+
+	cmdSearchStealerLogsByHostDomain, err := cmd.Flags().GetBool("search-stealer-logs-by-host-domain")
+	if err != nil {
+		return err
+	}
+	opts.SearchStealerLogsByHostDomain = cmdSearchStealerLogsByHostDomain
 
 	cmdKeepZipFiles, err := cmd.Flags().GetBool("keep-zip-files")
 	if err != nil {
@@ -268,6 +278,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.UserAgent = userAgent.(string)
+
+	query, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+		Flag:       "query",
+		IsFilePath: false,
+		Opts:       opts.Query,
+	})
+	if err != nil {
+		return err
+	}
+	opts.Query = query.(string)
 
 	output, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "output",
