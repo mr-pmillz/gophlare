@@ -9,6 +9,7 @@ search the flare api for credentials, emails, and stealer logs
 Example Commands:
 	gophlare search --config config.yaml --search-credentials-by-domain
 	gophlare search --config config.yaml --search-stealer-logs-by-host-domain
+	gophlare search --config config.yaml --search-stealer-logs-by-wildcard-host --keep-zip-files --max-zip-download-limit 0
 	gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0
 	gophlare search --config config.yaml --search-stealer-logs-by-domain --query 'metadata.source:stealer_logs* AND features.FOO:BAR'
 	gophlare search --config config.yaml --search-emails-in-bulk -e emails.txt -o output-directory
@@ -21,28 +22,29 @@ gophlare search [flags]
 ### Options
 
 ```
-  -c, --company string                       company name that your testing
-  -d, --domain string                        domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings
-  -e, --emails string                        emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt
-      --events-filter-types string           flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
-      --files-to-download string             comma separated list of files to match on and download if they exist from the query
-  -f, --from string                          from date used for a filter for stealer log searches. ex. 2021-01-01 
-  -h, --help                                 help for search
-      --keep-zip-files                       keep all the matching downloaded zip files from the stealer logs
-  -m, --max-zip-download-limit int           maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files. (default 50)
-      --out-of-scope string                  out of scope domains, IPs, or CIDRs
-  -o, --output string                        report output dir
-  -q, --query string                         query to use for searching stealer logs.
-      --search-credentials-by-domain         search for credentials by domain
-      --search-emails-in-bulk                search list of emails for credentials.
-      --search-stealer-logs-by-domain        search the stealer logs by *@email domain(s), download and parse all the matching zip files for passwords and live cookies
-      --search-stealer-logs-by-host-domain   search the stealer logs by host domain(s), download and parse all the matching zip files for passwords and live cookies
-  -s, --severity string                      the stealer log severities to filter on. can be a string, a file, or comma-separated list of strings (default "medium,high,critical")
-      --timeout int                          timeout duration for API requests in seconds (default 900)
-      --to string                            to date used for a filter for stealer log searches. ex. 2025-01-01. Defaults to today. (default "2025-07-02")
-      --user-agent string                    custom user-agent to use for requests
-  -u, --user-id-format string                if you know the user ID format ex. a12345 , include this to enhance matching in-scope results. can be a string, a file, or comma-separated list of strings
-  -v, --verbose                              enable verbose output
+  -c, --company string                         company name that your testing
+  -d, --domain string                          domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings
+  -e, --emails string                          emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt
+      --events-filter-types string             flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
+      --files-to-download string               comma separated list of files to match on and download if they exist from the query
+  -f, --from string                            from date used for a filter for stealer log searches. ex. 2021-01-01 
+  -h, --help                                   help for search
+      --keep-zip-files                         keep all the matching downloaded zip files from the stealer logs
+  -m, --max-zip-download-limit int             maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files. (default 50)
+      --out-of-scope string                    out of scope domains, IPs, or CIDRs
+  -o, --output string                          report output dir
+  -q, --query string                           query to use for searching stealer logs.
+      --search-credentials-by-domain           search for credentials by domain
+      --search-emails-in-bulk                  search list of emails for credentials.
+      --search-stealer-logs-by-domain          search the stealer logs by *@email domain(s), download and parse all the matching zip files for passwords and live cookies
+      --search-stealer-logs-by-host-domain     search the stealer logs by host domain(s), download and parse all the matching zip files for passwords and live cookies
+      --search-stealer-logs-by-wildcard-host   search the stealer logs by host wildcard domain(s), (*.example.com) download and parse all the matching zip files for passwords and live cookies
+  -s, --severity string                        the stealer log severities to filter on. can be a string, a file, or comma-separated list of strings (default "medium,high,critical")
+      --timeout int                            timeout duration for API requests in seconds (default 900)
+      --to string                              to date used for a filter for stealer log searches. ex. 2025-01-01. Defaults to today. (default "2025-08-01")
+      --user-agent string                      custom user-agent to use for requests
+  -u, --user-id-format string                  if you know the user ID format ex. a12345 , include this to enhance matching in-scope results. can be a string, a file, or comma-separated list of strings
+  -v, --verbose                                enable verbose output
 ```
 
 ### Options inherited from parent commands
@@ -56,4 +58,4 @@ gophlare search [flags]
 
 * [gophlare](gophlare.md)	 - client for flare.io api
 
-###### Auto generated by spf13/cobra on 2-Jul-2025
+###### Auto generated by spf13/cobra on 1-Aug-2025

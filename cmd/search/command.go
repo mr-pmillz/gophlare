@@ -31,6 +31,7 @@ var Command = &cobra.Command{
 Example Commands:
 	gophlare search --config config.yaml --search-credentials-by-domain
 	gophlare search --config config.yaml --search-stealer-logs-by-host-domain
+	gophlare search --config config.yaml --search-stealer-logs-by-wildcard-host --keep-zip-files --max-zip-download-limit 0
 	gophlare search --config config.yaml --search-stealer-logs-by-domain --keep-zip-files --max-zip-download-limit 0
 	gophlare search --config config.yaml --search-stealer-logs-by-domain --query 'metadata.source:stealer_logs* AND features.FOO:BAR'
 	gophlare search --config config.yaml --search-emails-in-bulk -e emails.txt -o output-directory
