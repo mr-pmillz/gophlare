@@ -1,6 +1,6 @@
 module github.com/mr-pmillz/gophlare
 
-go 1.23.0
+go 1.24.0
 
 require (
 	github.com/SpecterOps/bloodhound-go-sdk v1.0.1

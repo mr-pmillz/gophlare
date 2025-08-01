@@ -72,7 +72,7 @@ Example Commands:
 			utils.LogFatalf("Flare API Key and Flare Tenant ID are required to use this tool!")
 		}
 
-		if opts.gophlareOptions.SearchStealerLogsByDomain || opts.gophlareOptions.SearchStealerLogsByHostDomain {
+		if opts.gophlareOptions.SearchStealerLogsByDomain || opts.gophlareOptions.SearchStealerLogsByHostDomain || opts.gophlareOptions.SearchStealerLogsByWildcardHost {
 			if err := DownloadAllStealerLogPasswordFiles(&opts.gophlareOptions, scope); err != nil {
 				utils.LogFatalf("Could not download all stealer log password files %s\n", err)
 			}

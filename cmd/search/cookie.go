@@ -92,7 +92,9 @@ func FindHighValueCookies(cookies []phlare.Cookie) []phlare.Cookie {
 			}
 		}
 	}
-	utils.InfoLabelWithColorf("COOKIES", "magenta", "Found %d live high value cookies", len(highValueCookies))
+	if len(highValueCookies) >= 1 {
+		utils.InfoLabelWithColorf("COOKIES", "magenta", "Found %d live high value cookies", len(highValueCookies))
+	}
 	return highValueCookies
 }
 

@@ -35,6 +35,7 @@ type Options struct {
 	SearchEmailsInBulk              bool
 	DownloadSpecificStealerLogFiles bool // not yet implemented
 	SearchStealerLogsByHostDomain   bool
+	SearchStealerLogsByWildcardHost bool
 }
 
 // todaysDate gets today's date as a string in RFC3339 format
@@ -69,6 +70,7 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().BoolP("search-emails-in-bulk", "", false, "search list of emails for credentials.")
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose output")
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-host-domain", "", false, "search the stealer logs by host domain(s), download and parse all the matching zip files for passwords and live cookies")
+	cmd.PersistentFlags().BoolP("search-stealer-logs-by-wildcard-host", "", false, "search the stealer logs by host wildcard domain(s), (*.example.com) download and parse all the matching zip files for passwords and live cookies")
 
 	cmd.MarkFlagsRequiredTogether("search-emails-in-bulk", "emails")
 	return nil
@@ -98,6 +100,12 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.SearchStealerLogsByHostDomain = cmdSearchStealerLogsByHostDomain
+
+	cmdSearchStealerLogsByWildcardHost, err := cmd.Flags().GetBool("search-stealer-logs-by-wildcard-host")
+	if err != nil {
+		return err
+	}
+	opts.SearchStealerLogsByWildcardHost = cmdSearchStealerLogsByWildcardHost
 
 	cmdKeepZipFiles, err := cmd.Flags().GetBool("keep-zip-files")
 	if err != nil {

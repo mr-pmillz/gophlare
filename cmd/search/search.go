@@ -48,7 +48,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 	allCSVFiles := make([]string, 0)
 	if len(scope.Domains) == 0 && opts.Query != "" {
 		utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for using custom query: %s \n\tFrom: %s To: %s", opts.Query, opts.From, opts.To)
-		results, err := phlare.QueryGlobalEvents(fc, "", flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain)
+		results, err := phlare.QueryGlobalEvents(fc, "", flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain, opts.SearchStealerLogsByWildcardHost)
 		if err != nil {
 			return utils.LogError(err)
 		}
@@ -74,7 +74,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		for _, domain := range scope.Domains {
 			utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for %s From: %s To: %s", domain, opts.From, opts.To)
 
-			results, err := phlare.QueryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain)
+			results, err := phlare.QueryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain, opts.SearchStealerLogsByWildcardHost)
 			if err != nil {
 				return utils.LogError(err)
 			}

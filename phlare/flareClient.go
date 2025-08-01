@@ -10,7 +10,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.2.7"
+	gophlareClientVersion = "v1.2.8"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -90,8 +90,8 @@ func (fc *FlareClient) RefreshAPIToken() (*FlareClient, error) {
 }
 
 // QueryGlobalEvents performs a search for global events by domain and returns the results *FlareEventsGlobalSearchResults
-func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain bool) (*FlareEventsGlobalSearchResults, error) {
-	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to, severity, eventFilterTypes, searchStealerLogsByHostDomain)
+func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
+	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to, severity, eventFilterTypes, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -282,7 +282,7 @@ func getPastISO8601Date(yearsAgo int) string {
 // Returns aggregated search results or an error in case the operation fails.
 //
 //nolint:gocognit
-func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain bool) (*FlareEventsGlobalSearchResults, error) {
+func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
@@ -293,6 +293,8 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 		queryString = query
 	case searchStealerLogsByHostDomain:
 		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.domains:%s", domain)
+	case searchStealerLogsByWildcardHost:
+		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.domains:*.%s", domain)
 	default:
 		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.emails:*@%s", domain)
 	}

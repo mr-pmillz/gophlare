@@ -41,7 +41,7 @@ func LogWarningf(format string, args ...interface{}) {
 	msgColor.EnableColor()
 	msgStyle := msgColor.Sprintf("%s %s", emoji, msg) //nolint:govet
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelWarning)
-	gologger.Warning().Label("WARN").Msgf(msgStyle) //nolint:govet
+	gologger.Warning().Label("WARN").Msgf("%s", msgStyle) //nolint:govet
 }
 
 // LogFatalf is a wrapper around gologger Fatal method
@@ -86,5 +86,5 @@ func InfoLabelWithColorf(label, colorString, format string, args ...interface{})
 	// Combine emoji with colored message
 	msgStyle := msgColor.Sprintf("%s %s", emoji, msg) //nolint:govet
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelInfo)
-	gologger.Info().Label(label).Msgf(msgStyle) //nolint:govet
+	gologger.Info().Label(label).Msgf("%s", msgStyle) //nolint:govet
 }
