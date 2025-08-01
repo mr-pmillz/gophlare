@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.2.8](https://github.com/mr-pmillz/gophlare/compare/v1.2.7...v1.2.8) - 2025-08-01
+
+### ✨ New features
+
+- Add wildcard host global event search option - ([cb36a65](https://github.com/mr-pmillz/gophlare/commit/cb36a65e6c443b0f90be25775735d12c438dc509))
+
+### 🛠 Improvements
+
+- Update docs - ([4144d53](https://github.com/mr-pmillz/gophlare/commit/4144d53a78713b6768442cd59d657655ac54a967))
+
+### ⚙️  Miscellaneous
+
+- Update changelog - ([1cf8ca2](https://github.com/mr-pmillz/gophlare/commit/1cf8ca29208514b752c78be9677da2316eaa8371))
+
 ## [1.2.7](https://github.com/mr-pmillz/gophlare/compare/v1.2.6...v1.2.7) - 2025-07-02
 
 ### 🐛 Bug fixes
