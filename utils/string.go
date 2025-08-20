@@ -2,12 +2,13 @@ package utils
 
 import (
 	"fmt"
-	valid "github.com/asaskevich/govalidator"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	valid "github.com/asaskevich/govalidator"
 )
 
 // FormatDate Accepts multiple input formats: MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD

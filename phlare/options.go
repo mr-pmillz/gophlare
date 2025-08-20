@@ -1,11 +1,12 @@
 package phlare
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/mr-pmillz/gophlare/config"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/spf13/cobra"
-	"reflect"
-	"time"
 )
 
 // Options holds configuration options for various command-line arguments and flags.
@@ -19,7 +20,7 @@ type Options struct {
 	Version                         string
 	From                            string
 	To                              string
-	Domain                          interface{}
+	Domains                         interface{}
 	FilesToDownload                 interface{}
 	OutOfScope                      interface{}
 	Emails                          interface{}
@@ -53,7 +54,7 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("from", "f", "", "from date used for a filter for stealer log searches. ex. 2021-01-01 ")
 	cmd.PersistentFlags().StringP("to", "", todaysDate(), "to date used for a filter for stealer log searches. ex. 2025-01-01. Defaults to today.")
 	// strings of interface type that can be a file, a slice, or a singular string
-	cmd.PersistentFlags().StringP("domain", "d", "", "domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings")
+	cmd.PersistentFlags().StringP("domains", "d", "", "domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings")
 	cmd.PersistentFlags().StringP("out-of-scope", "", "", "out of scope domains, IPs, or CIDRs")
 	cmd.PersistentFlags().StringP("files-to-download", "", "", "comma separated list of files to match on and download if they exist from the query")
 	cmd.PersistentFlags().StringP("emails", "e", "", "emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt")
@@ -209,9 +210,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	}
 
 	domain, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
-		Flag:                 "domain",
+		Flag:                 "domains",
 		IsFilePath:           true,
-		Opts:                 opts.Domain,
+		Opts:                 opts.Domains,
 		CommaInStringToSlice: true,
 	})
 	if err != nil {
@@ -220,9 +221,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	rt = reflect.TypeOf(domain)
 	switch rt.Kind() {
 	case reflect.Slice:
-		opts.Domain = domain.([]string)
+		opts.Domains = domain.([]string)
 	case reflect.String:
-		opts.Domain = domain.(string)
+		opts.Domains = domain.(string)
 	default:
 		// Do Nothing
 	}

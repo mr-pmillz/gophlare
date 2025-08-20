@@ -355,7 +355,7 @@ func isCredentialValid(cred phlare.FlareStealerLogsCredential) bool {
 // 2. The username contains an email with the target domain
 // 3. The username has a prefix matching the base domain name (without TLD)
 // 4. The username matches any of the provided userID formats
-// 5. The username is a valid user ID or Domain\username format
+// 5. The username is a valid user ID or Domains\username format
 func filterInScopeCredentials(credentials []phlare.FlareStealerLogsCredential, domain string, userIDFormats []string) []phlare.FlareStealerLogsCredential {
 	var filtered []phlare.FlareStealerLogsCredential
 	// if domain is an empty string return all creds

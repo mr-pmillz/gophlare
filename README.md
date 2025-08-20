@@ -65,7 +65,7 @@ Usage:
 
 Flags:
   -c, --company string                         company name that your testing
-  -d, --domain string                          domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings
+  -d, --domains string                         domains string, can be a file file containing domainss ex. domains.txt, or comma-separated list of strings
   -e, --emails string                          emails to check in bulk. Can be a comma separated slice or a file containing emails. ex. emails.txt
       --events-filter-types string             flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
       --files-to-download string               comma separated list of files to match on and download if they exist from the query

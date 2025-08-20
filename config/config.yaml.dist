@@ -7,7 +7,7 @@ TIMEOUT: 600
 # TO if left blank defaults to today's date
 FROM: "2023-01-01"
 TO: "2025-02-19"
-DOMAIN: |-
+DOMAINS: |-
   todo.foo
 USER_ID_FORMAT: |-
   a1234

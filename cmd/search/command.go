@@ -1,11 +1,12 @@
 package search
 
 import (
+	"os"
+	"reflect"
+
 	"github.com/mr-pmillz/gophlare/phlare"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/spf13/cobra"
-	"os"
-	"reflect"
 )
 
 type Options struct {
@@ -54,9 +55,9 @@ Example Commands:
 		switch {
 		case opts.gophlareOptions.Output == "":
 			utils.LogFatalf("OUTPUT cannot be empty!")
-		case reflect.TypeOf(opts.gophlareOptions.Domain).Kind() == reflect.String:
-			if opts.gophlareOptions.Domain.(string) == "" && opts.gophlareOptions.Query == "" {
-				utils.LogFatalf("DOMAIN and QUERY cannot both be empty!")
+		case reflect.TypeOf(opts.gophlareOptions.Domains).Kind() == reflect.String:
+			if opts.gophlareOptions.Domains.(string) == "" && opts.gophlareOptions.Query == "" {
+				utils.LogFatalf("DOMAINS and QUERY cannot both be empty!")
 			}
 		}
 

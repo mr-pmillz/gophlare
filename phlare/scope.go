@@ -46,18 +46,18 @@ func NewScope(opts *Options) (*Scope, error) {
 	}
 
 	// check if domain arg is file, string, or a slice
-	rtd := reflect.TypeOf(opts.Domain)
+	rtd := reflect.TypeOf(opts.Domains)
 	if rtd == nil {
 		scope.Domains = make([]string, 0)
 	} else {
 		switch rtd.Kind() {
 		case reflect.Slice:
-			for _, domain := range opts.Domain.([]string) {
+			for _, domain := range opts.Domains.([]string) {
 				scope.addDomains(domain)
 			}
 		case reflect.String:
-			if isFile, err := utils.Exists(opts.Domain.(string)); isFile && err == nil {
-				domainList, err := utils.ReadLines(opts.Domain.(string))
+			if isFile, err := utils.Exists(opts.Domains.(string)); isFile && err == nil {
+				domainList, err := utils.ReadLines(opts.Domains.(string))
 				if err != nil {
 					return nil, err
 				}
@@ -67,7 +67,7 @@ func NewScope(opts *Options) (*Scope, error) {
 					scope.addDomains(domain)
 				}
 			} else {
-				scope.addDomains(opts.Domain.(string))
+				scope.addDomains(opts.Domains.(string))
 			}
 		default:
 			// Do Nothing

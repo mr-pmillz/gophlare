@@ -2,12 +2,13 @@ package bloodhound
 
 import (
 	"fmt"
-	"github.com/mr-pmillz/gophlare/bloodhound"
-	"github.com/mr-pmillz/gophlare/utils"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/mr-pmillz/gophlare/bloodhound"
+	"github.com/mr-pmillz/gophlare/utils"
 )
 
 // ProcessData ...
@@ -64,7 +65,7 @@ func CreateShortestPathsFromBreachedCredentialsQueriesBHCE(opts *bloodhound.Opti
 		return utils.LogError(err)
 	}
 
-	shortestPathsToDomainAdminsFromBreachedCredentialsQueryName := "Shortest Paths to Domain Admins from Breached Credential Users"
+	shortestPathsToDomainAdminsFromBreachedCredentialsQueryName := "Shortest Paths to Domains Admin from Breached Credential Users"
 	shortestPathsToDomainAdminsFromBreachedCredentialsQuery := "MATCH p=shortestPath((t:Group)<-[:Owns|GenericAll|GenericWrite|WriteOwner|WriteDacl|MemberOf|ForceChangePassword|AllExtendedRights|AddMember|HasSession|GPLink|AllowedToDelegate|CoerceToTGT|AllowedToAct|AdminTo|CanPSRemote|CanRDP|ExecuteDCOM|HasSIDHistory|AddSelf|DCSync|ReadLAPSPassword|ReadGMSAPassword|DumpSMSAPassword|SQLAdmin|AddAllowedToAct|WriteSPN|AddKeyCredentialLink|SyncLAPSPassword|WriteAccountRestrictions|WriteGPLink|GoldenCert|ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC6a|ADCSESC6b|ADCSESC9a|ADCSESC9b|ADCSESC10a|ADCSESC10b|ADCSESC13|SyncedToEntraUser|CoerceAndRelayNTLMToSMB|CoerceAndRelayNTLMToADCS|WriteOwnerLimitedRights|OwnsLimitedRights|CoerceAndRelayNTLMToLDAP|CoerceAndRelayNTLMToLDAPS|Contains|DCFor|TrustedBy*1..]-(s:Base)) WHERE t.objectid ENDS WITH '-512' AND s.hasbreachdata = true AND s<>t RETURN p LIMIT 1000"
 
 	if err = bhClient.SaveCustomQueryBloodHoundCE(shortestPathsToDomainAdminsFromBreachedCredentialsQueryName, shortestPathsToDomainAdminsFromBreachedCredentialsQuery); err != nil {
