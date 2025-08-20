@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/mr-pmillz/gophlare/cmd/bloodhound"
 	"github.com/mr-pmillz/gophlare/cmd/docs"
 	"github.com/mr-pmillz/gophlare/cmd/search"
@@ -10,13 +13,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"os"
-	"strings"
 )
 
 var (
 	cfgFile       string
-	version       = "v1.2.8"
+	version       = "v1.2.9"
 	configFileSet bool
 )
 
