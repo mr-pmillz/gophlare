@@ -44,8 +44,8 @@ Gophlare currently supports the following API endpoints:
 * /firework/v2/activities/{UID}/download
 * /firework/v2/activities/{UID}/download_file
 * [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search)
-* [/leaksdb/v2/credentials/_search](https://api.docs.flare.io/api-reference/leaksdb/endpoints/post-credentials-search)
-* [/leaksdb/v2/cookies/_search](https://api.docs.flare.io/api-reference/leaksdb/endpoints/post-cookies-search)
+* [/astp/v2/credentials/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-credentials-search)
+* [/astp/v2/cookies/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-cookies-search)
 
 ## Usage
 

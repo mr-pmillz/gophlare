@@ -3,14 +3,15 @@ package search
 import (
 	"bufio"
 	"fmt"
-	"github.com/mr-pmillz/gophlare/phlare"
-	"github.com/mr-pmillz/gophlare/utils"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/mr-pmillz/gophlare/phlare"
+	"github.com/mr-pmillz/gophlare/utils"
 )
 
 // FlareCredentialPairs ...
@@ -31,7 +32,7 @@ type FlareCreds struct {
 }
 
 // DownloadAllStealerLogPasswordFiles retrieves and processes stealer log password files for specified domains in the given scope.
-// It initializes necessary directories, queries Flare API for events, downloads relevant zip files, extracts credentials,
+// It initializes the necessary directories, queries Flare API for events, downloads relevant zip files, extracts credentials,
 // and compiles the results into CSV and Excel files. Logs errors and status updates throughout its execution.
 // Returns an error if any operation fails during the entire process.
 func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scope) error {
@@ -442,7 +443,7 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 		outputJSON := fmt.Sprintf("%s/flare-leaks-%s.json", flareOutputDir, domain)
 		outputCSV := fmt.Sprintf("%s/flare-leaks-%s.csv", flareOutputDir, domain)
 		utils.InfoLabelWithColorf("FLARE LEAK DATA", "blue", "Checking Flare Leaked Credentials API for %s", domain)
-		data, err := fc.FlareLeakedCredentialsByDomain(domain)
+		data, err := fc.FlareSearchCredentialsByDomainASTP(domain)
 		if err != nil {
 			utils.LogWarningf("something went wrong retrieving flare leak data for %s, Error: %s", domain, err.Error())
 			continue
@@ -502,7 +503,7 @@ func UniqueCredentials(credentials []phlare.FlareStealerLogsCredential) []phlare
 //   - allData: Pointer to FlareSearchCredentials containing the data to be processed.
 //
 // Returns an error if file writing or other processing fails.
-func parseFlareDataWriteToOutputFiles(domain, outputDir string, allData *phlare.FlareSearchCredentials) error {
+func parseFlareDataWriteToOutputFiles(domain, outputDir string, allData *phlare.FlareSearchCredentialsASTP) error {
 	uniqueEmailsCount := len(allData.Items)
 	var allEmails []string
 	var userPass []string
@@ -513,6 +514,10 @@ func parseFlareDataWriteToOutputFiles(domain, outputDir string, allData *phlare.
 	for _, i := range allData.Items {
 		allEmails = append(allEmails, i.IdentityName)
 		if i.Hash != "" && !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, "nil", "<nil>", " "}, i.Hash) {
+			// also filter out likely encrypted values and hashes. These will remain in the CSV and XLSX files for analysis but no need to include in spraying files.
+			if utils.IsHash(i.Hash) {
+				continue
+			}
 			userPassKey := fmt.Sprintf("%s:%s", i.IdentityName, i.Hash)
 			// Check if this pair has already been added
 			if !uniqueUserPass[userPassKey] {
@@ -530,7 +535,7 @@ func parseFlareDataWriteToOutputFiles(domain, outputDir string, allData *phlare.
 	if err := utils.WriteLines(uniqueEmails, fmt.Sprintf("%s/flare-unique-emails-%s.txt", outputDir, domain)); err != nil {
 		return utils.LogError(err)
 	}
-	utils.InfoLabelWithColorf("FLARE LEAK DATA", "green", "Found %d unique credential pairs for %s", len(userPass), domain)
+	utils.InfoLabelWithColorf("FLARE LEAK DATA", "green", "Found %d unique cleartext credential pairs for %s", len(userPass), domain)
 	if err := utils.WriteLines(userPass, fmt.Sprintf("%s/flare-unique-creds-%s.txt", outputDir, domain)); err != nil {
 		return utils.LogError(err)
 	}
@@ -608,7 +613,7 @@ func getSortedKeys(m map[string]bool) []string {
 const nullString = "null"
 
 // setFlareCredentialPairsStructFromFlareData parses FlareSearchCredentials and maps them to a FlareCreds structure.
-func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredentials) *FlareCreds {
+func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredentialsASTP) *FlareCreds {
 	flareCreds := &FlareCreds{}
 	for _, v := range data.Items {
 		flareData := FlareCredentialPairs{}

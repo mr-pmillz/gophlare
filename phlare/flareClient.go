@@ -4,13 +4,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/mr-pmillz/gophlare/utils"
 	"time"
+
+	"github.com/mr-pmillz/gophlare/utils"
 )
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.2.9"
+	gophlareClientVersion = "v1.3.0"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -469,7 +470,7 @@ func mergeResults(main, batch FlareListByBulkAccountResponse) FlareListByBulkAcc
 // Accepts domain name, output directory path, cookie names, and paths for filtering the search.
 // Returns a response containing leaked cookie data or an error in case of a failure.
 func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cookieNames, paths []string) (*FlareSearchCookiesResponse, error) {
-	flareSearchCookiesURL := fmt.Sprintf("%s/leaksdb/v2/cookies/_search", flareAPIBaseURL)
+	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
 	allData := &FlareSearchCookiesResponse{}
 	size := 500
@@ -532,13 +533,13 @@ flarePaginate:
 	return allData, nil
 }
 
-// FlareLeakedCredentialsByDomain searches for leaked credentials associated with a specific domain in Flare's database.
+// FlareSearchCredentialsByDomainASTP searches for leaked credentials associated with a specific domain in Flare's database.
 // This method aggregates results via pagination and exports the final data to JSON files in the specified output directory.
 // Returns aggregated leaked credentials or an error if the operation fails.
-func (fc *FlareClient) FlareLeakedCredentialsByDomain(domain string) (*FlareSearchCredentials, error) {
-	flareLeaksByDomainURL := fmt.Sprintf("%s/leaksdb/v2/credentials/_search", flareAPIBaseURL)
+func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*FlareSearchCredentialsASTP, error) {
+	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
-	allData := &FlareSearchCredentials{}
+	allData := &FlareSearchCredentialsASTP{}
 	size := "10000"
 	postBody := &FlareSearchCredentialsBodyParams{
 		Size: size,
@@ -555,7 +556,7 @@ flarePaginate:
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
-		data := &FlareSearchCredentials{}
+		data := &FlareSearchCredentialsASTP{}
 		statusCode, err := fc.Client.DoReq(flareLeaksByDomainURL, "POST", data, headers, nil, postBodyJSON)
 		if err != nil {
 			return nil, utils.LogError(err)

@@ -182,10 +182,10 @@ func CompareBreachedAtToPasswordLastSetDate(breachedAt, passwordLastSet interfac
 
 // IsHash checks if the input string matches the format of common hash algorithm formats.
 // hopefully a temporary work-around since flare does not distinguish by credential type and groups hashes and cleartext passwords into the same hash key.
-// this is to reduce non cleartext password results noise that can muddy up the cred stuffing auto generated lists...
+// this is to reduce non-cleartext password results noise that can muddy up the cred stuffing auto-generated lists...
 func IsHash(input string) bool {
-	// Normalize input by trimming whitespace and converting to lowercase
-	input = strings.TrimSpace(strings.ToLower(input))
+	// Normalize input by trimming whitespace
+	input = strings.TrimSpace(input)
 
 	// Define regex patterns for hash formats
 	hashPatterns := map[string]string{
@@ -196,7 +196,7 @@ func IsHash(input string) bool {
 		"SHA-256":   "^[a-f0-9]{64}$",
 		"SHA-384":   "^[a-f0-9]{96}$",
 		"SHA-512":   "^[a-f0-9]{128}$",
-		"Blowfish":  `^\$2[aby]?\$\d{1,2}\$[./a-zA-Z0-9]{53}$`, // Blowfish ($2a$, $2b$, $2y$)
+		"Blowfish":  `^\$2[aby]?\$\d{1,2}\$[.\/a-zA-Z0-9]{53}$`, // Blowfish ($2a$, $2b$, $2y$)
 	}
 
 	// Check the input against each pattern
@@ -217,10 +217,16 @@ func IsHash(input string) bool {
 
 // IsLikelyAnEncryptedValue checks if the given input string is likely an encrypted value by evaluating its format.
 func IsLikelyAnEncryptedValue(input string) bool {
-	// Normalize input by trimming whitespace and converting to lowercase
-	input = strings.TrimSpace(strings.ToLower(input))
+	// Normalize input by trimming whitespace
+	input = strings.TrimSpace(input)
 	if strings.HasSuffix(input, "=") && valid.IsBase64(input) {
 		// likely an encrypted value that flare includes in the Items[n].Hash key...
+		return true
+	}
+	if valid.IsBase64(input) && len(input) > 50 {
+		return true
+	}
+	if strings.HasSuffix(input, "=") && len(input) > 64 {
 		return true
 	}
 

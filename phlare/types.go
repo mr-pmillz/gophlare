@@ -32,6 +32,30 @@ type FlareDomainQuery struct {
 	Fqdn string `json:"fqdn"`
 }
 
+// FlareSearchCredentialsASTP is the JSON response for the /astp/v2/credentials/_search endpoint
+type FlareSearchCredentialsASTP struct {
+	Items []struct {
+		Domain          string      `json:"domain,omitempty"`
+		Hash            string      `json:"hash,omitempty"`
+		HashType        interface{} `json:"hash_type,omitempty"`
+		ID              int64       `json:"id,omitempty"`
+		IdentityName    string      `json:"identity_name,omitempty"`
+		ImportedAt      time.Time   `json:"imported_at,omitempty"`
+		KnownPasswordID interface{} `json:"known_password_id,omitempty"`
+		Source          struct {
+			BreachedAt     interface{} `json:"breached_at,omitempty"`
+			DescriptionEn  string      `json:"description_en,omitempty"`
+			DescriptionFr  string      `json:"description_fr,omitempty"`
+			ID             string      `json:"id,omitempty"`
+			IsAlertEnabled bool        `json:"is_alert_enabled,omitempty"`
+			LeakedAt       interface{} `json:"leaked_at,omitempty"`
+			Name           string      `json:"name,omitempty"`
+		} `json:"source,omitempty"`
+		SourceID string `json:"source_id,omitempty"`
+	} `json:"items,omitempty"`
+	Next *string `json:"next,omitempty"`
+}
+
 // FlareSearchCredentials is the JSON response for the /leaksdb/v2/credentials/_search endpoint
 type FlareSearchCredentials struct {
 	Items []struct {
@@ -69,14 +93,14 @@ type FlareSearchCookiesBodyParams struct {
 // FlareSearchCookiesResponse ...
 type FlareSearchCookiesResponse struct {
 	Items []struct {
-		UUID         string    `json:"uuid,omitempty"`
-		Domain       string    `json:"domain,omitempty"`
-		ExpiresAt    time.Time `json:"expires_at,omitempty"`
-		ImportedAt   time.Time `json:"imported_at,omitempty"`
-		Name         string    `json:"name,omitempty"`
-		Path         string    `json:"path,omitempty"`
-		StealerLogID string    `json:"stealer_log_id,omitempty"`
-		Value        string    `json:"value,omitempty"`
+		UUID       string    `json:"uuid,omitempty"`
+		Domain     string    `json:"domain,omitempty"`
+		ExpiresAt  time.Time `json:"expires_at,omitempty"`
+		ImportedAt time.Time `json:"imported_at,omitempty"`
+		Name       string    `json:"name,omitempty"`
+		Path       string    `json:"path,omitempty"`
+		EventUID   string    `json:"event_uid,omitempty"`
+		Value      string    `json:"value,omitempty"`
 	} `json:"items,omitempty"`
 	Next *string `json:"next,omitempty"`
 }

@@ -2,13 +2,14 @@ package bloodhound
 
 import (
 	"encoding/json"
-	valid "github.com/asaskevich/govalidator"
-	"github.com/mr-pmillz/gophlare/phlare"
-	"github.com/mr-pmillz/gophlare/utils"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	valid "github.com/asaskevich/govalidator"
+	"github.com/mr-pmillz/gophlare/phlare"
+	"github.com/mr-pmillz/gophlare/utils"
 )
 
 const nullString = "null"
@@ -81,8 +82,8 @@ func setFlareCredentialPairsStructFromStealerLogCSVFileData(data *[]StealerLogsC
 	return flareCreds
 }
 
-// setFlareCredentialPairsStructFromFlareData parses FlareSearchCredentials and maps them to a FlareCreds structure.
-func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredentials) *FlareCreds {
+// setFlareCredentialPairsStructFromFlareData parses FlareSearchCredentialsASTP and maps them to a FlareCreds structure.
+func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredentialsASTP) *FlareCreds {
 	flareCreds := &FlareCreds{}
 	for _, v := range data.Items {
 		flareData := FlareCredentialPairs{}
@@ -129,7 +130,7 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 
 // ParseFlareLeaksByDomainFile ...
 func ParseFlareLeaksByDomainFile(filePath string) (*FlareCreds, error) {
-	var data phlare.FlareSearchCredentials
+	var data phlare.FlareSearchCredentialsASTP
 	if err := utils.UnmarshalJSONFile(filePath, &data); err != nil {
 		return nil, err
 	}
