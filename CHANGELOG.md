@@ -4,6 +4,21 @@ All notable changes to this project will be documented [here](https://github.com
 
 ### Commit Statistics
 
+- 2 commit(s) contributed to the release.
+- 30 day(s) passed between the first and last commit.
+- 0 commit(s) parsed as conventional.
+- 0 linked issue(s) detected in commits.
+
+- 30 day(s) passed between releases.## [1.3.0](https://github.com/mr-pmillz/gophlare/compare/v1.2.9...v1.3.0) - 2025-09-19
+
+### ⚙️  Miscellaneous
+
+- Replaced deprecated api endpoints
+optimized hash filtering - ([32cf343](https://github.com/mr-pmillz/gophlare/commit/32cf3436cf80b49b1b8992c1c9112c007c156148))
+- Update changelog - ([444c0ef](https://github.com/mr-pmillz/gophlare/commit/444c0ef570a19d251960ebd2faca68df17bd4340))
+
+### Commit Statistics
+
 - 3 commit(s) contributed to the release.
 - 19 day(s) passed between the first and last commit.
 - 0 commit(s) parsed as conventional.
