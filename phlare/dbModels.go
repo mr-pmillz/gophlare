@@ -23,20 +23,41 @@ type BreachCredential struct {
 	Domain   string `gorm:"index"`
 }
 
-// FlareCredentialPairsDB ...
+// FlareCredentialPairsDB represents credential pairs from Flare's leaks database
 type FlareCredentialPairsDB struct {
 	gorm.Model
-	Email      string
-	Password   string
-	Hash       string
-	SourceID   string
-	Domain     string
-	ImportedAt *time.Time
-	LeakedAt   *time.Time
-	BreachedAt *time.Time
+	Email      string     `gorm:"type:varchar(255);index"`
+	Password   string     `gorm:"type:text"`
+	Hash       string     `gorm:"type:varchar(255);index"`
+	SourceID   string     `gorm:"type:varchar(255);index"`
+	Domain     string     `gorm:"type:varchar(255);index"`
+	ImportedAt *time.Time `gorm:"index"`
+	LeakedAt   *time.Time `gorm:"index"`
+	BreachedAt *time.Time `gorm:"index"`
+}
+
+// FlareCredentialASTP represents credentials from Flare's ASTP v2 credentials search endpoint
+type FlareCredentialASTP struct {
+	gorm.Model
+	FlareID             int64      `gorm:"index"`
+	Domain              string     `gorm:"type:varchar(255);index"`
+	Hash                string     `gorm:"type:varchar(255);index"`
+	HashType            string     `gorm:"type:varchar(100)"`
+	IdentityName        string     `gorm:"type:varchar(255);index"`
+	ImportedAt          *time.Time `gorm:"index"`
+	KnownPasswordID     string     `gorm:"type:varchar(255)"`
+	SourceID            string     `gorm:"type:varchar(255);index"`
+	SourceName          string     `gorm:"type:varchar(255);index"`
+	SourceDescriptionEn string     `gorm:"type:text"`
+	SourceDescriptionFr string     `gorm:"type:text"`
+	SourceBreachedAt    *time.Time `gorm:"index"`
+	SourceLeakedAt      *time.Time `gorm:"index"`
+	IsAlertEnabled      bool
 }
 
 // StealerLog represents the main activity/stealer log entry
+//
+//nolint:staticcheck
 type StealerLog struct {
 	gorm.Model
 	// Data fields
@@ -222,6 +243,8 @@ type StealerLogFeatureReversedDomain struct {
 }
 
 // StealerLogFeatureUrl represents URLs in features
+//
+//nolint:staticcheck
 type StealerLogFeatureUrl struct {
 	gorm.Model
 	StealerLogID uint   `gorm:"index"`

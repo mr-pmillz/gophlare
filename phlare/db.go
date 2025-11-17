@@ -35,6 +35,8 @@ func InitializeBreachDatabase(company string) (*Database, error) {
 	}
 	if err = conn.AutoMigrate(
 		&BreachCredential{},
+		&FlareCredentialPairsDB{},
+		&FlareCredentialASTP{},
 		&StealerLog{},
 		&StealerLogCredential{},
 		&StealerLogCookie{},
@@ -54,6 +56,8 @@ func InitializeBreachDatabase(company string) (*Database, error) {
 }
 
 // InsertStealerLogActivities inserts FlareFireworkActivitiesIndexSourceIDv2Response data into the database in batches
+//
+//nolint:gocognit
 func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActivitiesIndexSourceIDv2Response, batchSize int) error {
 	if batchSize <= 0 {
 		batchSize = 100
@@ -410,6 +414,193 @@ func (db *Database) InsertFlareStealerLogsCredentials(credentials []FlareStealer
 		if err := db.CreateInBatches(breachCredentials, batchSize).Error; err != nil {
 			return utils.LogError(err)
 		}
+	}
+
+	return nil
+}
+
+// FlareCredentialPairInput represents input data for inserting Flare credential pairs
+type FlareCredentialPairInput struct {
+	Email      string
+	Password   string
+	Hash       string
+	SourceID   string
+	Domain     string
+	ImportedAt time.Time
+	LeakedAt   interface{} // can be time.Time, string, or nil
+	BreachedAt interface{} // can be time.Time, string, or nil
+}
+
+// InsertFlareCredentialPairs inserts Flare credential pair data into the FlareCredentialPairsDB table in batches
+//
+//nolint:gocognit
+func (db *Database) InsertFlareCredentialPairs(credentialData []FlareCredentialPairInput, batchSize int) error {
+	if batchSize <= 0 {
+		batchSize = 100
+	}
+
+	if len(credentialData) == 0 {
+		gologger.Info().Msg("No Flare credential pairs to insert")
+		return nil
+	}
+
+	credentials := make([]FlareCredentialPairsDB, 0, len(credentialData))
+	for _, cred := range credentialData {
+		dbCred := FlareCredentialPairsDB{
+			Email:    cred.Email,
+			Password: cred.Password,
+			Hash:     cred.Hash,
+			SourceID: cred.SourceID,
+			Domain:   cred.Domain,
+		}
+
+		// Handle ImportedAt
+		if !cred.ImportedAt.IsZero() {
+			importedAt := cred.ImportedAt
+			dbCred.ImportedAt = &importedAt
+		}
+
+		// Handle LeakedAt (can be time.Time or string or nil)
+		if cred.LeakedAt != nil {
+			switch v := cred.LeakedAt.(type) {
+			case time.Time:
+				if !v.IsZero() {
+					dbCred.LeakedAt = &v
+				}
+			case string:
+				if v != "" {
+					if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+						dbCred.LeakedAt = &parsed
+					}
+				}
+			}
+		}
+
+		// Handle BreachedAt (can be time.Time or string or nil)
+		if cred.BreachedAt != nil {
+			switch v := cred.BreachedAt.(type) {
+			case time.Time:
+				if !v.IsZero() {
+					dbCred.BreachedAt = &v
+				}
+			case string:
+				if v != "" {
+					if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+						dbCred.BreachedAt = &parsed
+					}
+				}
+			}
+		}
+
+		credentials = append(credentials, dbCred)
+	}
+
+	if len(credentials) > 0 {
+		if err := db.CreateInBatches(credentials, batchSize).Error; err != nil {
+			gologger.Error().Msgf("Failed to insert Flare credential pairs: %v", err)
+			return utils.LogError(err)
+		}
+		gologger.Info().Msgf("Successfully inserted %d Flare credential pairs", len(credentials))
+	}
+
+	return nil
+}
+
+// InsertFlareCredentialsASTP inserts FlareSearchCredentialsASTP data into the FlareCredentialASTP table in batches
+//
+//nolint:gocognit
+func (db *Database) InsertFlareCredentialsASTP(data *FlareSearchCredentialsASTP, batchSize int) error {
+	if batchSize <= 0 {
+		batchSize = 100
+	}
+
+	if data == nil || len(data.Items) == 0 {
+		gologger.Info().Msg("No Flare ASTP credentials to insert")
+		return nil
+	}
+
+	credentials := make([]FlareCredentialASTP, 0, len(data.Items))
+	for _, item := range data.Items {
+		dbCred := FlareCredentialASTP{
+			FlareID:      item.ID,
+			Domain:       item.Domain,
+			Hash:         item.Hash,
+			IdentityName: item.IdentityName,
+			SourceID:     item.SourceID,
+		}
+
+		// Handle HashType (interface{} to string)
+		if item.HashType != nil {
+			if hashType, ok := item.HashType.(string); ok {
+				dbCred.HashType = hashType
+			}
+		}
+
+		// Handle KnownPasswordID (interface{} to string)
+		if item.KnownPasswordID != nil {
+			switch v := item.KnownPasswordID.(type) {
+			case string:
+				dbCred.KnownPasswordID = v
+			case int64:
+				dbCred.KnownPasswordID = fmt.Sprintf("%d", v)
+			case float64:
+				dbCred.KnownPasswordID = fmt.Sprintf("%.0f", v)
+			}
+		}
+
+		// Handle ImportedAt
+		if !item.ImportedAt.IsZero() {
+			importedAt := item.ImportedAt
+			dbCred.ImportedAt = &importedAt
+		}
+
+		// Handle Source fields
+		dbCred.SourceName = item.Source.Name
+		dbCred.SourceDescriptionEn = item.Source.DescriptionEn
+		dbCred.SourceDescriptionFr = item.Source.DescriptionFr
+		dbCred.IsAlertEnabled = item.Source.IsAlertEnabled
+
+		// Handle SourceBreachedAt (interface{} that can be time.Time or string)
+		if item.Source.BreachedAt != nil {
+			switch v := item.Source.BreachedAt.(type) {
+			case time.Time:
+				if !v.IsZero() {
+					dbCred.SourceBreachedAt = &v
+				}
+			case string:
+				if v != "" {
+					if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+						dbCred.SourceBreachedAt = &parsed
+					}
+				}
+			}
+		}
+
+		// Handle SourceLeakedAt (interface{} that can be time.Time or string)
+		if item.Source.LeakedAt != nil {
+			switch v := item.Source.LeakedAt.(type) {
+			case time.Time:
+				if !v.IsZero() {
+					dbCred.SourceLeakedAt = &v
+				}
+			case string:
+				if v != "" {
+					if parsed, err := time.Parse(time.RFC3339, v); err == nil {
+						dbCred.SourceLeakedAt = &parsed
+					}
+				}
+			}
+		}
+
+		credentials = append(credentials, dbCred)
+	}
+
+	if len(credentials) > 0 {
+		if err := db.CreateInBatches(credentials, batchSize).Error; err != nil {
+			gologger.Error().Msgf("Failed to insert Flare ASTP credentials: %v", err)
+			return utils.LogError(err)
+		}
+		gologger.Info().Msgf("Successfully inserted %d Flare ASTP credentials", len(credentials))
 	}
 
 	return nil

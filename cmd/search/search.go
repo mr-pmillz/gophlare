@@ -35,6 +35,8 @@ type FlareCreds struct {
 // It initializes the necessary directories, queries Flare API for events, downloads relevant zip files, extracts credentials,
 // and compiles the results into CSV and Excel files. Logs errors and status updates throughout its execution.
 // Returns an error if any operation fails during the entire process.
+//
+//nolint:gocognit
 func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scope) error {
 	flareOutputDir := fmt.Sprintf("%s/breach_data/stealer_logs", opts.Output)
 	if err := os.MkdirAll(flareOutputDir, 0750); err != nil {
@@ -470,6 +472,11 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 		return nil, utils.LogError(err)
 	}
 
+	db, err := phlare.InitializeBreachDatabase(opts.Company)
+	if err != nil {
+		return nil, utils.LogError(err)
+	}
+
 	flareData := &FlareCreds{}
 	var flareCSVFiles []string
 	for _, domain := range domains {
@@ -484,6 +491,10 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 		if err = parseFlareDataWriteToOutputFiles(domain, flareOutputDir, data); err != nil {
 			return nil, utils.LogError(err)
 		}
+
+		// if err = db.InsertFlareCredentialsASTP(data, 100); err != nil {
+		//	return nil, utils.LogError(err)
+		// }
 
 		// write complete full raw data for domain to its own JSON file
 		if err = utils.WriteStructToJSONFile(data, outputJSON); err != nil {
@@ -504,6 +515,12 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 
 	if err = utils.CSVsToExcel(flareCSVFiles, fmt.Sprintf("%s/flare-breach-data-results.xlsx", flareOutputDir)); err != nil {
 		utils.LogWarningf("failed to generate xlsx report from csv files: %s %+v", strings.Join(flareCSVFiles, "\n"), err)
+	}
+
+	// Convert FlareCredentialPairs to FlareCredentialPairInput for database insertion
+	credentialInputs := convertFlareCredentialPairsToInput(flareData.Data)
+	if err = db.InsertFlareCredentialPairs(credentialInputs, 200); err != nil {
+		return nil, utils.LogError(err)
 	}
 
 	return flareData, nil
@@ -645,6 +662,25 @@ func getSortedKeys(m map[string]bool) []string {
 
 const nullString = "null"
 
+// convertFlareCredentialPairsToInput converts FlareCredentialPairs to phlare.FlareCredentialPairInput for database insertion
+func convertFlareCredentialPairsToInput(pairs []FlareCredentialPairs) []phlare.FlareCredentialPairInput {
+	inputs := make([]phlare.FlareCredentialPairInput, 0, len(pairs))
+	for _, pair := range pairs {
+		input := phlare.FlareCredentialPairInput{
+			Email:      pair.Email,
+			Password:   pair.Password,
+			Hash:       pair.Hash,
+			SourceID:   pair.SourceID,
+			Domain:     pair.Domain,
+			ImportedAt: pair.ImportedAt,
+			LeakedAt:   pair.LeakedAt,
+			BreachedAt: pair.BreachedAt,
+		}
+		inputs = append(inputs, input)
+	}
+	return inputs
+}
+
 // setFlareCredentialPairsStructFromFlareData parses FlareSearchCredentials and maps them to a FlareCreds structure.
 func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredentialsASTP) *FlareCreds {
 	flareCreds := &FlareCreds{}
@@ -708,6 +744,11 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 		return utils.LogError(err)
 	}
 
+	db, err := phlare.InitializeBreachDatabase(opts.Company)
+	if err != nil {
+		return utils.LogError(err)
+	}
+
 	utils.InfoLabelWithColorf("FLARE", "cyan", "Searching for emails in bulk...")
 	matchedEmailCredResults, err := fc.FlareBulkCredentialLookup(emails, flareOutputDir)
 	if err != nil {
@@ -726,6 +767,12 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 	// generate xlsx file from csv file
 	xlsxOutputFile := fmt.Sprintf("%s/flare-bulk-credential-lookup.xlsx", flareOutputDir)
 	if err = utils.CSVsToExcel([]string{csvOutputFile}, xlsxOutputFile); err != nil {
+		return utils.LogError(err)
+	}
+
+	// Convert FlareCredentialPairs to FlareCredentialPairInput for database insertion
+	credentialInputs := convertFlareCredentialPairsToInput(flareCreds.Data)
+	if err = db.InsertFlareCredentialPairs(credentialInputs, 200); err != nil {
 		return utils.LogError(err)
 	}
 

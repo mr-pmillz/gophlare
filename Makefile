@@ -3,7 +3,7 @@ SRC=$(shell find . -name "*.go")
 CURRENT_TAG=$(shell git describe --tags --abbrev=0)
 
 GOLANGCI := $(shell command -v golangci-lint 2>/dev/null)
-RICHGO := $(shell command -v richgo 2>/dev/null)
+TPARSE := $(shell command -v tparse 2>/dev/null)
 GOTESTFMT := $(shell command -v gotestfmt 2>/dev/null)
 
 .PHONY: fmt lint build test clean compile compress
@@ -37,11 +37,11 @@ test:
         endif
 		go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt -c gitlab
     else
-        ifndef RICHGO
-			$(warning "could not find richgo in $(PATH), running: go install github.com/kyoh86/richgo@latest")
-			$(shell go install github.com/kyoh86/richgo@latest)
+        ifndef TPARSE
+			$(warning "could not find tparse in $(PATH), running: go install github.com/mfridman/tparse@latest")
+			$(shell go install github.com/mfridman/tparse@latest)
         endif
-		richgo test -v ./...
+		@set -o pipefail; go test -covermode=atomic -coverprofile=coverage/coverage.out -json ./... | $(TPARSE) -all
     endif
 
 changelog:
