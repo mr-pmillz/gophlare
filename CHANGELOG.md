@@ -4,6 +4,25 @@ All notable changes to this project will be documented [here](https://github.com
 
 ### Commit Statistics
 
+- 4 commit(s) contributed to the release.
+- 59 day(s) passed between the first and last commit.
+- 0 commit(s) parsed as conventional.
+- 0 linked issue(s) detected in commits.
+
+- 59 day(s) passed between releases.## [1.3.1](https://github.com/mr-pmillz/gophlare/compare/v1.3.0...v1.3.1) - 2025-11-17
+
+### ✨ New features
+
+- Add sqlite integration - ([358cb2b](https://github.com/mr-pmillz/gophlare/commit/358cb2b9ae3121f2210aa6073fe4147ae8595396))
+
+### ⚙️  Miscellaneous
+
+- Stealer log db integration working poc - ([e05765a](https://github.com/mr-pmillz/gophlare/commit/e05765a20747c1758c69e4c0a7f79f63cab30931))
+- Stealer log db integration checkpoint - ([6093607](https://github.com/mr-pmillz/gophlare/commit/609360762ac2ada47ac96d1d27137f4dac0d6358))
+- Update changelog - ([214b73a](https://github.com/mr-pmillz/gophlare/commit/214b73aa30924961990ce6399f67c1d6604e4178))
+
+### Commit Statistics
+
 - 2 commit(s) contributed to the release.
 - 30 day(s) passed between the first and last commit.
 - 0 commit(s) parsed as conventional.
