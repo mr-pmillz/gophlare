@@ -3,12 +3,11 @@ package utils
 import (
 	"archive/zip"
 	"bufio"
+	"compress/gzip"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gocarina/gocsv"
-	"github.com/xuri/excelize/v2"
 	"io"
 	"os"
 	"os/user"
@@ -17,7 +16,46 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/gocarina/gocsv"
+	"github.com/xuri/excelize/v2"
 )
+
+// GzipCompressFile compresses the file specified by the srcPath and writes it to a file specified by dstPath.
+func GzipCompressFile(srcPath, dstPath string) error {
+	// Open the source file for reading.
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return LogError(err)
+	}
+	defer srcFile.Close()
+
+	// Create the destination file for writing.
+	dstFile, err := os.Create(dstPath)
+	if err != nil {
+		return LogError(err)
+	}
+	defer dstFile.Close()
+
+	// Create a gzip writer on top of the destination file.
+	gzipWriter := gzip.NewWriter(dstFile)
+	defer gzipWriter.Close()
+
+	// Specify a buffer size.
+	// You might want to experiment with this size to find the best performance for your specific case.
+	bufferSize := 64 * 1024 // 64 KB
+
+	// Create a buffer of the specified size.
+	buf := make([]byte, bufferSize)
+
+	// Copy the contents of the source file to the gzip writer using the buffer.
+	_, err = io.CopyBuffer(gzipWriter, srcFile, buf)
+	if err != nil {
+		return LogError(err)
+	}
+
+	return nil
+}
 
 // ResolveAbsPath ...
 func ResolveAbsPath(path string) (string, error) {

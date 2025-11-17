@@ -41,6 +41,11 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		return utils.LogError(err)
 	}
 
+	db, err := phlare.InitializeBreachDatabase(opts.Company)
+	if err != nil {
+		return utils.LogError(err)
+	}
+
 	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout)
 	if err != nil {
 		return utils.LogError(err)
@@ -59,7 +64,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 			return nil
 		}
 		utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
-		_, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, "", scope.UserIDFormats, opts.KeepZipFiles)
+		_, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, "", scope.UserIDFormats, opts.KeepZipFiles, db)
 		if err != nil {
 			return utils.LogError(err)
 		}
@@ -71,6 +76,11 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		}
 
 		allCSVFiles = append(allCSVFiles, allCredsCSVFileName)
+
+		// insert into database
+		if err = db.InsertFlareStealerLogsCredentials(allFlareStealerLogCredentials, "flare_stealer_logs", 100, "", false); err != nil {
+			return utils.LogError(err)
+		}
 	} else {
 		for _, domain := range scope.Domains {
 			utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for %s From: %s To: %s", domain, opts.From, opts.To)
@@ -86,7 +96,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 			}
 			utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
 
-			allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles)
+			allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles, db)
 			if err != nil {
 				return utils.LogError(err)
 			}
@@ -103,10 +113,25 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 
 			allCSVFiles = append(allCSVFiles, csvFileName)
 			allCSVFiles = append(allCSVFiles, allCredsCSVFileName)
+
+			// insert all regardless of scope into database
+			if err = db.InsertFlareStealerLogsCredentials(allFlareStealerLogInScopeCredentials, "flare_stealer_logs", 200, domain, false); err != nil {
+				return utils.LogError(err)
+			}
+
+			// insert inScope into database
+			if err = db.InsertFlareStealerLogsCredentials(allFlareStealerLogInScopeCredentials, "flare_stealer_logs", 200, domain, true); err != nil {
+				return utils.LogError(err)
+			}
 		}
 	}
 
 	if err = exportCSVToExcel(allCSVFiles, flareOutputDir); err != nil {
+		return utils.LogError(err)
+	}
+
+	// copy Breach db to output dir
+	if err = db.CopyBreachDBToOutputDir(flareOutputDir); err != nil {
 		return utils.LogError(err)
 	}
 
@@ -117,9 +142,10 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 // downloadZipFilesAndProcessPasswordResults downloads ZIP files containing stealer logs, parses passwords, and processes results.
 // It takes the search results, a FlareClient instance, a download limit, output directory, domain, user ID formats, and a keepZips flag.
 // Returns []FlareStealerLogsCredential a unique list of extracted credentials and any errors encountered during the process.
-func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobalSearchResults, fc *phlare.FlareClient, limit int, outputDir, domain string, userIDFormats []string, keepZips bool) ([]phlare.FlareStealerLogsCredential, []phlare.FlareStealerLogsCredential, error) {
+func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobalSearchResults, fc *phlare.FlareClient, limit int, outputDir, domain string, userIDFormats []string, keepZips bool, db *phlare.Database) ([]phlare.FlareStealerLogsCredential, []phlare.FlareStealerLogsCredential, error) {
 	allDownloadedFiles, allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials := make([]string, 0), make([]phlare.FlareStealerLogsCredential, 0), make([]phlare.FlareStealerLogsCredential, 0)
 	count := 0
+	allStealerLogEventData := make([]phlare.FlareFireworkActivitiesIndexSourceIDv2Response, 0)
 
 	for _, result := range results.Items {
 		if !isStealerLog(result.Metadata.Type) {
@@ -135,6 +161,7 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 			utils.LogWarningf("Failed to retrieve event activities for %s: %s\n", result.Metadata.UID, err.Error())
 			continue
 		}
+		allStealerLogEventData = append(allStealerLogEventData, *data)
 		// save the marshalled JSON results to a file for easy reference later on
 		// ToDo: make saving the events JSON data an optional argument
 		sanitizedUID := utils.SanitizeString(result.Metadata.UID)
@@ -149,6 +176,11 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 			continue
 		}
 		allDownloadedFiles = append(allDownloadedFiles, downloadedFiles...)
+	}
+
+	// insert stealer log event data into database
+	if err := db.InsertStealerLogActivities(allStealerLogEventData, 10); err != nil {
+		return nil, nil, utils.LogError(err)
 	}
 
 	parsedInScopeCredentials, allParsedCredentials, allLiveCookieBros, allHighValueCookieBros, err := parseDownloadedFilesForPasswordsAndCookies(allDownloadedFiles, userIDFormats, domain, outputDir)
@@ -215,6 +247,7 @@ func parseDownloadedFilesForPasswordsAndCookies(files, userIDFormats []string, d
 		"All Passwords.txt": {},
 		"Passwords.txt":     {},
 		"passwords.txt":     {},
+		"Autofills.txt":     {},
 	}
 
 	for _, file := range files {
