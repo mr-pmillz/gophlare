@@ -31,3 +31,4 @@ RELEASE_CHANGELOG.md
 report.xml
 coverage.xml
 *.txt
+.aiignore

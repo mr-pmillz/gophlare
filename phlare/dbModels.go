@@ -23,6 +23,19 @@ type BreachCredential struct {
 	Domain   string `gorm:"index"`
 }
 
+// FlareCredentialPairsDB ...
+type FlareCredentialPairsDB struct {
+	gorm.Model
+	Email      string
+	Password   string
+	Hash       string
+	SourceID   string
+	Domain     string
+	ImportedAt *time.Time
+	LeakedAt   *time.Time
+	BreachedAt *time.Time
+}
+
 // StealerLog represents the main activity/stealer log entry
 type StealerLog struct {
 	gorm.Model
@@ -31,7 +44,7 @@ type StealerLog struct {
 	EsScore     string `gorm:"type:text"` // stored as JSON string
 	ApiID       string `gorm:"index"`     // API's ID field (renamed to avoid conflict with gorm.Model.ID)
 	Index       string
-	UID         string `gorm:"index;uniqueIndex"`
+	UID         string `gorm:"uniqueIndex"`
 	URL         string `gorm:"type:text"`
 	BrowserURL  string `gorm:"type:text"`
 	Name        string

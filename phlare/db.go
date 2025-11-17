@@ -211,7 +211,7 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 		}
 
 		// Insert main record with upsert on UID conflict
-		if err := db.Clauses(clause.OnConflict{
+		if err := db.DB.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "uid"}},
 			DoUpdates: clause.AssignmentColumns([]string{"updated_at"}),
 		}).Create(&stealerLog).Error; err != nil {

@@ -191,6 +191,7 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 		"All Passwords.txt": {},
 		"Passwords.txt":     {},
 		"passwords.txt":     {},
+		"Autofills.txt":     {},
 	}
 	// append files to filesToDownload
 	for _, file := range files {
