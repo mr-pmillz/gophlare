@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 BIN="./bin"
 SRC=$(shell find . -name "*.go")
 CURRENT_TAG=$(shell git describe --tags --abbrev=0)
