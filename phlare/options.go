@@ -133,6 +133,8 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	opts.SearchEmailsInBulk = cmdSearchEmailsInBulk
 
 	// string slices of interface type
+	var rt reflect.Type
+
 	cmdFilesToDownload, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "files-to-download",
 		IsFilePath:           true,
@@ -142,14 +144,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt := reflect.TypeOf(cmdFilesToDownload)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.FilesToDownload = cmdFilesToDownload.([]string)
-	case reflect.String:
-		opts.FilesToDownload = cmdFilesToDownload.(string)
-	default:
-		// Do Nothing
+	if cmdFilesToDownload != nil {
+		rt = reflect.TypeOf(cmdFilesToDownload)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.FilesToDownload = cmdFilesToDownload.([]string)
+		case reflect.String:
+			opts.FilesToDownload = cmdFilesToDownload.(string)
+		default:
+			// Do Nothing
+		}
 	}
 
 	emails, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -161,14 +165,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(emails)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.Emails = emails.([]string)
-	case reflect.String:
-		opts.Emails = emails.(string)
-	default:
-		// Do Nothing
+	if emails != nil {
+		rt = reflect.TypeOf(emails)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.Emails = emails.([]string)
+		case reflect.String:
+			opts.Emails = emails.(string)
+		default:
+			// Do Nothing
+		}
 	}
 
 	userIDFormat, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -180,14 +186,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(userIDFormat)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.UserIDFormat = userIDFormat.([]string)
-	case reflect.String:
-		opts.UserIDFormat = userIDFormat.(string)
-	default:
-		// Do Nothing
+	if userIDFormat != nil {
+		rt = reflect.TypeOf(userIDFormat)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.UserIDFormat = userIDFormat.([]string)
+		case reflect.String:
+			opts.UserIDFormat = userIDFormat.(string)
+		default:
+			// Do Nothing
+		}
 	}
 
 	outOfScope, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -199,14 +207,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(outOfScope)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.OutOfScope = outOfScope.([]string)
-	case reflect.String:
-		opts.OutOfScope = outOfScope.(string)
-	default:
-		// Do Nothing
+	if outOfScope != nil {
+		rt = reflect.TypeOf(outOfScope)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.OutOfScope = outOfScope.([]string)
+		case reflect.String:
+			opts.OutOfScope = outOfScope.(string)
+		default:
+			// Do Nothing
+		}
 	}
 
 	domain, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -218,14 +228,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(domain)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.Domains = domain.([]string)
-	case reflect.String:
-		opts.Domains = domain.(string)
-	default:
-		// Do Nothing
+	if domain != nil {
+		rt = reflect.TypeOf(domain)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.Domains = domain.([]string)
+		case reflect.String:
+			opts.Domains = domain.(string)
+		default:
+			// Do Nothing
+		}
 	}
 
 	severity, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -237,14 +249,16 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(severity)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.Severity = severity.([]string)
-	case reflect.String:
-		opts.Severity = severity.(string)
-	default:
-		// Do Nothing
+	if severity != nil {
+		rt = reflect.TypeOf(severity)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.Severity = severity.([]string)
+		case reflect.String:
+			opts.Severity = severity.(string)
+		default:
+			// Do Nothing
+		}
 	}
 
 	eventsFilterTypes, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -256,15 +270,18 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	rt = reflect.TypeOf(eventsFilterTypes)
-	switch rt.Kind() {
-	case reflect.Slice:
-		opts.EventsFilterTypes = eventsFilterTypes.([]string)
-	case reflect.String:
-		opts.EventsFilterTypes = eventsFilterTypes.(string)
-	default:
-		// Do Nothing
+	if eventsFilterTypes != nil {
+		rt = reflect.TypeOf(eventsFilterTypes)
+		switch rt.Kind() {
+		case reflect.Slice:
+			opts.EventsFilterTypes = eventsFilterTypes.([]string)
+		case reflect.String:
+			opts.EventsFilterTypes = eventsFilterTypes.(string)
+		default:
+			// Do Nothing
+		}
 	}
+	_ = rt // avoid unused variable warning if all values are nil
 
 	// regular strings
 	company, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -276,7 +293,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Company = company.(string)
+	if companyStr, ok := company.(string); ok {
+		opts.Company = companyStr
+	}
 
 	userAgent, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "user-agent",
@@ -286,7 +305,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.UserAgent = userAgent.(string)
+	if userAgentStr, ok := userAgent.(string); ok {
+		opts.UserAgent = userAgentStr
+	}
 
 	query, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "query",
@@ -296,7 +317,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Query = query.(string)
+	if queryStr, ok := query.(string); ok {
+		opts.Query = queryStr
+	}
 
 	output, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "output",
@@ -306,7 +329,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Output = output.(string)
+	if outputStr, ok := output.(string); ok {
+		opts.Output = outputStr
+	}
 
 	// timestamp strings
 	from, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -317,11 +342,13 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	fromTimeStamp, err := utils.FormatDate(from.(string))
-	if err != nil {
-		return err
+	if fromStr, ok := from.(string); ok && fromStr != "" {
+		fromTimeStamp, err := utils.FormatDate(fromStr)
+		if err != nil {
+			return err
+		}
+		opts.From = fromTimeStamp
 	}
-	opts.From = fromTimeStamp
 
 	to, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "to",
@@ -331,11 +358,13 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	toTimeStamp, err := utils.FormatDate(to.(string))
-	if err != nil {
-		return err
+	if toStr, ok := to.(string); ok && toStr != "" {
+		toTimeStamp, err := utils.FormatDate(toStr)
+		if err != nil {
+			return err
+		}
+		opts.To = toTimeStamp
 	}
-	opts.To = toTimeStamp
 
 	// integers
 	cmdTimeout, err := cmd.Flags().GetInt("timeout")

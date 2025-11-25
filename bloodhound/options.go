@@ -68,7 +68,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.BloodhoundUser = bloodhoundUser.(string)
+	if bloodhoundUserStr, ok := bloodhoundUser.(string); ok {
+		opts.BloodhoundUser = bloodhoundUserStr
+	}
 
 	bloodhoundPassword, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "bloodhound-password",
@@ -78,7 +80,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.BloodhoundPassword = bloodhoundPassword.(string)
+	if bloodhoundPasswordStr, ok := bloodhoundPassword.(string); ok {
+		opts.BloodhoundPassword = bloodhoundPasswordStr
+	}
 
 	bloodhoundServer, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "bloodhound-server-url",
@@ -88,7 +92,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.BloodhoundServerURL = bloodhoundServer.(string)
+	if bloodhoundServerStr, ok := bloodhoundServer.(string); ok {
+		opts.BloodhoundServerURL = bloodhoundServerStr
+	}
 
 	bloodHoundUsersJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "bloodhound-users-json-file",
@@ -98,7 +104,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.BloodhoundUsersJSONFile = bloodHoundUsersJSONFile.(string)
+	if bloodHoundUsersJSONFileStr, ok := bloodHoundUsersJSONFile.(string); ok {
+		opts.BloodhoundUsersJSONFile = bloodHoundUsersJSONFileStr
+	}
 
 	flareCredsByDomainJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "flare-creds-by-domain-json-file",
@@ -108,7 +116,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.FlareCredsByDomainJSONFile = flareCredsByDomainJSONFile.(string)
+	if flareCredsByDomainJSONFileStr, ok := flareCredsByDomainJSONFile.(string); ok {
+		opts.FlareCredsByDomainJSONFile = flareCredsByDomainJSONFileStr
+	}
 
 	stealerLogsLeaksCSVFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "stealer-logs-leaks-csv-file",
@@ -118,7 +128,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.StealerLogsLeaksCSVFile = stealerLogsLeaksCSVFile.(string)
+	if stealerLogsLeaksCSVFileStr, ok := stealerLogsLeaksCSVFile.(string); ok {
+		opts.StealerLogsLeaksCSVFile = stealerLogsLeaksCSVFileStr
+	}
 
 	hostLeaksJSONFile, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "host-leaks-json-file",
@@ -128,7 +140,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.HostLeaksJSONFile = hostLeaksJSONFile.(string)
+	if hostLeaksJSONFileStr, ok := hostLeaksJSONFile.(string); ok {
+		opts.HostLeaksJSONFile = hostLeaksJSONFileStr
+	}
 
 	outputDir, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "output-dir",
@@ -138,7 +152,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.OutputDir = outputDir.(string)
+	if outputDirStr, ok := outputDir.(string); ok {
+		opts.OutputDir = outputDirStr
+	}
 
 	neo4jHost, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "neo4j-host",
@@ -148,7 +164,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Neo4jHost = neo4jHost.(string)
+	if neo4jHostStr, ok := neo4jHost.(string); ok {
+		opts.Neo4jHost = neo4jHostStr
+	}
 
 	neo4jPort, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "neo4j-port",
@@ -158,7 +176,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Neo4jPort = neo4jPort.(string)
+	if neo4jPortStr, ok := neo4jPort.(string); ok {
+		opts.Neo4jPort = neo4jPortStr
+	}
 
 	neo4jUser, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "neo4j-user",
@@ -168,7 +188,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Neo4jUser = neo4jUser.(string)
+	if neo4jUserStr, ok := neo4jUser.(string); ok {
+		opts.Neo4jUser = neo4jUserStr
+	}
 
 	neo4jPassword, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:       "neo4j-password",
@@ -178,7 +200,9 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	opts.Neo4jPassword = neo4jPassword.(string)
+	if neo4jPasswordStr, ok := neo4jPassword.(string); ok {
+		opts.Neo4jPassword = neo4jPasswordStr
+	}
 
 	return nil
 }
