@@ -15,19 +15,6 @@ All notable changes to this project will be documented [here](https://github.com
 # template for the changelog body
 # https://keats.github.io/tera/docs/#introduction
 body = """
-### Commit Statistics
-
-- {{ statistics.commit_count }} commit(s) contributed to the release.
-- {{ statistics.commits_timespan | default(value=0) }} day(s) passed between the first and last commit.
-- {{ statistics.conventional_commit_count }} commit(s) parsed as conventional.
-- {{ statistics.links | length }} linked issue(s) detected in commits.
-
-{%- for link in statistics.links %}
-      {{ "  " }}- [{{ link.text }}]({{ link.href }}) (referenced {{ link.count }} time(s))
-{%- endfor %}
-
-- {{ statistics.days_passed_since_last_release }} day(s) passed between releases.
-
 {%- macro remote_url() -%}
   https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {%- endmacro -%}
