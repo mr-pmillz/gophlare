@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.3](https://github.com/mr-pmillz/gophlare/compare/v1.3.2...v1.3.3) - 2025-11-25
+
+### 🐛 Bug fixes
+
+- Fixed options parser - ([d4bd76c](https://github.com/mr-pmillz/gophlare/commit/d4bd76c3c51c1063cae6f5b7288da20129ae8814))
+
+### 🛠 Improvements
+
+- Update changelog - ([0a6651b](https://github.com/mr-pmillz/gophlare/commit/0a6651b00275f879eecde31b0f8e508f3e2b86e9))
+
 ## [1.3.2](https://github.com/mr-pmillz/gophlare/compare/v1.3.1...v1.3.2) - 2025-11-25
 
 ### 🐛 Bug fixes
