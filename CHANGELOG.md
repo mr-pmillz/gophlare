@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.4](https://github.com/mr-pmillz/gophlare/compare/v1.3.3...v1.3.4) - 2025-11-26
+
+### 🐛 Bug fixes
+
+- Fix ConfigureFlagOpts - ([d58b98c](https://github.com/mr-pmillz/gophlare/commit/d58b98cf407ae1911320e55d8af97ef134967133))
+
+### 🛠 Improvements
+
+- Update changelog - ([5338d28](https://github.com/mr-pmillz/gophlare/commit/5338d28cc1c0dcfef1a8be66205d7605e877914a))
+
 ## [1.3.3](https://github.com/mr-pmillz/gophlare/compare/v1.3.2...v1.3.3) - 2025-11-25
 
 ### 🐛 Bug fixes
