@@ -19,6 +19,42 @@ type LoadFromCommandOpts struct {
 	Opts                 interface{}
 }
 
+// splitAndCleanSlice takes a slice of strings and splits any elements that contain
+// newlines or commas (when enabled), returning a flattened, cleaned slice.
+// This handles YAML block scalar format which may result in newline-separated values.
+func splitAndCleanSlice(input []string, splitOnComma bool) []string {
+	var result []string
+	for _, item := range input {
+		// First split on newlines
+		lines := strings.Split(item, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			// Then split on commas if enabled
+			if splitOnComma && strings.Contains(line, ",") {
+				parts := strings.Split(line, ",")
+				for _, part := range parts {
+					part = strings.TrimSpace(part)
+					if part != "" {
+						result = append(result, part)
+					}
+				}
+			} else {
+				result = append(result, line)
+			}
+		}
+	}
+	return result
+}
+
+// splitStringToSlice splits a string on newlines and optionally commas,
+// returning a cleaned slice of non-empty strings.
+func splitStringToSlice(s string, splitOnComma bool) []string {
+	return splitAndCleanSlice([]string{s}, splitOnComma)
+}
+
 // ConfigureFlagOpts sets the cobra flag option to the LoadFromCommandOpts.Opts key
 // it returns the parsed value of the cobra flag from LoadFromCommandOpts.Flag
 // Supports string, int, bool, and string slices (comma-separated or YAML list via Viper).
@@ -103,11 +139,8 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 			}
 		}
 		if wantSlice {
-			if lfcOpts.CommaInStringToSlice && strings.Contains(envVal, ",") {
-				lfcOpts.Opts = strings.Split(envVal, ",")
-				return lfcOpts.Opts, nil
-			}
-			lfcOpts.Opts = []string{envVal}
+			// Split env value on newlines and optionally commas
+			lfcOpts.Opts = splitStringToSlice(envVal, lfcOpts.CommaInStringToSlice)
 			return lfcOpts.Opts, nil
 		}
 		// string/filepath
@@ -154,25 +187,23 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 		}
 		return lfcOpts.Opts, nil
 	}
-	if wantSlice {
+	// Slice-like config values: either the caller explicitly wants a slice (wantSlice)
+	// or CommaInStringToSlice is enabled and the config is multi-valued (YAML list,
+	// block scalar with newlines, or comma-separated string). This allows callers that
+	// pass interface{} to still get []string when appropriate.
+	if wantSlice || (lfcOpts.CommaInStringToSlice && (len(configSlice) > 0 || strings.Contains(configStr, "\n") || strings.Contains(configStr, ","))) {
 		if len(configSlice) > 0 {
-			lfcOpts.Opts = configSlice
+			// Clean the slice: split any elements containing newlines or commas
+			lfcOpts.Opts = splitAndCleanSlice(configSlice, lfcOpts.CommaInStringToSlice)
 			return lfcOpts.Opts, nil
 		}
 		if configStr != "" {
-			if lfcOpts.CommaInStringToSlice && strings.Contains(configStr, ",") {
-				lfcOpts.Opts = strings.Split(configStr, ",")
-				return lfcOpts.Opts, nil
-			}
-			lfcOpts.Opts = []string{configStr}
+			// Split on newlines and optionally commas
+			lfcOpts.Opts = splitStringToSlice(configStr, lfcOpts.CommaInStringToSlice)
 			return lfcOpts.Opts, nil
 		}
 		if lfcOpts.DefaultFlagVal != "" {
-			if lfcOpts.CommaInStringToSlice && strings.Contains(lfcOpts.DefaultFlagVal, ",") {
-				lfcOpts.Opts = strings.Split(lfcOpts.DefaultFlagVal, ",")
-				return lfcOpts.Opts, nil
-			}
-			lfcOpts.Opts = []string{lfcOpts.DefaultFlagVal}
+			lfcOpts.Opts = splitStringToSlice(lfcOpts.DefaultFlagVal, lfcOpts.CommaInStringToSlice)
 			return lfcOpts.Opts, nil
 		}
 		return lfcOpts.Opts, nil

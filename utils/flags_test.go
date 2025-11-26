@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -71,6 +72,20 @@ func TestConfigureFlagOpts(t *testing.T) {
 				Opts:       "",
 			},
 			want:               "example.com",
+			wantErr:            false,
+			checkNoSlashPrefix: true,
+		},
+		{
+			name: "IsFilePath true with domains flag and example.com and foobarbaz.com - should NOT add forward slash",
+			setupCmd: func() *cobra.Command {
+				return createCmdWithStringFlag("domains", "example.com,foobarbaz.com")
+			},
+			lfcOpts: &LoadFromCommandOpts{
+				Flag:       "domains",
+				IsFilePath: true,
+				Opts:       "",
+			},
+			want:               "example.com,foobarbaz.com",
 			wantErr:            false,
 			checkNoSlashPrefix: true,
 		},
@@ -605,5 +620,459 @@ func TestConfigureFlagOpts_CommaInStringToSlice_WithIsFilePath(t *testing.T) {
 	// Should not have leading slash since file doesn't exist
 	if strings.HasPrefix(strVal, "/") {
 		t.Errorf("Non-existent path should NOT have forward slash prefix, got %q", strVal)
+	}
+}
+
+// createTempConfigFile creates a temporary YAML config file for testing.
+// Returns the path to the temp file and a cleanup function.
+func createTempConfigFile(t *testing.T, content string) (string, func()) {
+	t.Helper()
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test_config.yaml")
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create temp config file: %v", err)
+	}
+	return configPath, func() {
+		// cleanup handled by t.TempDir()
+	}
+}
+
+// TestConfigureFlagOpts_ConfigFile_YAMLBlockScalar tests parsing of YAML block scalar format
+// which uses newline-separated values. This is the format used in config.yaml.dist for
+// SEVERITY and EVENTS_FILTER_TYPES fields.
+func TestConfigureFlagOpts_ConfigFile_YAMLBlockScalar(t *testing.T) {
+	// Test config with YAML block scalar format (newline-separated values)
+	configContent := `SEVERITY: |-
+  critical
+  high
+  medium
+EVENTS_FILTER_TYPES: |-
+  stealer_log
+  leak
+  paste
+  bot
+`
+	configPath, cleanup := createTempConfigFile(t, configContent)
+	defer cleanup()
+
+	tests := []struct {
+		name     string
+		flag     string
+		viperKey string
+		want     []string
+	}{
+		{
+			name:     "SEVERITY with YAML block scalar format should be parsed as slice",
+			flag:     "severity",
+			viperKey: "SEVERITY",
+			want:     []string{"critical", "high", "medium"},
+		},
+		{
+			name:     "EVENTS_FILTER_TYPES with YAML block scalar format should be parsed as slice",
+			flag:     "events-filter-types",
+			viperKey: "EVENTS_FILTER_TYPES",
+			want:     []string{"stealer_log", "leak", "paste", "bot"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			viper.SetConfigFile(configPath)
+			if err := viper.ReadInConfig(); err != nil {
+				t.Fatalf("Failed to read config: %v", err)
+			}
+
+			// Create a command with the flag NOT set (so it falls through to config)
+			cmd := &cobra.Command{}
+			cmd.Flags().String(tt.flag, "", "test flag")
+
+			opts := &LoadFromCommandOpts{
+				Flag:                 tt.flag,
+				CommaInStringToSlice: true,
+				Opts:                 []string{},
+			}
+
+			got, err := ConfigureFlagOpts(cmd, opts)
+			if err != nil {
+				t.Errorf("ConfigureFlagOpts() unexpected error = %v", err)
+				return
+			}
+
+			gotSlice, ok := got.([]string)
+			if !ok {
+				t.Errorf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+				return
+			}
+
+			// Check that the values are properly split (not containing newlines)
+			for _, val := range gotSlice {
+				if strings.Contains(val, "\n") {
+					t.Errorf("ConfigureFlagOpts() value contains newline character, got: %q", val)
+				}
+			}
+
+			if !reflect.DeepEqual(gotSlice, tt.want) {
+				t.Errorf("ConfigureFlagOpts() got = %v, want %v", gotSlice, tt.want)
+			}
+		})
+	}
+}
+
+// TestConfigureFlagOpts_ConfigFile_YAMLList tests parsing of proper YAML list format
+func TestConfigureFlagOpts_ConfigFile_YAMLList(t *testing.T) {
+	// Test config with proper YAML list format
+	configContent := `SEVERITY:
+  - critical
+  - high
+  - medium
+EVENTS_FILTER_TYPES:
+  - stealer_log
+  - leak
+  - paste
+`
+	configPath, cleanup := createTempConfigFile(t, configContent)
+	defer cleanup()
+
+	tests := []struct {
+		name     string
+		flag     string
+		viperKey string
+		want     []string
+	}{
+		{
+			name:     "SEVERITY with YAML list format should be parsed as slice",
+			flag:     "severity",
+			viperKey: "SEVERITY",
+			want:     []string{"critical", "high", "medium"},
+		},
+		{
+			name:     "EVENTS_FILTER_TYPES with YAML list format should be parsed as slice",
+			flag:     "events-filter-types",
+			viperKey: "EVENTS_FILTER_TYPES",
+			want:     []string{"stealer_log", "leak", "paste"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			viper.SetConfigFile(configPath)
+			if err := viper.ReadInConfig(); err != nil {
+				t.Fatalf("Failed to read config: %v", err)
+			}
+
+			cmd := &cobra.Command{}
+			cmd.Flags().String(tt.flag, "", "test flag")
+
+			opts := &LoadFromCommandOpts{
+				Flag:                 tt.flag,
+				CommaInStringToSlice: true,
+				Opts:                 []string{},
+			}
+
+			got, err := ConfigureFlagOpts(cmd, opts)
+			if err != nil {
+				t.Errorf("ConfigureFlagOpts() unexpected error = %v", err)
+				return
+			}
+
+			gotSlice, ok := got.([]string)
+			if !ok {
+				t.Errorf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+				return
+			}
+
+			if !reflect.DeepEqual(gotSlice, tt.want) {
+				t.Errorf("ConfigureFlagOpts() got = %v, want %v", gotSlice, tt.want)
+			}
+		})
+	}
+}
+
+// TestConfigureFlagOpts_ConfigFile_CommaSeparatedString tests parsing of comma-separated string format.
+// BUG: When config file contains comma-separated strings like SEVERITY: "critical,high,medium",
+// viper.GetStringSlice returns ["critical,high,medium"] (1 element) instead of splitting.
+// The current code returns this single-element slice directly without splitting by comma.
+func TestConfigureFlagOpts_ConfigFile_CommaSeparatedString(t *testing.T) {
+	// Test config with comma-separated string format
+	configContent := `SEVERITY: "critical,high,medium"
+EVENTS_FILTER_TYPES: "stealer_log,leak,paste"
+`
+	configPath, cleanup := createTempConfigFile(t, configContent)
+	defer cleanup()
+
+	tests := []struct {
+		name     string
+		flag     string
+		viperKey string
+		want     []string
+	}{
+		{
+			name:     "SEVERITY with comma-separated string should be parsed as slice",
+			flag:     "severity",
+			viperKey: "SEVERITY",
+			want:     []string{"critical", "high", "medium"},
+		},
+		{
+			name:     "EVENTS_FILTER_TYPES with comma-separated string should be parsed as slice",
+			flag:     "events-filter-types",
+			viperKey: "EVENTS_FILTER_TYPES",
+			want:     []string{"stealer_log", "leak", "paste"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			viper.SetConfigFile(configPath)
+			if err := viper.ReadInConfig(); err != nil {
+				t.Fatalf("Failed to read config: %v", err)
+			}
+
+			cmd := &cobra.Command{}
+			cmd.Flags().String(tt.flag, "", "test flag")
+
+			opts := &LoadFromCommandOpts{
+				Flag:                 tt.flag,
+				CommaInStringToSlice: true,
+				Opts:                 []string{},
+			}
+
+			got, err := ConfigureFlagOpts(cmd, opts)
+			if err != nil {
+				t.Errorf("ConfigureFlagOpts() unexpected error = %v", err)
+				return
+			}
+
+			gotSlice, ok := got.([]string)
+			if !ok {
+				t.Errorf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+				return
+			}
+
+			// This test exposes the bug: comma-separated strings from config files are not split.
+			// viper.GetStringSlice returns ["critical,high,medium"] (single element with commas)
+			// The code should split this but currently returns it as-is.
+			if !reflect.DeepEqual(gotSlice, tt.want) {
+				t.Errorf("ConfigureFlagOpts() comma-separated config value not split properly\ngot  = %v (len=%d)\nwant = %v (len=%d)",
+					gotSlice, len(gotSlice), tt.want, len(tt.want))
+				// Diagnostic: check for unsplit comma values
+				for i, val := range gotSlice {
+					if strings.Contains(val, ",") {
+						t.Errorf("ConfigureFlagOpts() gotSlice[%d] contains comma (not split): %q", i, val)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestConfigureFlagOpts_NewlineSeparatedString tests that newline-separated strings
+// from config files are properly split into slices. This is the bug case.
+func TestConfigureFlagOpts_NewlineSeparatedString(t *testing.T) {
+	viper.Reset()
+
+	// Simulate what happens when viper reads a YAML block scalar:
+	// The value becomes a single string with embedded newlines
+	newlineSeparatedValue := "critical\nhigh\nmedium"
+	viper.Set("SEVERITY", newlineSeparatedValue)
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("severity", "", "test flag")
+
+	opts := &LoadFromCommandOpts{
+		Flag:                 "severity",
+		CommaInStringToSlice: true,
+		Opts:                 []string{},
+	}
+
+	got, err := ConfigureFlagOpts(cmd, opts)
+	if err != nil {
+		t.Errorf("ConfigureFlagOpts() unexpected error = %v", err)
+		return
+	}
+
+	gotSlice, ok := got.([]string)
+	if !ok {
+		t.Errorf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+		return
+	}
+
+	// This test exposes the bug: currently the newline-separated string
+	// is NOT split and becomes a single element like []string{"critical\nhigh\nmedium"}
+	// The expected behavior is []string{"critical", "high", "medium"}
+	want := []string{"critical", "high", "medium"}
+	if !reflect.DeepEqual(gotSlice, want) {
+		t.Errorf("ConfigureFlagOpts() newline-separated values not properly split\ngot  = %v (len=%d)\nwant = %v (len=%d)",
+			gotSlice, len(gotSlice), want, len(want))
+		// Additional diagnostic: check if it contains newlines
+		for i, val := range gotSlice {
+			if strings.Contains(val, "\n") {
+				t.Errorf("ConfigureFlagOpts() gotSlice[%d] contains newline: %q", i, val)
+			}
+		}
+	}
+}
+
+// TestConfigureFlagOpts_ConfigFile_FullConfigExample tests parsing using the exact format
+// from config.yaml.dist to verify SEVERITY and EVENTS_FILTER_TYPES work correctly.
+func TestConfigureFlagOpts_ConfigFile_FullConfigExample(t *testing.T) {
+	// This mimics the exact format from config.yaml.dist
+	configContent := `COMPANY: "TestCompany"
+OUTPUT: "/tmp/test"
+TIMEOUT: 600
+FROM: "2023-01-01"
+TO: "2025-02-19"
+DOMAINS: |-
+  example.com
+SEVERITY: |-
+  critical
+  high
+  medium
+EVENTS_FILTER_TYPES: |-
+  illicit_networks
+  open_web
+  leak
+  domain
+  stealer_log
+  bot
+`
+	configPath, cleanup := createTempConfigFile(t, configContent)
+	defer cleanup()
+
+	viper.Reset()
+	viper.SetConfigFile(configPath)
+	if err := viper.ReadInConfig(); err != nil {
+		t.Fatalf("Failed to read config: %v", err)
+	}
+
+	t.Run("SEVERITY from config.yaml.dist format", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		cmd.Flags().String("severity", "", "test flag")
+
+		opts := &LoadFromCommandOpts{
+			Flag:                 "severity",
+			CommaInStringToSlice: true,
+			Opts:                 []string{},
+		}
+
+		got, err := ConfigureFlagOpts(cmd, opts)
+		if err != nil {
+			t.Fatalf("ConfigureFlagOpts() error = %v", err)
+		}
+
+		gotSlice, ok := got.([]string)
+		if !ok {
+			t.Fatalf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+		}
+
+		want := []string{"critical", "high", "medium"}
+		if !reflect.DeepEqual(gotSlice, want) {
+			t.Errorf("SEVERITY not parsed correctly\ngot  = %v (len=%d)\nwant = %v (len=%d)",
+				gotSlice, len(gotSlice), want, len(want))
+		}
+
+		// Verify no newlines in values
+		for i, val := range gotSlice {
+			if strings.Contains(val, "\n") {
+				t.Errorf("gotSlice[%d] contains newline: %q", i, val)
+			}
+		}
+	})
+
+	t.Run("EVENTS_FILTER_TYPES from config.yaml.dist format", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		cmd.Flags().String("events-filter-types", "", "test flag")
+
+		opts := &LoadFromCommandOpts{
+			Flag:                 "events-filter-types",
+			CommaInStringToSlice: true,
+			Opts:                 []string{},
+		}
+
+		got, err := ConfigureFlagOpts(cmd, opts)
+		if err != nil {
+			t.Fatalf("ConfigureFlagOpts() error = %v", err)
+		}
+
+		gotSlice, ok := got.([]string)
+		if !ok {
+			t.Fatalf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+		}
+
+		want := []string{"illicit_networks", "open_web", "leak", "domain", "stealer_log", "bot"}
+		if !reflect.DeepEqual(gotSlice, want) {
+			t.Errorf("EVENTS_FILTER_TYPES not parsed correctly\ngot  = %v (len=%d)\nwant = %v (len=%d)",
+				gotSlice, len(gotSlice), want, len(want))
+		}
+
+		// Verify no newlines in values
+		for i, val := range gotSlice {
+			if strings.Contains(val, "\n") {
+				t.Errorf("gotSlice[%d] contains newline: %q", i, val)
+			}
+		}
+	})
+}
+
+// TestViperBehavior_DiagnosticTest helps understand how viper handles different YAML formats.
+// This is a diagnostic test to understand viper's behavior for different config formats.
+func TestViperBehavior_DiagnosticTest(t *testing.T) {
+	tests := []struct {
+		name          string
+		configContent string
+		key           string
+	}{
+		{
+			name: "YAML block scalar format",
+			configContent: `SEVERITY: |-
+  critical
+  high
+  medium
+`,
+			key: "SEVERITY",
+		},
+		{
+			name: "YAML list format",
+			configContent: `SEVERITY:
+  - critical
+  - high
+  - medium
+`,
+			key: "SEVERITY",
+		},
+		{
+			name: "Quoted comma-separated string",
+			configContent: `SEVERITY: "critical,high,medium"
+`,
+			key: "SEVERITY",
+		},
+		{
+			name: "Unquoted comma-separated string",
+			configContent: `SEVERITY: critical,high,medium
+`,
+			key: "SEVERITY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			configPath, cleanup := createTempConfigFile(t, tt.configContent)
+			defer cleanup()
+
+			viper.SetConfigFile(configPath)
+			if err := viper.ReadInConfig(); err != nil {
+				t.Fatalf("Failed to read config: %v", err)
+			}
+
+			configStr := viper.GetString(tt.key)
+			configSlice := viper.GetStringSlice(tt.key)
+
+			t.Logf("Format: %s", tt.name)
+			t.Logf("  GetString: %q (contains newline: %v)", configStr, strings.Contains(configStr, "\n"))
+			t.Logf("  GetStringSlice: %v (len: %d)", configSlice, len(configSlice))
+		})
 	}
 }
