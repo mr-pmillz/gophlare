@@ -90,6 +90,8 @@ commit_parsers = [
     { message = "^style", group = "<!-- 5 -->🎨 Styling" },
     { message = "^test*", group = "<!-- 6 -->🧪 Testing" },
     { message = "^deps", group = "<!-- 7 -->📦 Dependencies" },
+    { message = "^deps*", group = "<!-- 7 -->📦 Dependencies" },
+    { message = "^bump deps", group = "<!-- 7 -->📦 Dependencies" },
     { message = "^dependencies", group = "<!-- 7 -->📦 Dependencies" },
     { message = "^dependency", group = "<!-- 7 -->📦 Dependencies" },
     { message = "^update*", group = "<!-- 8 -->🛠 Improvements" },
