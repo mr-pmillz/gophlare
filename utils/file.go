@@ -173,10 +173,13 @@ func UnzipToTemp(zipPath string) ([]string, string, error) {
 
 	var extractedFiles []string
 	for _, f := range r.File {
+		if strings.Contains(f.Name, "..") {
+			return nil, "", fmt.Errorf("unsafe path detected: %s", f.Name)
+		}
 		filePath := filepath.Join(tempDir, f.Name) //nolint:gosec
 
 		// Ensure the file path is within the destination directory to prevent traversal
-		if safe, pathErr := isPathSafe(tempDir, filePath); !safe {
+		if safe, pathErr := isPathSafe(tempDir, filePath); !safe || pathErr != nil {
 			return nil, "", fmt.Errorf("unsafe path detected: %s, error: %w", filePath, pathErr)
 		}
 
@@ -222,7 +225,8 @@ func UnzipToTemp(zipPath string) ([]string, string, error) {
 	return extractedFiles, tempDir, nil
 }
 
-// isPathSafe ensures the resultant file path is confined to the base directory
+// isPathSafe ensures the resultant file path is confined to the base directory.
+// This prevents zip slip attacks where a malicious zip contains paths like "../../../etc/passwd".
 func isPathSafe(baseDir, filePath string) (bool, error) {
 	absBaseDir, err := filepath.Abs(baseDir)
 	if err != nil {
@@ -232,7 +236,20 @@ func isPathSafe(baseDir, filePath string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get absolute path of file: %w", err)
 	}
-	return strings.HasPrefix(absFilePath, absBaseDir), nil
+
+	// Use filepath.Rel to compute the relative path from base to file.
+	// If the result starts with "..", the file path escapes the base directory.
+	rel, err := filepath.Rel(absBaseDir, absFilePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to compute relative path: %w", err)
+	}
+
+	// Check if the relative path escapes the base directory
+	if strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // WriteStructToJSONFile ...

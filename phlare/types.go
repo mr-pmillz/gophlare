@@ -395,6 +395,6 @@ type CookieBro struct {
 	Session          bool        `json:"session,omitempty"`
 	FirstPartyDomain string      `json:"firstPartyDomain,omitempty"`
 	PartitionKey     interface{} `json:"partitionKey,omitempty"`
-	ExpirationDate   int         `json:"expirationDate,omitempty"`
+	ExpirationDate   int64       `json:"expirationDate,omitempty"`
 	StoreID          string      `json:"storeId,omitempty"`
 }

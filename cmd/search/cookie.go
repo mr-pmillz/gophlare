@@ -3,13 +3,14 @@ package search
 import (
 	"bufio"
 	"errors"
-	"github.com/mr-pmillz/gophlare/phlare"
-	"github.com/mr-pmillz/gophlare/utils"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mr-pmillz/gophlare/phlare"
+	"github.com/mr-pmillz/gophlare/utils"
 )
 
 // FindHighValueCookies filters and returns cookies considered high value based on predefined provider-specific criteria.
@@ -172,7 +173,7 @@ func MapCookiesToCookieBro(cookies []phlare.Cookie) []phlare.CookieBro {
 			Path:           cookie.Path,
 			Secure:         cookie.Secure,
 			HTTPOnly:       cookie.HTTPOnly,
-			ExpirationDate: int(cookie.Expiration),
+			ExpirationDate: cookie.Expiration,
 		})
 	}
 
