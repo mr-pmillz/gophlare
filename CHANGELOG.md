@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.5](https://github.com/mr-pmillz/gophlare/compare/v1.3.4...v1.3.5) - 2025-12-02
+
+### 📦 Dependencies
+
+- Bump deps - ([39aee3a](https://github.com/mr-pmillz/gophlare/commit/39aee3a3ca68ddb963926b998a06d61d087a7b1d))
+
+### 🛠 Improvements
+
+- Update changelog - ([9015b9d](https://github.com/mr-pmillz/gophlare/commit/9015b9dd97e0f1fa4a5153eee6f654801bccb30e))
+
+### ⚙️  Miscellaneous
+
+- Resolve code scanning alerts - ([a02f792](https://github.com/mr-pmillz/gophlare/commit/a02f79279f40f50bc818131634ed6414ad516ca7))
+
 ## [1.3.4](https://github.com/mr-pmillz/gophlare/compare/v1.3.3...v1.3.4) - 2025-11-26
 
 ### 🐛 Bug fixes
