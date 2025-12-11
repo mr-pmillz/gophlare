@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.6](https://github.com/mr-pmillz/gophlare/compare/v1.3.5...v1.3.6) - 2025-12-11
+
+### ⚡ Performance
+
+- Optimize cred stuffing files - ([b86f914](https://github.com/mr-pmillz/gophlare/commit/b86f914dace4affbbd8f0a58238febc66e09786d))
+
+### 🛠 Improvements
+
+- Update changelog - ([8b57521](https://github.com/mr-pmillz/gophlare/commit/8b57521388f091a8b7d914b0e3df094021fc14cc))
+
+### ⚙️  Miscellaneous
+
+- Version bump - ([90abb38](https://github.com/mr-pmillz/gophlare/commit/90abb3856e4a0b9a1170983112e1acb209bd1fa5))
+
 ## [1.3.5](https://github.com/mr-pmillz/gophlare/compare/v1.3.4...v1.3.5) - 2025-12-02
 
 ### 📦 Dependencies
