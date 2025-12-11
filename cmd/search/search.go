@@ -615,19 +615,26 @@ func dumpDicerNG(domain, flareOutputDir string, creds []FlareCredentialPairs) er
 		if cred.Password == "" { // Skip if password is empty
 			continue
 		}
-		if _, exists := emailMap[cred.Email]; !exists {
-			emailMap[cred.Email] = make(map[string]bool)
+		sanitizedEmail := strings.TrimSpace(strings.ToLower(cred.Email))
+		if _, exists := emailMap[sanitizedEmail]; !exists {
+			emailMap[sanitizedEmail] = make(map[string]bool)
 		}
-		emailMap[cred.Email][cred.Password] = true
+		emailMap[sanitizedEmail][cred.Password] = true
 	}
 
 	// Create waves based on the number of unique passwords per email
 	waves := make(map[int][]string)
+	problematicWavesForPasswordsThatStartWithColons := make(map[int][]string)
 	for email, passwords := range emailMap {
 		passwordList := getSortedKeys(passwords)
 		for i, password := range passwordList {
-			entry := fmt.Sprintf("%s:%s", email, password)
-			waves[i] = append(waves[i], entry)
+			if strings.HasPrefix(password, ":") {
+				entry := fmt.Sprintf("%s:%s", email, password)
+				problematicWavesForPasswordsThatStartWithColons[i] = append(problematicWavesForPasswordsThatStartWithColons[i], entry)
+			} else {
+				entry := fmt.Sprintf("%s:%s", email, password)
+				waves[i] = append(waves[i], entry)
+			}
 		}
 	}
 
@@ -643,6 +650,19 @@ func dumpDicerNG(domain, flareOutputDir string, creds []FlareCredentialPairs) er
 		// Write the entries to the file
 		utils.InfoLabelWithColorf("FLARE LEAK DATA", "magenta", "Writing %d unique credential stuffing pairs to: %s", len(entries), credStuffingFilePath)
 		if err := utils.WriteLines(entries, credStuffingFilePath); err != nil {
+			return utils.LogError(err)
+		}
+	}
+
+	for funkyIndex, funkyEntries := range problematicWavesForPasswordsThatStartWithColons {
+		waveNumber := funkyIndex + 1
+		credStuffingFilePath := fmt.Sprintf("%s/funky-wave-%s-%d.txt", credStuffingDir, domain, waveNumber)
+
+		sort.Strings(funkyEntries)
+
+		// Write the funky entries to the file
+		utils.InfoLabelWithColorf("FLARE LEAK DATA", "magenta", "Writing %d funky credential stuffing pairs to: %s", len(funkyEntries), credStuffingFilePath)
+		if err := utils.WriteLines(funkyEntries, credStuffingFilePath); err != nil {
 			return utils.LogError(err)
 		}
 	}
