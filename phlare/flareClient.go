@@ -11,7 +11,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.3.5"
+	gophlareClientVersion = "v1.3.6"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
