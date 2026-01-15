@@ -364,6 +364,8 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 			return err
 		}
 		opts.To = toTimeStamp
+	} else {
+		opts.To = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	// integers

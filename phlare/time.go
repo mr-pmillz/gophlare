@@ -21,7 +21,10 @@ func (ft *FlareTime) UnmarshalJSON(b []byte) error {
 		"2006-01-02T15:04:05",              // Without timezone
 		"2006-01-02T15:04:05Z",             // With Z but no offset
 		"2024-04-30T07:09:59+00:00",        // Without Z and +00:00
+		"2006-01-02T15:04:05.000000",       // Fractional seconds, no timezone (naive)
 		"2025-02-24T02:49:48.997342+00:00", // ISO 8601 format
+		time.RFC3339Nano,                   // "2006-01-02T15:04:05.999999999Z07:00" — handles fractional seconds + timezone
+		time.RFC3339,                       // "2006-01-02T15:04:05Z07:00" — no fractional seconds
 		// Add more formats as needed
 	}
 

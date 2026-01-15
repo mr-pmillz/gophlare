@@ -136,7 +136,7 @@ type Filters struct {
 type FlareEventsGlobalSearchResults struct {
 	Items []struct {
 		Metadata struct {
-			EstimatedCreatedAt time.Time `json:"estimated_created_at,omitempty"`
+			EstimatedCreatedAt FlareTime `json:"estimated_created_at,omitempty"`
 			Type               string    `json:"type,omitempty"`
 			UID                string    `json:"uid,omitempty"`
 			Severity           string    `json:"severity,omitempty"`
