@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.7](https://github.com/mr-pmillz/gophlare/compare/v1.3.6...v1.3.7) - 2026-01-15
+
+### ✨ New features
+
+- Add support for ISO 8601 date time format - ([264daa2](https://github.com/mr-pmillz/gophlare/commit/264daa2a41b23dad2b191a2b3b96d9588f83cbd3))
+
+### 🛠 Improvements
+
+- Update changelog - ([6e4fb96](https://github.com/mr-pmillz/gophlare/commit/6e4fb9648981a1c43d0a6be1f30f84f2739adb60))
+
 ## [1.3.6](https://github.com/mr-pmillz/gophlare/compare/v1.3.5...v1.3.6) - 2025-12-11
 
 ### ⚡ Performance
