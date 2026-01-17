@@ -3,8 +3,8 @@ package search
 import (
 	"os"
 	"testing"
-	"time"
 
+	"github.com/mr-pmillz/gophlare/phlare"
 	"github.com/mr-pmillz/gophlare/utils"
 )
 
@@ -20,19 +20,19 @@ func Test_dumpDicerNG(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "Test dumpDicerNG", args: args{domain: "example.com", flareOutputDir: "test", creds: []FlareCredentialPairs{
-			{Email: "foo@example.com", Password: "Password123", Hash: "Password123", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "bar@example.com", Password: "Password123!", Hash: "Password123!", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "baz@example.com", Password: "Password123!!", Hash: "Password123!!", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "fee@example.com", Password: "Password123@", Hash: "Password123@", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "fi@example.com", Password: "Password123#", Hash: "Password123#", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "foe@example.com", Password: "Password123$", Hash: "Password123$", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "fum@example.com", Password: "Password123*", Hash: "Password123*", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "foo@example.com", Password: "Password2025!", Hash: "Password2025!", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "bar@example.com", Password: "Password123!!", Hash: "Password123!!", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "baz@example.com", Password: "Password123!!!", Hash: "Password123!!!", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "foo@example.com", Password: "Password123", Hash: "Password123", SourceID: "flare", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: "foo@example.com", Password: ":Password123", Hash: ":Password123", SourceID: "flare_funkyness", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
-			{Email: " foobarWithASpace@example.com", Password: "Password123", Hash: "Password123", SourceID: "flare_funkyness", Domain: "example.com", ImportedAt: time.Time{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "foo@example.com", Password: "Password123", Hash: "Password123", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "bar@example.com", Password: "Password123!", Hash: "Password123!", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "baz@example.com", Password: "Password123!!", Hash: "Password123!!", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "fee@example.com", Password: "Password123@", Hash: "Password123@", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "fi@example.com", Password: "Password123#", Hash: "Password123#", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "foe@example.com", Password: "Password123$", Hash: "Password123$", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "fum@example.com", Password: "Password123*", Hash: "Password123*", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "foo@example.com", Password: "Password2025!", Hash: "Password2025!", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "bar@example.com", Password: "Password123!!", Hash: "Password123!!", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "baz@example.com", Password: "Password123!!!", Hash: "Password123!!!", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "foo@example.com", Password: "Password123", Hash: "Password123", SourceID: "flare", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: "foo@example.com", Password: ":Password123", Hash: ":Password123", SourceID: "flare_funkyness", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
+			{Email: " foobarWithASpace@example.com", Password: "Password123", Hash: "Password123", SourceID: "flare_funkyness", Domain: "example.com", ImportedAt: phlare.FlareTime{}, LeakedAt: nil, BreachedAt: nil},
 		}}, wantErr: false},
 	}
 	for _, tt := range tests {

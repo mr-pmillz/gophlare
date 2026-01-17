@@ -1,6 +1,7 @@
 package phlare
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
 	"time"
@@ -44,4 +45,30 @@ func (ft *FlareTime) UnmarshalJSON(b []byte) error {
 func EpochToTime(epoch int64) *time.Time {
 	t := time.Unix(epoch, 0).UTC()
 	return &t
+}
+
+// Value implements the driver.Valuer interface for database serialization.
+// It returns the underlying time.Time value for storage in the database.
+func (ft *FlareTime) Value() (driver.Value, error) {
+	if ft == nil || ft.IsZero() {
+		return nil, nil
+	}
+	return ft.Time, nil
+}
+
+// Scan implements the sql.Scanner interface for database deserialization.
+// It reads a time.Time value from the database and stores it in FlareTime.
+func (ft *FlareTime) Scan(value interface{}) error {
+	if value == nil {
+		*ft = FlareTime{}
+		return nil
+	}
+
+	switch v := value.(type) {
+	case time.Time:
+		*ft = FlareTime{v}
+		return nil
+	default:
+		return fmt.Errorf("cannot scan type %T into FlareTime", value)
+	}
 }

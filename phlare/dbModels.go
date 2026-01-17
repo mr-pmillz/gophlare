@@ -31,7 +31,7 @@ type FlareCredentialPairsDB struct {
 	Hash       string     `gorm:"type:varchar(255);index"`
 	SourceID   string     `gorm:"type:varchar(255);index"`
 	Domain     string     `gorm:"type:varchar(255);index"`
-	ImportedAt *time.Time `gorm:"index"`
+	ImportedAt *FlareTime `gorm:"index"`
 	LeakedAt   *time.Time `gorm:"index"`
 	BreachedAt *time.Time `gorm:"index"`
 }
@@ -44,7 +44,7 @@ type FlareCredentialASTP struct {
 	Hash                string     `gorm:"type:varchar(255);index"`
 	HashType            string     `gorm:"type:varchar(100)"`
 	IdentityName        string     `gorm:"type:varchar(255);index"`
-	ImportedAt          *time.Time `gorm:"index"`
+	ImportedAt          *FlareTime `gorm:"index"`
 	KnownPasswordID     string     `gorm:"type:varchar(255)"`
 	SourceID            string     `gorm:"type:varchar(255);index"`
 	SourceName          string     `gorm:"type:varchar(255);index"`
@@ -69,8 +69,8 @@ type StealerLog struct {
 	URL         string `gorm:"type:text"`
 	BrowserURL  string `gorm:"type:text"`
 	Name        string
-	InstalledAt *time.Time
-	UpdatedAt   *time.Time
+	InstalledAt *FlareTime
+	UpdatedAt   *FlareTime
 	SellerID    string
 	Isp         string `gorm:"type:text"`
 	Information string `gorm:"type:text"` // stored as JSON string
@@ -78,12 +78,12 @@ type StealerLog struct {
 	Currency    string
 
 	// Metadata
-	EstimatedCreatedAt *time.Time `gorm:"index"`
+	EstimatedCreatedAt *FlareTime `gorm:"index"`
 	EventID            string
-	FirstCrawledAt     *time.Time
-	LastCrawledAt      *time.Time
+	FirstCrawledAt     *FlareTime
+	LastCrawledAt      *FlareTime
 	PayloadDigest      string `gorm:"index"`
-	ScrapedAt          *time.Time
+	ScrapedAt          *FlareTime
 	Source             string `gorm:"index"`
 	CrawledBy          string
 
@@ -110,7 +110,7 @@ type StealerLog struct {
 	MalwareFamily string `gorm:"index"`
 	BuildID       string
 	FileLocation  string
-	InfectionDate *time.Time `gorm:"index"`
+	InfectionDate *FlareTime `gorm:"index"`
 
 	// Header fields
 	Actor                     string `gorm:"type:text"`
@@ -126,7 +126,7 @@ type StealerLog struct {
 	Expiration                string
 	Host                      string
 	HeaderID                  string
-	HeaderInfectionDate       *time.Time
+	HeaderInfectionDate       *FlareTime
 	ParentID                  string
 	ParentTitle               string
 	ParentTitleEn             string
@@ -139,7 +139,7 @@ type StealerLog struct {
 	Tags                      string `gorm:"type:text"` // stored as JSON string
 	Notes                     string `gorm:"type:text"`
 	StateCode                 string
-	Timestamp                 *time.Time `gorm:"index"`
+	Timestamp                 *FlareTime `gorm:"index"`
 	Title                     string
 	Type                      string `gorm:"index"`
 	HeaderUID                 string

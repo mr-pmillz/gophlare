@@ -1,6 +1,8 @@
 package bloodhound
 
-import "time"
+import (
+	"github.com/mr-pmillz/gophlare/phlare"
+)
 
 // BHCEUserData ...
 type BHCEUserData struct {
@@ -84,7 +86,7 @@ type FlareCredentialPairs struct {
 	Hash       string
 	SourceID   string
 	Domain     string
-	ImportedAt time.Time
+	ImportedAt phlare.FlareTime
 	LeakedAt   interface{}
 	BreachedAt interface{}
 }
@@ -96,12 +98,12 @@ type FlareCreds struct {
 
 // HoardClientHostLeaksJSONL ...
 type HoardClientHostLeaksJSONL struct {
-	ImportTimestamp time.Time `json:"import_timestamp,omitempty"`
-	Password        string    `json:"password,omitempty"`
-	ArchiveName     string    `json:"archive_name,omitempty"`
-	Domain          string    `json:"domain,omitempty"`
-	Host            string    `json:"host,omitempty"`
-	Username        string    `json:"username,omitempty"`
+	ImportTimestamp phlare.FlareTime `json:"import_timestamp,omitempty"`
+	Password        string           `json:"password,omitempty"`
+	ArchiveName     string           `json:"archive_name,omitempty"`
+	Domain          string           `json:"domain,omitempty"`
+	Host            string           `json:"host,omitempty"`
+	Username        string           `json:"username,omitempty"`
 }
 
 // StealerCreds ...

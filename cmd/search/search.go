@@ -21,7 +21,7 @@ type FlareCredentialPairs struct {
 	Hash       string
 	SourceID   string
 	Domain     string
-	ImportedAt time.Time
+	ImportedAt phlare.FlareTime
 	LeakedAt   interface{}
 	BreachedAt interface{}
 }
@@ -830,7 +830,7 @@ func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *phlare.FlareListByBul
 					if err != nil {
 						return nil, fmt.Errorf("failed to parse ImportedAt for email %s: %w", email, err)
 					}
-					cred.ImportedAt = importedAt
+					cred.ImportedAt = phlare.FlareTime{Time: importedAt}
 				}
 				if password.Source.BreachedAt != "" {
 					breachedAt, err := time.Parse(time.RFC3339, password.Source.BreachedAt)

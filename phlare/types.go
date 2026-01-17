@@ -40,7 +40,7 @@ type FlareSearchCredentialsASTP struct {
 		HashType        interface{} `json:"hash_type,omitempty"`
 		ID              int64       `json:"id,omitempty"`
 		IdentityName    string      `json:"identity_name,omitempty"`
-		ImportedAt      time.Time   `json:"imported_at,omitempty"`
+		ImportedAt      FlareTime   `json:"imported_at,omitempty"`
 		KnownPasswordID interface{} `json:"known_password_id,omitempty"`
 		Source          struct {
 			BreachedAt     interface{} `json:"breached_at,omitempty"`
@@ -63,7 +63,7 @@ type FlareSearchCredentials struct {
 		Hash            string      `json:"hash,omitempty"`
 		ID              int64       `json:"id,omitempty"`
 		IdentityName    string      `json:"identity_name,omitempty"`
-		ImportedAt      time.Time   `json:"imported_at,omitempty"`
+		ImportedAt      FlareTime   `json:"imported_at,omitempty"`
 		KnownPasswordID interface{} `json:"known_password_id,omitempty"`
 		Source          struct {
 			BreachedAt     interface{} `json:"breached_at,omitempty"`
@@ -95,8 +95,8 @@ type FlareSearchCookiesResponse struct {
 	Items []struct {
 		UUID       string    `json:"uuid,omitempty"`
 		Domain     string    `json:"domain,omitempty"`
-		ExpiresAt  time.Time `json:"expires_at,omitempty"`
-		ImportedAt time.Time `json:"imported_at,omitempty"`
+		ExpiresAt  FlareTime `json:"expires_at,omitempty"`
+		ImportedAt FlareTime `json:"imported_at,omitempty"`
 		Name       string    `json:"name,omitempty"`
 		Path       string    `json:"path,omitempty"`
 		EventUID   string    `json:"event_uid,omitempty"`

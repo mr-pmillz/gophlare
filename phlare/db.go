@@ -112,13 +112,13 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 		historyLogsJSON, _ := json.Marshal(activity.HistoryLogs)
 
 		// Helper function to convert FlareTime to *time.Time
-		convertFlareTime := func(ft FlareTime) *time.Time {
-			if ft.IsZero() {
-				return nil
-			}
-			t := ft.Time
-			return &t
-		}
+		// convertFlareTime := func(ft FlareTime) *time.Time {
+		//	if ft.IsZero() {
+		//		return nil
+		//	}
+		//	t := ft.Time
+		//	return &t
+		// }
 
 		// Create StealerLog record
 		stealerLog := StealerLog{
@@ -130,7 +130,7 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 			URL:         string(urlJSON),
 			BrowserURL:  string(browserURLJSON),
 			Name:        string(nameJSON),
-			InstalledAt: convertFlareTime(activity.Data.InstalledAt),
+			InstalledAt: &activity.Data.InstalledAt,
 			UpdatedAt:   nil, // using gorm.Model's UpdatedAt instead
 			SellerID:    string(sellerIDJSON),
 			Isp:         string(ispJSON),
@@ -138,12 +138,12 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 			Price:       string(priceJSON),
 			Currency:    string(currencyJSON),
 
-			EstimatedCreatedAt: convertFlareTime(activity.Data.Metadata.EstimatedCreatedAt),
+			EstimatedCreatedAt: &activity.Data.Metadata.EstimatedCreatedAt,
 			EventID:            string(eventIDJSON),
-			FirstCrawledAt:     convertFlareTime(activity.Data.Metadata.FirstCrawledAt),
-			LastCrawledAt:      convertFlareTime(activity.Data.Metadata.LastCrawledAt),
+			FirstCrawledAt:     &activity.Data.Metadata.FirstCrawledAt,
+			LastCrawledAt:      &activity.Data.Metadata.LastCrawledAt,
 			PayloadDigest:      activity.Data.Metadata.PayloadDigest,
-			ScrapedAt:          convertFlareTime(activity.Data.Metadata.ScrapedAt),
+			ScrapedAt:          &activity.Data.Metadata.ScrapedAt,
 			Source:             activity.Data.Metadata.Source,
 			CrawledBy:          string(crawledByJSON),
 
@@ -168,7 +168,7 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 			MalwareFamily: activity.Data.MalwareInformation.MalwareFamily,
 			BuildID:       activity.Data.MalwareInformation.BuildID,
 			FileLocation:  activity.Data.MalwareInformation.FileLocation,
-			InfectionDate: convertFlareTime(activity.Data.MalwareInformation.InfectionDate),
+			InfectionDate: &activity.Data.MalwareInformation.InfectionDate,
 
 			Actor:                     string(actorJSON),
 			Bank:                      string(bankJSON),
@@ -183,7 +183,7 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 			Expiration:                string(expirationJSON),
 			Host:                      string(hostJSON),
 			HeaderID:                  activity.Header.ID,
-			HeaderInfectionDate:       convertFlareTime(activity.Header.InfectionDate),
+			HeaderInfectionDate:       &activity.Header.InfectionDate,
 			ParentID:                  string(parentIDJSON),
 			ParentTitle:               string(parentTitleJSON),
 			ParentTitleEn:             string(parentTitleEnJSON),
@@ -196,7 +196,7 @@ func (db *Database) InsertStealerLogActivities(responses []FlareFireworkActiviti
 			Tags:                      string(tagsJSON),
 			Notes:                     string(notesJSON),
 			StateCode:                 string(stateCodeJSON),
-			Timestamp:                 convertFlareTime(activity.Header.Timestamp),
+			Timestamp:                 &activity.Header.Timestamp,
 			Title:                     activity.Header.Title,
 			Type:                      activity.Header.Type,
 			HeaderUID:                 activity.Header.UID,
@@ -426,7 +426,7 @@ type FlareCredentialPairInput struct {
 	Hash       string
 	SourceID   string
 	Domain     string
-	ImportedAt time.Time
+	ImportedAt FlareTime
 	LeakedAt   interface{} // can be time.Time, string, or nil
 	BreachedAt interface{} // can be time.Time, string, or nil
 }
