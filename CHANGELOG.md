@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.8](https://github.com/mr-pmillz/gophlare/compare/v1.3.7...v1.3.8) - 2026-01-17
+
+### 🐛 Bug fixes
+
+- Fix more time.Time to FlareTime - ([c6c92ee](https://github.com/mr-pmillz/gophlare/commit/c6c92eef6d74406ff1b7be7702bd3bb131cfdf7a))
+
+### 🛠 Improvements
+
+- Update changelog - ([67ecc2a](https://github.com/mr-pmillz/gophlare/commit/67ecc2a870793cbb9e8b0a9965e529974dab4f14))
+
 ## [1.3.7](https://github.com/mr-pmillz/gophlare/compare/v1.3.6...v1.3.7) - 2026-01-15
 
 ### ✨ New features
