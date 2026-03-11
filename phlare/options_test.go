@@ -168,20 +168,14 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 					t.Error("Domains should not be nil")
 					return
 				}
-				// When Opts is nil initially, ConfigureFlagOpts returns string
-				// Accept either string or slice
-				switch v := opts.Domains.(type) {
-				case string:
-					if v != "example.com,test.com,demo.org" {
-						t.Errorf("Domains = %v, want example.com,test.com,demo.org", v)
-					}
-				case []string:
-					expected := []string{"example.com", "test.com", "demo.org"}
-					if !reflect.DeepEqual(v, expected) {
-						t.Errorf("Domains = %v, want %v", v, expected)
-					}
-				default:
-					t.Errorf("Domains has unexpected type %T", opts.Domains)
+				expected := []string{"example.com", "test.com", "demo.org"}
+				v, ok := opts.Domains.([]string)
+				if !ok {
+					t.Errorf("Domains should be []string, got %T", opts.Domains)
+					return
+				}
+				if !reflect.DeepEqual(v, expected) {
+					t.Errorf("Domains = %v, want %v", v, expected)
 				}
 			},
 		},
@@ -225,19 +219,14 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 					t.Error("Emails should not be nil")
 					return
 				}
-				// When Opts is nil initially, ConfigureFlagOpts returns string
-				switch v := opts.Emails.(type) {
-				case string:
-					if v != "user1@example.com,user2@test.com" {
-						t.Errorf("Emails = %v, want user1@example.com,user2@test.com", v)
-					}
-				case []string:
-					expected := []string{"user1@example.com", "user2@test.com"}
-					if !reflect.DeepEqual(v, expected) {
-						t.Errorf("Emails = %v, want %v", v, expected)
-					}
-				default:
-					t.Errorf("Emails has unexpected type %T", opts.Emails)
+				expected := []string{"user1@example.com", "user2@test.com"}
+				v, ok := opts.Emails.([]string)
+				if !ok {
+					t.Errorf("Emails should be []string, got %T", opts.Emails)
+					return
+				}
+				if !reflect.DeepEqual(v, expected) {
+					t.Errorf("Emails = %v, want %v", v, expected)
 				}
 			},
 		},
@@ -254,19 +243,14 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 					t.Error("Severity should not be nil")
 					return
 				}
-				// When Opts is nil initially, ConfigureFlagOpts returns string
-				switch v := opts.Severity.(type) {
-				case string:
-					if v != "medium,high,critical" {
-						t.Errorf("Severity = %v, want medium,high,critical", v)
-					}
-				case []string:
-					expected := []string{"medium", "high", "critical"}
-					if !reflect.DeepEqual(v, expected) {
-						t.Errorf("Severity = %v, want %v", v, expected)
-					}
-				default:
-					t.Errorf("Severity has unexpected type %T", opts.Severity)
+				expected := []string{"medium", "high", "critical"}
+				v, ok := opts.Severity.([]string)
+				if !ok {
+					t.Errorf("Severity should be []string, got %T", opts.Severity)
+					return
+				}
+				if !reflect.DeepEqual(v, expected) {
+					t.Errorf("Severity = %v, want %v", v, expected)
 				}
 			},
 		},
@@ -349,19 +333,14 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 					t.Error("OutOfScope should not be nil")
 					return
 				}
-				// When Opts is nil initially, ConfigureFlagOpts returns string
-				switch v := opts.OutOfScope.(type) {
-				case string:
-					if v != "192.168.1.0/24,10.0.0.0/8" {
-						t.Errorf("OutOfScope = %v, want 192.168.1.0/24,10.0.0.0/8", v)
-					}
-				case []string:
-					expected := []string{"192.168.1.0/24", "10.0.0.0/8"}
-					if !reflect.DeepEqual(v, expected) {
-						t.Errorf("OutOfScope = %v, want %v", v, expected)
-					}
-				default:
-					t.Errorf("OutOfScope has unexpected type %T", opts.OutOfScope)
+				expected := []string{"192.168.1.0/24", "10.0.0.0/8"}
+				v, ok := opts.OutOfScope.([]string)
+				if !ok {
+					t.Errorf("OutOfScope should be []string, got %T", opts.OutOfScope)
+					return
+				}
+				if !reflect.DeepEqual(v, expected) {
+					t.Errorf("OutOfScope = %v, want %v", v, expected)
 				}
 			},
 		},
@@ -405,19 +384,14 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 					t.Error("FilesToDownload should not be nil")
 					return
 				}
-				// When Opts is nil initially, ConfigureFlagOpts returns string
-				switch v := opts.FilesToDownload.(type) {
-				case string:
-					if v != "passwords.txt,cookies.txt,autofill.txt" {
-						t.Errorf("FilesToDownload = %v, want passwords.txt,cookies.txt,autofill.txt", v)
-					}
-				case []string:
-					expected := []string{"passwords.txt", "cookies.txt", "autofill.txt"}
-					if !reflect.DeepEqual(v, expected) {
-						t.Errorf("FilesToDownload = %v, want %v", v, expected)
-					}
-				default:
-					t.Errorf("FilesToDownload has unexpected type %T", opts.FilesToDownload)
+				expected := []string{"passwords.txt", "cookies.txt", "autofill.txt"}
+				v, ok := opts.FilesToDownload.([]string)
+				if !ok {
+					t.Errorf("FilesToDownload should be []string, got %T", opts.FilesToDownload)
+					return
+				}
+				if !reflect.DeepEqual(v, expected) {
+					t.Errorf("FilesToDownload = %v, want %v", v, expected)
 				}
 			},
 		},
@@ -498,19 +472,12 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 				if opts.Company != "Acme Corp" {
 					t.Errorf("Company = %v, want Acme Corp", opts.Company)
 				}
-				// When Opts is nil initially, ConfigureFlagOpts returns string
-				switch v := opts.Domains.(type) {
-				case string:
-					if v != "acme.com,acme.org" {
-						t.Errorf("Domains = %v, want acme.com,acme.org", v)
-					}
-				case []string:
-					expected := []string{"acme.com", "acme.org"}
-					if !reflect.DeepEqual(v, expected) {
-						t.Errorf("Domains = %v, want %v", v, expected)
-					}
-				default:
-					t.Errorf("Domains has unexpected type %T", opts.Domains)
+				expected := []string{"acme.com", "acme.org"}
+				v, ok := opts.Domains.([]string)
+				if !ok {
+					t.Errorf("Domains should be []string, got %T", opts.Domains)
+				} else if !reflect.DeepEqual(v, expected) {
+					t.Errorf("Domains = %v, want %v", v, expected)
 				}
 				if !opts.Verbose {
 					t.Error("Verbose should be true")

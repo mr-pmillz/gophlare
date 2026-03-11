@@ -609,17 +609,23 @@ func TestConfigureFlagOpts_CommaInStringToSlice_WithIsFilePath(t *testing.T) {
 		return
 	}
 
-	// With Opts as string and IsFilePath true, the comma-separated value
-	// should be treated as a single string (file path that doesn't exist)
-	strVal, ok := got.(string)
+	// With CommaInStringToSlice true and IsFilePath true, comma-separated values
+	// that are not an existing file should be split into a slice
+	sliceVal, ok := got.([]string)
 	if !ok {
-		t.Errorf("ConfigureFlagOpts() expected string result, got %T", got)
+		t.Errorf("ConfigureFlagOpts() expected []string result, got %T", got)
 		return
 	}
 
-	// Should not have leading slash since file doesn't exist
-	if strings.HasPrefix(strVal, "/") {
-		t.Errorf("Non-existent path should NOT have forward slash prefix, got %q", strVal)
+	expected := []string{"example.com", "test.com", "demo.org"}
+	if len(sliceVal) != len(expected) {
+		t.Errorf("ConfigureFlagOpts() expected %d elements, got %d: %v", len(expected), len(sliceVal), sliceVal)
+		return
+	}
+	for i, v := range expected {
+		if sliceVal[i] != v {
+			t.Errorf("ConfigureFlagOpts() element %d = %q, want %q", i, sliceVal[i], v)
+		}
 	}
 }
 
@@ -1074,5 +1080,287 @@ func TestViperBehavior_DiagnosticTest(t *testing.T) {
 			t.Logf("  GetString: %q (contains newline: %v)", configStr, strings.Contains(configStr, "\n"))
 			t.Logf("  GetStringSlice: %v (len: %d)", configSlice, len(configSlice))
 		})
+	}
+}
+
+// createTempFileWithContent creates a temporary file with the given content for testing.
+func createTempFileWithContent(t *testing.T, content string) string {
+	t.Helper()
+	tmpFile, err := os.CreateTemp("", "testfile*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	if _, err := tmpFile.WriteString(content); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	tmpFile.Close()
+	t.Cleanup(func() { os.Remove(tmpFile.Name()) })
+	return tmpFile.Name()
+}
+
+// TestConfigureFlagOpts_ReadFileLines tests the ReadFileLines feature which reads
+// file contents and returns them as []string when the flag value is an existing file.
+func TestConfigureFlagOpts_ReadFileLines(t *testing.T) {
+	tests := []struct {
+		name        string
+		fileContent string
+		commaSplit  bool
+		want        []string
+		wantErr     bool
+	}{
+		{
+			name:        "newline-separated domains",
+			fileContent: "example.com\ntest.com\ndemo.org\n",
+			commaSplit:  true,
+			want:        []string{"example.com", "test.com", "demo.org"},
+		},
+		{
+			name:        "single domain in file",
+			fileContent: "example.com\n",
+			commaSplit:  true,
+			want:        []string{"example.com"},
+		},
+		{
+			name:        "comma-separated domains in file",
+			fileContent: "example.com,test.com,demo.org\n",
+			commaSplit:  true,
+			want:        []string{"example.com", "test.com", "demo.org"},
+		},
+		{
+			name:        "mixed newlines and commas",
+			fileContent: "example.com,test.com\ndemo.org\n",
+			commaSplit:  true,
+			want:        []string{"example.com", "test.com", "demo.org"},
+		},
+		{
+			name:        "domains with blank lines and whitespace",
+			fileContent: "  example.com  \n\n\n  test.com\n\n",
+			commaSplit:  true,
+			want:        []string{"example.com", "test.com"},
+		},
+		{
+			name:        "CommaInStringToSlice false - commas in file not split",
+			fileContent: "example.com,test.com\ndemo.org\n",
+			commaSplit:  false,
+			want:        []string{"example.com,test.com", "demo.org"},
+		},
+		{
+			name:        "empty file returns error",
+			fileContent: "",
+			commaSplit:  true,
+			wantErr:     true,
+		},
+		{
+			name:        "whitespace-only file returns error",
+			fileContent: "  \n  \n  \n",
+			commaSplit:  true,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+
+			tmpPath := createTempFileWithContent(t, tt.fileContent)
+
+			cmd := createCmdWithStringFlag("domains", tmpPath)
+			opts := &LoadFromCommandOpts{
+				Flag:                 "domains",
+				IsFilePath:           true,
+				ReadFileLines:        true,
+				CommaInStringToSlice: tt.commaSplit,
+				Opts:                 "",
+			}
+
+			got, err := ConfigureFlagOpts(cmd, opts)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ConfigureFlagOpts() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.wantErr {
+				return
+			}
+
+			gotSlice, ok := got.([]string)
+			if !ok {
+				t.Errorf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+				return
+			}
+
+			if !reflect.DeepEqual(gotSlice, tt.want) {
+				t.Errorf("ConfigureFlagOpts() got = %v, want %v", gotSlice, tt.want)
+			}
+		})
+	}
+}
+
+// TestConfigureFlagOpts_ReadFileLines_False tests that ReadFileLines=false still returns
+// the absolute file path (backward compatibility).
+func TestConfigureFlagOpts_ReadFileLines_False(t *testing.T) {
+	viper.Reset()
+
+	tmpPath := createTempFileWithContent(t, "example.com\ntest.com\n")
+
+	cmd := createCmdWithStringFlag("config", tmpPath)
+	opts := &LoadFromCommandOpts{
+		Flag:          "config",
+		IsFilePath:    true,
+		ReadFileLines: false,
+		Opts:          "",
+	}
+
+	got, err := ConfigureFlagOpts(cmd, opts)
+	if err != nil {
+		t.Fatalf("ConfigureFlagOpts() unexpected error = %v", err)
+	}
+
+	strVal, ok := got.(string)
+	if !ok {
+		t.Fatalf("ConfigureFlagOpts() expected string result, got %T", got)
+	}
+
+	// Should return an absolute path, not file contents
+	if !strings.HasPrefix(strVal, "/") {
+		t.Errorf("Expected absolute path, got %q", strVal)
+	}
+}
+
+// TestConfigureFlagOpts_ReadFileLines_NonExistentFile tests that when ReadFileLines is true
+// but the value is not an existing file, it falls back to comma-splitting or raw string.
+func TestConfigureFlagOpts_ReadFileLines_NonExistentFile(t *testing.T) {
+	tests := []struct {
+		name       string
+		value      string
+		commaSplit bool
+		want       interface{}
+	}{
+		{
+			name:       "comma-separated non-file value is split",
+			value:      "example.com,test.com,demo.org",
+			commaSplit: true,
+			want:       []string{"example.com", "test.com", "demo.org"},
+		},
+		{
+			name:       "single non-file value returned as string",
+			value:      "example.com",
+			commaSplit: true,
+			want:       "example.com",
+		},
+		{
+			name:       "comma-separated but CommaInStringToSlice false - returned as string",
+			value:      "example.com,test.com",
+			commaSplit: false,
+			want:       "example.com,test.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+
+			cmd := createCmdWithStringFlag("domains", tt.value)
+			opts := &LoadFromCommandOpts{
+				Flag:                 "domains",
+				IsFilePath:           true,
+				ReadFileLines:        true,
+				CommaInStringToSlice: tt.commaSplit,
+				Opts:                 "",
+			}
+
+			got, err := ConfigureFlagOpts(cmd, opts)
+			if err != nil {
+				t.Fatalf("ConfigureFlagOpts() unexpected error = %v", err)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ConfigureFlagOpts() got = %v (%T), want %v (%T)", got, got, tt.want, tt.want)
+			}
+		})
+	}
+}
+
+// TestConfigureFlagOpts_ReadFileLines_ENV tests ReadFileLines via environment variable path.
+func TestConfigureFlagOpts_ReadFileLines_ENV(t *testing.T) {
+	viper.Reset()
+
+	tmpPath := createTempFileWithContent(t, "example.com\ntest.com\ndemo.org\n")
+
+	// Set up: viper config key points to an env var name, env var contains the file path
+	envVarName := "TEST_GOPHLARE_DOMAINS_FILE"
+	t.Setenv(envVarName, tmpPath)
+	viper.Set("DOMAINS", envVarName)
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("domains", "", "target domains")
+	// Do NOT set the flag - let it fall through to ENV
+
+	opts := &LoadFromCommandOpts{
+		Flag:                 "domains",
+		IsFilePath:           true,
+		ReadFileLines:        true,
+		CommaInStringToSlice: true,
+		Opts:                 "",
+	}
+
+	got, err := ConfigureFlagOpts(cmd, opts)
+	if err != nil {
+		t.Fatalf("ConfigureFlagOpts() unexpected error = %v", err)
+	}
+
+	gotSlice, ok := got.([]string)
+	if !ok {
+		t.Fatalf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+	}
+
+	want := []string{"example.com", "test.com", "demo.org"}
+	if !reflect.DeepEqual(gotSlice, want) {
+		t.Errorf("ConfigureFlagOpts() got = %v, want %v", gotSlice, want)
+	}
+}
+
+// TestConfigureFlagOpts_ReadFileLines_Config tests ReadFileLines via config file path.
+func TestConfigureFlagOpts_ReadFileLines_Config(t *testing.T) {
+	// Create the domains file
+	domainsPath := createTempFileWithContent(t, "example.com\ntest.com\n")
+
+	// Create a config file that points DOMAINS to the domains file
+	configContent := `DOMAINS: "` + domainsPath + `"` + "\n"
+	configPath, cleanup := createTempConfigFile(t, configContent)
+	defer cleanup()
+
+	viper.Reset()
+	viper.SetConfigFile(configPath)
+	if err := viper.ReadInConfig(); err != nil {
+		t.Fatalf("Failed to read config: %v", err)
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("domains", "", "target domains")
+	// Do NOT set the flag - let it fall through to config
+
+	opts := &LoadFromCommandOpts{
+		Flag:                 "domains",
+		IsFilePath:           true,
+		ReadFileLines:        true,
+		CommaInStringToSlice: true,
+		Opts:                 "",
+	}
+
+	got, err := ConfigureFlagOpts(cmd, opts)
+	if err != nil {
+		t.Fatalf("ConfigureFlagOpts() unexpected error = %v", err)
+	}
+
+	gotSlice, ok := got.([]string)
+	if !ok {
+		t.Fatalf("ConfigureFlagOpts() expected []string, got %T: %v", got, got)
+	}
+
+	want := []string{"example.com", "test.com"}
+	if !reflect.DeepEqual(gotSlice, want) {
+		t.Errorf("ConfigureFlagOpts() got = %v, want %v", gotSlice, want)
 	}
 }

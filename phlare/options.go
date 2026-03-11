@@ -138,6 +138,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	cmdFilesToDownload, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "files-to-download",
 		IsFilePath:           true,
+		ReadFileLines:        true,
 		Opts:                 opts.FilesToDownload,
 		CommaInStringToSlice: true,
 	})
@@ -159,6 +160,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	emails, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "emails",
 		IsFilePath:           true,
+		ReadFileLines:        true,
 		Opts:                 opts.Emails,
 		CommaInStringToSlice: true,
 	})
@@ -180,6 +182,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	userIDFormat, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "user-id-format",
 		IsFilePath:           true,
+		ReadFileLines:        true,
 		Opts:                 opts.UserIDFormat,
 		CommaInStringToSlice: true,
 	})
@@ -201,6 +204,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	outOfScope, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "out-of-scope",
 		IsFilePath:           true,
+		ReadFileLines:        true,
 		Opts:                 opts.OutOfScope,
 		CommaInStringToSlice: true,
 	})
@@ -222,6 +226,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	domain, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "domains",
 		IsFilePath:           true,
+		ReadFileLines:        true,
 		Opts:                 opts.Domains,
 		CommaInStringToSlice: true,
 	})
@@ -243,6 +248,7 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	severity, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
 		Flag:                 "severity",
 		IsFilePath:           true,
+		ReadFileLines:        true,
 		Opts:                 opts.Severity,
 		CommaInStringToSlice: true,
 	})

@@ -14,6 +14,7 @@ type LoadFromCommandOpts struct {
 	DefaultFlagVal       string
 	Flag                 string
 	IsFilePath           bool
+	ReadFileLines        bool // When true and value is an existing file, read its contents as lines
 	CommaInStringToSlice bool
 	Prefix               string
 	Opts                 interface{}
@@ -102,15 +103,30 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 		}
 		if lfcOpts.IsFilePath {
 			if exists, err := Exists(s); err == nil && exists {
-				if abs, err := ResolveAbsPath(s); err == nil {
-					lfcOpts.Opts = abs
-					return lfcOpts.Opts, nil
-				} else {
+				abs, err := ResolveAbsPath(s)
+				if err != nil {
 					return nil, err
 				}
+				if lfcOpts.ReadFileLines {
+					data, err := os.ReadFile(abs)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read file %s: %w", abs, err)
+					}
+					contents := strings.TrimSpace(string(data))
+					if contents == "" {
+						return nil, fmt.Errorf("file %s is empty", abs)
+					}
+					lfcOpts.Opts = splitStringToSlice(contents, lfcOpts.CommaInStringToSlice)
+					return lfcOpts.Opts, nil
+				}
+				lfcOpts.Opts = abs
+				return lfcOpts.Opts, nil
 			}
-			// File doesn't exist - use raw value (e.g., domain name)
-			// Don't call ResolveAbsPath which would add leading / in containers
+			// File doesn't exist - check for comma-separated values
+			if lfcOpts.CommaInStringToSlice && strings.Contains(s, ",") {
+				lfcOpts.Opts = splitStringToSlice(s, true)
+				return lfcOpts.Opts, nil
+			}
 			lfcOpts.Opts = s
 			return lfcOpts.Opts, nil
 		}
@@ -146,12 +162,29 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 		// string/filepath
 		if lfcOpts.IsFilePath {
 			if exists, err := Exists(envVal); err == nil && exists {
-				if abs, err := ResolveAbsPath(envVal); err == nil {
-					lfcOpts.Opts = abs
-					return lfcOpts.Opts, nil
-				} else {
+				abs, err := ResolveAbsPath(envVal)
+				if err != nil {
 					return nil, err
 				}
+				if lfcOpts.ReadFileLines {
+					data, err := os.ReadFile(abs)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read file %s: %w", abs, err)
+					}
+					contents := strings.TrimSpace(string(data))
+					if contents == "" {
+						return nil, fmt.Errorf("file %s is empty", abs)
+					}
+					lfcOpts.Opts = splitStringToSlice(contents, lfcOpts.CommaInStringToSlice)
+					return lfcOpts.Opts, nil
+				}
+				lfcOpts.Opts = abs
+				return lfcOpts.Opts, nil
+			}
+			// ENV value is not a file - check for comma-separated values
+			if lfcOpts.CommaInStringToSlice && strings.Contains(envVal, ",") {
+				lfcOpts.Opts = splitStringToSlice(envVal, true)
+				return lfcOpts.Opts, nil
 			}
 			lfcOpts.Opts = envVal
 			return lfcOpts.Opts, nil
@@ -187,6 +220,32 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 		}
 		return lfcOpts.Opts, nil
 	}
+	// Check if config string is a file path before processing as slice-like values.
+	// This must run before the slice-like block because CommaInStringToSlice causes
+	// configSlice to be non-empty, which would skip the IsFilePath check below.
+	if lfcOpts.IsFilePath && configStr != "" {
+		if exists, err := Exists(configStr); err == nil && exists {
+			abs, err := ResolveAbsPath(configStr)
+			if err != nil {
+				return nil, err
+			}
+			if lfcOpts.ReadFileLines {
+				data, err := os.ReadFile(abs)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read file %s: %w", abs, err)
+				}
+				contents := strings.TrimSpace(string(data))
+				if contents == "" {
+					return nil, fmt.Errorf("file %s is empty", abs)
+				}
+				lfcOpts.Opts = splitStringToSlice(contents, lfcOpts.CommaInStringToSlice)
+				return lfcOpts.Opts, nil
+			}
+			lfcOpts.Opts = abs
+			return lfcOpts.Opts, nil
+		}
+	}
+
 	// Slice-like config values: either the caller explicitly wants a slice (wantSlice)
 	// or CommaInStringToSlice is enabled and the config is multi-valued (YAML list,
 	// block scalar with newlines, or comma-separated string). This allows callers that
@@ -213,12 +272,29 @@ func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interf
 	if configStr != "" {
 		if lfcOpts.IsFilePath {
 			if exists, err := Exists(configStr); err == nil && exists {
-				if abs, err := ResolveAbsPath(configStr); err == nil {
-					lfcOpts.Opts = abs
-					return lfcOpts.Opts, nil
-				} else {
+				abs, err := ResolveAbsPath(configStr)
+				if err != nil {
 					return nil, err
 				}
+				if lfcOpts.ReadFileLines {
+					data, err := os.ReadFile(abs)
+					if err != nil {
+						return nil, fmt.Errorf("failed to read file %s: %w", abs, err)
+					}
+					contents := strings.TrimSpace(string(data))
+					if contents == "" {
+						return nil, fmt.Errorf("file %s is empty", abs)
+					}
+					lfcOpts.Opts = splitStringToSlice(contents, lfcOpts.CommaInStringToSlice)
+					return lfcOpts.Opts, nil
+				}
+				lfcOpts.Opts = abs
+				return lfcOpts.Opts, nil
+			}
+			// Config value is not a file - check for comma-separated values
+			if lfcOpts.CommaInStringToSlice && strings.Contains(configStr, ",") {
+				lfcOpts.Opts = splitStringToSlice(configStr, true)
+				return lfcOpts.Opts, nil
 			}
 			lfcOpts.Opts = configStr
 			return lfcOpts.Opts, nil

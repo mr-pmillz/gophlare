@@ -2,7 +2,6 @@ package phlare
 
 import (
 	"github.com/mr-pmillz/gophlare/utils"
-	"reflect"
 )
 
 type Scope struct {
@@ -15,183 +14,50 @@ type Scope struct {
 	EventsFilterTypes []string
 }
 
+// resolveToSlice converts an interface{} (nil, string, or []string) into a []string.
+func resolveToSlice(val interface{}) []string {
+	if val == nil {
+		return make([]string, 0)
+	}
+	switch v := val.(type) {
+	case []string:
+		return v
+	case string:
+		if v != "" {
+			return []string{v}
+		}
+		return make([]string, 0)
+	default:
+		return make([]string, 0)
+	}
+}
+
 // NewScope initializes a Scope object using the provided Options, parsing and validating various input configurations.
 // Returns the constructed Scope and an error if any issues occur during initialization.
-//
-//nolint:gocognit
 func NewScope(opts *Options) (*Scope, error) {
 	scope := new(Scope)
-	outOfScopeType := reflect.TypeOf(opts.OutOfScope)
-	if outOfScopeType == nil {
-		scope.OutOfScope = make([]string, 0)
-	} else {
-		switch outOfScopeType.Kind() {
-		case reflect.Slice:
-			scope.OutOfScope = append(scope.OutOfScope, opts.OutOfScope.([]string)...)
-		case reflect.String:
-			if opts.OutOfScope.(string) != "" {
-				if exists, err := utils.Exists(opts.OutOfScope.(string)); exists && err == nil {
-					outOfScopes, err := utils.ReadLines(opts.OutOfScope.(string))
-					if err != nil {
-						return nil, err
-					}
-					scope.OutOfScope = append(scope.OutOfScope, outOfScopes...)
-				} else {
-					scope.OutOfScope = append(scope.OutOfScope, opts.OutOfScope.(string))
-				}
-			}
-		default:
-			// Do Nothing
-		}
-	}
 
-	// check if domain arg is file, string, or a slice
-	rtd := reflect.TypeOf(opts.Domains)
-	if rtd == nil {
+	// OutOfScope must be resolved first (Domains filtering depends on it)
+	scope.OutOfScope = resolveToSlice(opts.OutOfScope)
+
+	// Domains has special out-of-scope filtering via addDomains
+	for _, domain := range resolveToSlice(opts.Domains) {
+		scope.addDomains(domain)
+	}
+	if scope.Domains == nil {
 		scope.Domains = make([]string, 0)
-	} else {
-		switch rtd.Kind() {
-		case reflect.Slice:
-			for _, domain := range opts.Domains.([]string) {
-				scope.addDomains(domain)
-			}
-		case reflect.String:
-			if isFile, err := utils.Exists(opts.Domains.(string)); isFile && err == nil {
-				domainList, err := utils.ReadLines(opts.Domains.(string))
-				if err != nil {
-					return nil, err
-				}
-
-				// parse --domain file or string into scope object
-				for _, domain := range domainList {
-					scope.addDomains(domain)
-				}
-			} else {
-				scope.addDomains(opts.Domains.(string))
-			}
-		default:
-			// Do Nothing
-		}
 	}
 
-	// check if emails arg is file, string, or a slice
-	rte := reflect.TypeOf(opts.Emails)
-	if rte == nil {
-		scope.Emails = make([]string, 0)
-	} else {
-		switch rte.Kind() {
-		case reflect.Slice:
-			scope.Emails = append(scope.Emails, opts.Emails.([]string)...)
-		case reflect.String:
-			if isFile, err := utils.Exists(opts.Emails.(string)); isFile && err == nil {
-				emailList, err := utils.ReadLines(opts.Emails.(string))
-				if err != nil {
-					return nil, err
-				}
-				scope.Emails = append(scope.Emails, emailList...)
-			} else {
-				scope.Emails = append(scope.Emails, opts.Emails.(string))
-			}
-		default:
-			// Do Nothing
-		}
-	}
-
-	// check if files-to-download arg is file, string, or a slice
-	rtf := reflect.TypeOf(opts.FilesToDownload)
-	if rtf == nil {
-		scope.FilesToDownload = make([]string, 0)
-	} else {
-		switch rtf.Kind() {
-		case reflect.Slice:
-			scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.([]string)...)
-		case reflect.String:
-			if isFile, err := utils.Exists(opts.FilesToDownload.(string)); isFile && err == nil {
-				filesToDownload, err := utils.ReadLines(opts.FilesToDownload.(string))
-				if err != nil {
-					return nil, err
-				}
-				scope.FilesToDownload = append(scope.FilesToDownload, filesToDownload...)
-			} else {
-				scope.FilesToDownload = append(scope.FilesToDownload, opts.FilesToDownload.(string))
-			}
-		default:
-			// Do Nothing
-		}
-	}
-
-	rtUIDF := reflect.TypeOf(opts.UserIDFormat)
-	if rtUIDF == nil {
-		scope.UserIDFormats = make([]string, 0)
-	} else {
-		switch rtUIDF.Kind() {
-		case reflect.Slice:
-			scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.([]string)...)
-		case reflect.String:
-			if isFile, err := utils.Exists(opts.UserIDFormat.(string)); isFile && err == nil {
-				userIDFormats, err := utils.ReadLines(opts.UserIDFormat.(string))
-				if err != nil {
-					return nil, err
-				}
-				scope.UserIDFormats = append(scope.UserIDFormats, userIDFormats...)
-			} else {
-				scope.UserIDFormats = append(scope.UserIDFormats, opts.UserIDFormat.(string))
-			}
-		default:
-			// Do Nothing
-		}
-	}
-
-	rtSev := reflect.TypeOf(opts.Severity)
-	if rtSev == nil {
-		scope.Severity = make([]string, 0)
-	} else {
-		switch rtSev.Kind() {
-		case reflect.Slice:
-			scope.Severity = append(scope.Severity, opts.Severity.([]string)...)
-		case reflect.String:
-			if isFile, err := utils.Exists(opts.Severity.(string)); isFile && err == nil {
-				severity, err := utils.ReadLines(opts.Severity.(string))
-				if err != nil {
-					return nil, err
-				}
-				scope.Severity = append(scope.Severity, severity...)
-			} else {
-				scope.Severity = append(scope.Severity, opts.Severity.(string))
-			}
-		default:
-			// Do Nothing
-		}
-	}
-
-	rtEvents := reflect.TypeOf(opts.EventsFilterTypes)
-	if rtEvents == nil {
-		scope.EventsFilterTypes = make([]string, 0)
-	} else {
-		switch rtEvents.Kind() {
-		case reflect.Slice:
-			scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.([]string)...)
-		case reflect.String:
-			if isFile, err := utils.Exists(opts.EventsFilterTypes.(string)); isFile && err == nil {
-				eventsFilterTypes, err := utils.ReadLines(opts.EventsFilterTypes.(string))
-				if err != nil {
-					return nil, err
-				}
-				scope.EventsFilterTypes = append(scope.EventsFilterTypes, eventsFilterTypes...)
-			} else {
-				scope.EventsFilterTypes = append(scope.EventsFilterTypes, opts.EventsFilterTypes.(string))
-			}
-		default:
-			// Do Nothing
-		}
-	}
+	scope.Emails = resolveToSlice(opts.Emails)
+	scope.FilesToDownload = resolveToSlice(opts.FilesToDownload)
+	scope.UserIDFormats = resolveToSlice(opts.UserIDFormat)
+	scope.Severity = resolveToSlice(opts.Severity)
+	scope.EventsFilterTypes = resolveToSlice(opts.EventsFilterTypes)
 
 	return scope, nil
 }
 
-// addDomains ...
-//
-//nolint:gocognit
+// addDomains adds a domain to the scope if it's not empty and not in the out-of-scope list.
 func (s *Scope) addDomains(domain string) {
 	if domain != "" && !utils.ContainsExactMatch(s.OutOfScope, domain) {
 		s.Domains = append(s.Domains, domain)
