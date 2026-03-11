@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.3.9](https://github.com/mr-pmillz/gophlare/compare/v1.3.8...v1.3.9) - 2026-03-11
+
+### ✨ New features
+
+- Add ReadFileLines to ConfigureFlagOpts and simplify scope.go
+
+Port ReadFileLines from goreconasoutsider to read file contents as []string
+directly in ConfigureFlagOpts, eliminating redundant file-reading in scope.go.
+Fix comma-separated values not being split when IsFilePath is true and the
+value is not an existing file. Simplify scope.go from ~170 lines to ~35 lines
+using a resolveToSlice() type-switch helper.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com> - ([18d6a9c](https://github.com/mr-pmillz/gophlare/commit/18d6a9ce168a82ec8b1db3d941ef4e85c2141d45))
+
+### 🛠 Improvements
+
+- Update changelog - ([6cc4810](https://github.com/mr-pmillz/gophlare/commit/6cc481073189ea981f1796306038e3aca7b75168))
+
+### ⚙️  Miscellaneous
+
+- Version bump - ([fd58483](https://github.com/mr-pmillz/gophlare/commit/fd5848363752e268a859d267e7bd6afa1c222c51))
+
 ## [1.3.8](https://github.com/mr-pmillz/gophlare/compare/v1.3.7...v1.3.8) - 2026-01-17
 
 ### 🐛 Bug fixes
