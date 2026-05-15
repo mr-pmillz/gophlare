@@ -65,6 +65,16 @@ func (c Client) DoReq(u, method string, target interface{}, headers map[string]s
 	}
 	defer resp.Body.Close()
 
+	// Don't attempt JSON/XML decode on error responses — the body is
+	// typically plain text (e.g. "upstream request timeout" on a 504)
+	// and the decode failure ("invalid character 'u'") otherwise masks
+	// the real HTTP status from the caller. Drain the body so the
+	// connection can be reused, and let the caller branch on statusCode.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return resp.StatusCode, nil
+	}
+
 	return resp.StatusCode, DecodeResponse(resp, target)
 }
 
