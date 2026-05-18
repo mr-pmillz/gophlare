@@ -38,6 +38,11 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - linters:
+          - goconst
+          - dupl
+        path: _test\.go$
 formatters:
   exclusions:
     generated: lax

@@ -583,7 +583,7 @@ func WriteInterfaceToCSV(data interface{}, outputCSVFilePath string) error {
 	typ := val.Type()
 
 	// Handle pointer types
-	if typ.Kind() == reflect.Ptr {
+	if typ.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return errors.New("nil pointer provided")
 		}
@@ -690,9 +690,9 @@ func writeMapToCSV(val reflect.Value, writer *csv.Writer) error {
 		mapVal := val.MapIndex(key)
 
 		// Check if this is a nested structure
-		if mapVal.Kind() == reflect.Struct || (mapVal.Kind() == reflect.Ptr && !mapVal.IsNil() && mapVal.Elem().Kind() == reflect.Struct) {
+		if mapVal.Kind() == reflect.Struct || (mapVal.Kind() == reflect.Pointer && !mapVal.IsNil() && mapVal.Elem().Kind() == reflect.Struct) {
 			var structVal reflect.Value
-			if mapVal.Kind() == reflect.Ptr {
+			if mapVal.Kind() == reflect.Pointer {
 				structVal = mapVal.Elem()
 			} else {
 				structVal = mapVal
@@ -734,13 +734,13 @@ func writeMapToCSV(val reflect.Value, writer *csv.Writer) error {
 		// Handle nested fields
 		if len(parts) > 1 {
 			// Skip if nil
-			if mapVal.Kind() == reflect.Ptr && mapVal.IsNil() {
+			if mapVal.Kind() == reflect.Pointer && mapVal.IsNil() {
 				row[i] = ""
 				continue
 			}
 
 			// Get the nested value
-			if mapVal.Kind() == reflect.Ptr {
+			if mapVal.Kind() == reflect.Pointer {
 				mapVal = mapVal.Elem()
 			}
 
@@ -789,9 +789,9 @@ func writeMapSliceToCSV(val reflect.Value, writer *csv.Writer) error {
 			fieldVal := mapVal.MapIndex(key)
 
 			// Check for nested structures
-			if fieldVal.Kind() == reflect.Struct || (fieldVal.Kind() == reflect.Ptr && !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct) {
+			if fieldVal.Kind() == reflect.Struct || (fieldVal.Kind() == reflect.Pointer && !fieldVal.IsNil() && fieldVal.Elem().Kind() == reflect.Struct) {
 				var structVal reflect.Value
-				if fieldVal.Kind() == reflect.Ptr {
+				if fieldVal.Kind() == reflect.Pointer {
 					structVal = fieldVal.Elem()
 				} else {
 					structVal = fieldVal
@@ -844,13 +844,13 @@ func writeMapSliceToCSV(val reflect.Value, writer *csv.Writer) error {
 			// Handle nested fields
 			if len(parts) > 1 {
 				// Skip if nil
-				if fieldVal.Kind() == reflect.Ptr && fieldVal.IsNil() {
+				if fieldVal.Kind() == reflect.Pointer && fieldVal.IsNil() {
 					row[j] = ""
 					continue
 				}
 
 				// Get nested value
-				if fieldVal.Kind() == reflect.Ptr {
+				if fieldVal.Kind() == reflect.Pointer {
 					fieldVal = fieldVal.Elem()
 				}
 
@@ -875,7 +875,7 @@ func writeMapSliceToCSV(val reflect.Value, writer *csv.Writer) error {
 
 // getFlattenedHeaders returns flattened header names from a struct value
 func getFlattenedHeaders(val reflect.Value) ([]string, error) {
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return nil, errors.New("nil pointer provided")
 		}
@@ -908,7 +908,7 @@ func getFlattenedHeaders(val reflect.Value) ([]string, error) {
 		fieldValue := val.Field(i)
 
 		// Handle pointer types
-		if fieldType.Kind() == reflect.Ptr {
+		if fieldType.Kind() == reflect.Pointer {
 			if fieldValue.IsNil() {
 				// Add the field as is if it's nil
 				headers = append(headers, fieldName)
@@ -945,7 +945,7 @@ func getFlattenedHeaders(val reflect.Value) ([]string, error) {
 
 // getFlattenedValues extracts values from a struct based on flattened headers
 func getFlattenedValues(val reflect.Value, headers []string) ([]string, error) {
-	if val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return nil, errors.New("nil pointer provided")
 		}
@@ -1003,12 +1003,12 @@ func getNestedFieldValue(val reflect.Value, fieldPath []string) (interface{}, er
 	}
 
 	// Handle nil pointers
-	if field.Kind() == reflect.Ptr && field.IsNil() {
+	if field.Kind() == reflect.Pointer && field.IsNil() {
 		return nil, errors.New("nil pointer in nested field")
 	}
 
 	// Dereference pointer if needed
-	if field.Kind() == reflect.Ptr {
+	if field.Kind() == reflect.Pointer {
 		field = field.Elem()
 	}
 

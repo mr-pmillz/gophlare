@@ -563,7 +563,7 @@ func parseFlareDataWriteToOutputFiles(domain, outputDir string, allData *phlare.
 	uniqueUserPass := make(map[string]bool)
 	for _, i := range allData.Items {
 		allEmails = append(allEmails, i.IdentityName)
-		if i.Hash != "" && !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, "nil", "<nil>", " "}, i.Hash) {
+		if i.Hash != "" && !utils.ContainsExactMatch([]string{"None", "none", "Null", nullString, "nil", "<nil>", " "}, i.Hash) { //nolint:goconst
 			// also filter out likely encrypted values and hashes. These will remain in the CSV and XLSX files for analysis but no need to include in spraying files.
 			if utils.IsHash(i.Hash) {
 				continue

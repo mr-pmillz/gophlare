@@ -11,7 +11,7 @@ import (
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.3.9"
+	gophlareClientVersion = "v1.4.0"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -135,6 +135,8 @@ func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFirew
 // FlareDownloadStealerLogZipFilesThatContainPasswords downloads specific password-related zip files from Flare's stealer log activities.
 // It fetches logs such as "Passwords.txt" or "All Passwords.txt" if available, saves them to the output directory, and returns file paths.
 // Returns a list of paths to downloaded files or an error in case of failures.
+//
+//nolint:goconst
 func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data *FlareFireworkActivitiesIndexSourceIDv2Response, outputDir string) ([]string, error) {
 	filesToDownload := map[string]struct{}{
 		"All Passwords.txt": {},
@@ -284,6 +286,7 @@ func getPastISO8601Date(yearsAgo int) string {
 // Returns aggregated search results or an error in case the operation fails.
 //
 //nolint:gocognit
+//nolint:dupl
 func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
@@ -328,7 +331,7 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 		},
 	}
 
-flarePaginate:
+flarePaginate: //nolint:dupl
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
 		postBodyJSON, err := json.Marshal(postBody)
@@ -479,6 +482,8 @@ func mergeResults(main, batch FlareListByBulkAccountResponse) FlareListByBulkAcc
 // Results are aggregated via pagination, exported to a JSON file, and returned in the response.
 // Accepts domain name, output directory path, cookie names, and paths for filtering the search.
 // Returns a response containing leaked cookie data or an error in case of a failure.
+//
+//nolint:dupl
 func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cookieNames, paths []string) (*FlareSearchCookiesResponse, error) {
 	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
@@ -555,6 +560,8 @@ flarePaginate:
 // FlareSearchCredentialsByDomainASTP searches for leaked credentials associated with a specific domain in Flare's database.
 // This method aggregates results via pagination and exports the final data to JSON files in the specified output directory.
 // Returns aggregated leaked credentials or an error if the operation fails.
+//
+//nolint:dupl
 func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*FlareSearchCredentialsASTP, error) {
 	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()

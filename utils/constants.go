@@ -1,5 +1,6 @@
 package utils
 
+//nolint:goconst
 var (
 	AlphaTLDs = []string{
 		"aaa",
