@@ -11,23 +11,28 @@ import (
 	"time"
 )
 
-// LogError ...
+// LogError logs `err` to stderr (via gologger) and, on a best-effort basis,
+// appends it to a dated file in the CWD. The file write is non-fatal: if
+// the open fails (e.g. read-only filesystem, common in containers), we skip
+// the file tee and still log to stderr — and crucially still return the
+// ORIGINAL `err`. Returning a filesystem error in place of the caller's
+// real error has masked production failures.
 func LogError(err error) error {
 	timestamp := time.Now().Format("01-02-2006")
 	fname := fmt.Sprintf("gophlare-error-log-%s.json", timestamp)
 
-	f, openFileErr := os.OpenFile(fname, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if openFileErr != nil {
-		return openFileErr
-	}
-	defer f.Close()
-	teeFormatter := formatter.NewTee(formatter.NewCLI(false), f)
-	gologger.DefaultLogger.SetFormatter(teeFormatter)
 	pc, file, line, ok := runtime.Caller(1)
 	if !ok {
 		LogWarningf("Failed to retrieve Caller information")
 	}
 	fn := runtime.FuncForPC(pc).Name()
+
+	f, openFileErr := os.OpenFile(fname, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if openFileErr == nil {
+		defer f.Close()
+		teeFormatter := formatter.NewTee(formatter.NewCLI(false), f)
+		gologger.DefaultLogger.SetFormatter(teeFormatter)
+	}
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelError)
 	gologger.Error().Msgf("Error in function %s, called from %s:%d:\n %v", fn, file, line, err)
 	return err

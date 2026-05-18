@@ -346,6 +346,15 @@ flarePaginate:
 			continue
 		}
 
+		// 502/503/504 are Flare's gateway giving up on a slow backend query
+		// (gateway timeout ≈ 30s). Usually transient when Flare's under
+		// load; retrying after a short pause typically succeeds. Bounded
+		// only by the outer client timeout (default 10 minutes).
+		if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+			time.Sleep(15 * time.Second)
+			continue
+		}
+
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
 		}
@@ -504,6 +513,15 @@ flarePaginate:
 			continue
 		}
 
+		// 502/503/504 are Flare's gateway giving up on a slow backend query
+		// (gateway timeout ≈ 30s). Usually transient when Flare's under
+		// load; retrying after a short pause typically succeeds. Bounded
+		// only by the outer client timeout (default 10 minutes).
+		if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+			time.Sleep(15 * time.Second)
+			continue
+		}
+
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
 		}
@@ -541,7 +559,12 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
 	allData := &FlareSearchCredentialsASTP{}
-	size := "10000"
+	// Flare's gateway times out at ~30s; latency on this endpoint scales
+	// roughly linearly with page size. Empirically (worst-case slow day):
+	//   size=100 → ~8s    size=200 → ~13s    size=300 → ~24s    size=500 → 504
+	// 100 leaves >20s of headroom even on slow days; pagination handles
+	// arbitrarily-large result sets via the existing Next cursor loop.
+	size := "100"
 	postBody := &FlareSearchCredentialsBodyParams{
 		Size: size,
 		Query: FlareDomainQuery{
@@ -565,6 +588,15 @@ flarePaginate:
 
 		if statusCode == 429 {
 			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		// 502/503/504 are Flare's gateway giving up on a slow backend query
+		// (gateway timeout ≈ 30s). Usually transient when Flare's under
+		// load; retrying after a short pause typically succeeds. Bounded
+		// only by the outer client timeout (default 10 minutes).
+		if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+			time.Sleep(15 * time.Second)
 			continue
 		}
 
