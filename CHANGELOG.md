@@ -2,6 +2,107 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.4.1](https://github.com/mr-pmillz/gophlare/compare/v1.4.0...v1.4.1) - 2026-05-26
+
+### ⚙️  Miscellaneous
+
+- Version bump - ([b68a00a](https://github.com/mr-pmillz/gophlare/commit/b68a00abaae03f16cc714c9d684666636132e153))
+- Phlare: emit periodic progress logs during paginated searches
+
+FlareEventsGlobalSearchByDomain, FlareSearchCookiesByDomain, and
+FlareSearchCredentialsByDomainASTP can run for many minutes against
+large tenants. Until now they produced no output during pagination,
+leaving the user unable to tell whether the SDK was still working or
+stuck.
+
+Spin up a 30s ticker goroutine in each function that logs the running
+count of accumulated items. Use sync/atomic.Int64 so the ticker can
+safely read the count without racing the main loop's append.
+defer close(progressDone) guarantees the goroutine exits on every
+return path. - ([1f414bc](https://github.com/mr-pmillz/gophlare/commit/1f414bc879918676b21243369087c4b07b56cbe1))
+- Version pin actions to hashes and bump go version and deps in go.mod - ([137d438](https://github.com/mr-pmillz/gophlare/commit/137d438b7b9b939c703bc60da52759ffc5f8c773))
+
+## [1.4.0](https://github.com/mr-pmillz/gophlare/compare/v1.3.9...v1.4.0) - 2026-05-18
+
+### 🛠 Improvements
+
+- Update changelog - ([2043c2b](https://github.com/mr-pmillz/gophlare/commit/2043c2ba47516e7a09e2633d195743f1d18ce8c7))
+
+### ⚙️  Miscellaneous
+
+- Resolved linter issues and version bump - ([6bc1265](https://github.com/mr-pmillz/gophlare/commit/6bc126580aa1a65d16da0cfe33160660aa140b8b))
+- Merge pull request #7 from cham423/fix/credentials-search-timeout-and-logerror-masking
+
+Fix Flare gateway timeouts and three layers of error masking - ([978c67c](https://github.com/mr-pmillz/gophlare/commit/978c67c96554838115cd877ed86882d6477c5c8a))
+- Phlare: don't JSON-decode error response bodies in DoReq
+
+DoReq returned (statusCode, DecodeResponse(resp, target)) regardless
+of HTTP status. When the API returned a non-2xx with a non-JSON body
+(e.g. Flare's gateway returning the plain text "upstream request
+timeout" on a 504), the JSON decoder errored on the first byte with
+"invalid character 'u' looking for beginning of value" — and callers
+that check `err` before `statusCode` saw only the decoder failure,
+never the real HTTP status.
+
+Skip the decode entirely on non-2xx responses. Drain the body so the
+connection can be reused and return (statusCode, nil); the caller's
+existing `if statusCode != 200` branch then handles it cleanly.
+
+Combined with the new 502/503/504 retry path, this means transient
+Flare gateway timeouts now surface as a clean retry+success rather
+than a confusing JSON parse error. - ([abc84fe](https://github.com/mr-pmillz/gophlare/commit/abc84fe3374487a13eb1ef4dda9a1d6d031bd585))
+- Utils: LogError no longer masks the caller's original error
+
+LogError opens a dated log file (gophlare-error-log-<date>.json) in
+the CWD on every call. When that open fails — most commonly because
+the filesystem is read-only (CI runners, hardened containers,
+os.Chroot'd processes) — it returned the filesystem error in place
+of the caller's original `err`:
+
+    f, openFileErr := os.OpenFile(fname, ...)
+    if openFileErr != nil {
+        return openFileErr   // <-- masks the caller's err
+    }
+
+Every API failure surfaced as "open gophlare-error-log-...: read-only
+file system" instead of the real cause (504s, 429s, JSON decode
+errors, etc.). The actual error became unreachable from outside
+gophlare.
+
+File write is now best-effort: on open failure we skip the file tee,
+still log via gologger to stderr, and always return the caller's
+original `err`. The public contract is unchanged — LogError still
+returns an error, it's just now the real one. - ([4e4548d](https://github.com/mr-pmillz/gophlare/commit/4e4548df79e8ae76b75a947c0a8bafb04d304115))
+- Phlare: make credentials search resilient to Flare gateway timeouts
+
+Two related fixes for FlareSearchCredentialsByDomainASTP — the
+hardcoded page size was overshooting Flare's gateway timeout, and the
+endpoint had no retry path for the resulting 5xx responses.
+
+1) Lower hardcoded `size` from "10000" to "100"
+
+   Flare's gateway returns HTTP 504 "upstream request timeout" when
+   the backend can't materialize a page within ~30 seconds. The
+   `astp/v2/credentials/_search` latency scales roughly linearly with
+   `size` (measured against a single tenant, slow-day conditions):
+
+     size=10   ~3.9s   size=100  ~8.0s   size=300  ~24s
+     size=50   ~6.3s   size=200  ~13.2s  size=500  504 at 30.2s
+
+   Size=10000 was always going to 504 on any non-trivial corpus.
+   Size=100 leaves >20s of headroom on slow days; pagination via the
+   existing Next cursor loop handles arbitrary total result sizes, so
+   per-domain ceiling is unchanged.
+
+2) Retry on 502/503/504 (mirrors the existing 429 handling)
+
+   Flare gateway timeouts are transient under load. Without retry,
+   a single 504 fails the entire per-domain pull even if the next
+   call would have succeeded. Added 502/503/504 → sleep+continue
+   alongside the existing 429 case in all three pagination loops
+   (credentials/leaksdb, cookies, credentials/astp). Bounded by the
+   outer http.Client timeout (default 10 minutes). - ([5d581cb](https://github.com/mr-pmillz/gophlare/commit/5d581cb8c5f37db838fb1e31f6f1d433b00b5130))
+
 ## [1.3.9](https://github.com/mr-pmillz/gophlare/compare/v1.3.8...v1.3.9) - 2026-03-11
 
 ### ✨ New features
