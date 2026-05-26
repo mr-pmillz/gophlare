@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/mr-pmillz/gophlare/utils"
@@ -291,7 +292,7 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
 	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
-	size := 10
+	size := 5
 	var queryString string
 	switch {
 	case query != "":
@@ -331,6 +332,26 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 		},
 	}
 
+	// progress reporter: emits a status line every 30s with the running count
+	// so users can see the SDK is still working on long-running searches.
+	var progressCount atomic.Int64
+	progressDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-progressDone:
+				return
+			case <-ticker.C:
+				utils.InfoLabelWithColorf("FlareEventsGlobalSearch", "cyan",
+					"still paginating, %d items collected so far",
+					progressCount.Load())
+			}
+		}
+	}()
+	defer close(progressDone)
+
 flarePaginate: //nolint:dupl
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
@@ -353,7 +374,8 @@ flarePaginate: //nolint:dupl
 		// (gateway timeout ≈ 30s). Usually transient when Flare's under
 		// load; retrying after a short pause typically succeeds. Bounded
 		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
+			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
 			time.Sleep(15 * time.Second)
 			continue
 		}
@@ -364,6 +386,7 @@ flarePaginate: //nolint:dupl
 
 		// Append the new data to allData
 		allData.Items = append(allData.Items, data.Items...)
+		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
 		switch {
@@ -500,6 +523,26 @@ func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cook
 		ExpiresAfter: expiresAfter,
 	}
 
+	// progress reporter: emits a status line every 30s with the running count
+	// so users can see the SDK is still working on long-running searches.
+	var progressCount atomic.Int64
+	progressDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-progressDone:
+				return
+			case <-ticker.C:
+				utils.InfoLabelWithColorf("FlareSearchCookies", "cyan",
+					"still paginating, %d items collected so far",
+					progressCount.Load())
+			}
+		}
+	}()
+	defer close(progressDone)
+
 flarePaginate:
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
@@ -522,7 +565,8 @@ flarePaginate:
 		// (gateway timeout ≈ 30s). Usually transient when Flare's under
 		// load; retrying after a short pause typically succeeds. Bounded
 		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
+			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
 			time.Sleep(15 * time.Second)
 			continue
 		}
@@ -533,6 +577,7 @@ flarePaginate:
 
 		// Append the new data to allData
 		allData.Items = append(allData.Items, data.Items...)
+		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
 		switch {
@@ -580,6 +625,26 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 		},
 	}
 
+	// progress reporter: emits a status line every 30s with the running count
+	// so users can see the SDK is still working on long-running searches.
+	var progressCount atomic.Int64
+	progressDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-progressDone:
+				return
+			case <-ticker.C:
+				utils.InfoLabelWithColorf("FlareSearchCredentialsASTP", "cyan",
+					"still paginating, %d items collected so far",
+					progressCount.Load())
+			}
+		}
+	}()
+	defer close(progressDone)
+
 flarePaginate:
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
@@ -602,7 +667,8 @@ flarePaginate:
 		// (gateway timeout ≈ 30s). Usually transient when Flare's under
 		// load; retrying after a short pause typically succeeds. Bounded
 		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 502 || statusCode == 503 || statusCode == 504 {
+		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
+			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
 			time.Sleep(15 * time.Second)
 			continue
 		}
@@ -613,6 +679,7 @@ flarePaginate:
 
 		// Append the new data to allData
 		allData.Items = append(allData.Items, data.Items...)
+		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
 		switch {
