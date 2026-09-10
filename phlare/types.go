@@ -1,6 +1,10 @@
 package phlare
 
-import "time"
+import (
+	"time"
+
+	"github.com/mr-pmillz/gophlare/metrics"
+)
 
 // FlareClient ...
 type FlareClient struct {
@@ -11,6 +15,18 @@ type FlareClient struct {
 	Token            *string
 	TokenExp         *time.Time
 	ClientTimeout    int
+	// BaseURL is the Flare API root. Defaults to flareAPIBaseURL; override via
+	// WithBaseURL, which is what makes this client testable against httptest.
+	BaseURL string
+	// Metrics accumulates API usage for the --metrics report. Nil disables
+	// recording, so SDK consumers who never opt in pay nothing.
+	Metrics *metrics.Recorder
+	// Entity attributes requests that carry no domain parameter (activity
+	// retrieval, file downloads) to a target. Set via ForEntity.
+	Entity string
+	// GlobalSearchPageSize is the `size` sent to the global events search.
+	// Defaults to DefaultGlobalSearchPageSize.
+	GlobalSearchPageSize int
 }
 
 // FlareAuthResponse ...
