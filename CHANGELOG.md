@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.5.0](https://github.com/mr-pmillz/gophlare/compare/v1.4.1...v1.5.0) - 2026-09-10
+
+### 🚀 Features
+
+- Cmd: emit Flare API usage report when --metrics is set
+
+Adds `--metrics`, `--monthly-quota` (default 10000), and
+`--global-search-page-size` (default 5, unchanged). The report fires from
+RootCmd.PersistentPostRun on success and from a fatalf helper on the
+dispatch-path failures, since quota is spent even when a run fails and
+utils.LogFatalf calls os.Exit. ReportOnce is sync.Once-guarded. -
+([b592928](https://github.com/mr-pmillz/gophlare/commit/b592928))
+
+- Phlare: record usage metrics for every Flare API call
+
+NewFlareClient gains variadic ClientOptions (WithMetricsRecorder,
+WithBaseURL, WithGlobalSearchPageSize, WithEntity), so existing call sites
+and SDK consumers compile unchanged. ForEntity returns a shallow copy for
+per-domain attribution. RefreshAPIToken now carries the recorder across —
+without that, every token refresh silently reset all counters mid-run.
+
+FlareClient.BaseURL replaces the hardcoded flareAPIBaseURL at all eight URL
+builders, which is what finally makes flareClient.go testable; it gains its
+first tests, covering pagination, 429 retry, and refresh behavior. -
+([bf071bb](https://github.com/mr-pmillz/gophlare/commit/bf071bb))
+
+- Phlare: add DoReqWithHeaders to expose response headers
+
+Flare reports quota state only in the X-Flare-Global-Searches-Remaining
+response header, which DoReq discarded. DoReq now delegates, so its
+signature and behavior are unchanged for bloodhound/api.go and external
+consumers. Headers are returned on non-2xx too, so a 429's quota headers
+survive the error-body drain. -
+([861d2d0](https://github.com/mr-pmillz/gophlare/commit/861d2d0))
+
+- Metrics: new package for Flare API usage and quota accounting
+
+A quota classification catalog (only Global Search bills; the ASTP searches
+are documented as free; /leaksdb/identities/by_accounts is undocumented and
+reported as "?"), a concurrency-safe recorder, and a report renderer with
+per-endpoint and per-entity tables plus a JSON artifact.
+
+The header-derived figure is treated as authoritative and the local counter
+as an upper bound, because Flare does not bill a repeated search within 10
+minutes and does not document retry billing. With no quota header the report
+says so rather than printing a misleading zero. 93.6% coverage. -
+([991d20c](https://github.com/mr-pmillz/gophlare/commit/991d20c),
+[c56aa29](https://github.com/mr-pmillz/gophlare/commit/c56aa29),
+[f132827](https://github.com/mr-pmillz/gophlare/commit/f132827))
+
+### 🚜 Refactor
+
+- Phlare: modernize interface{} to any - ([19bc8b4](https://github.com/mr-pmillz/gophlare/commit/19bc8b4))
+
+### 📚 Documentation
+
+- Add design spec and implementation plan for Flare API metrics - ([d61763e](https://github.com/mr-pmillz/gophlare/commit/d61763e))
+
 ## [1.4.1](https://github.com/mr-pmillz/gophlare/compare/v1.4.0...v1.4.1) - 2026-05-26
 
 ### ⚙️  Miscellaneous
