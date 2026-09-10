@@ -35,21 +35,21 @@ type FlareDomainQuery struct {
 // FlareSearchCredentialsASTP is the JSON response for the /astp/v2/credentials/_search endpoint
 type FlareSearchCredentialsASTP struct {
 	Items []struct {
-		Domain          string      `json:"domain,omitempty"`
-		Hash            string      `json:"hash,omitempty"`
-		HashType        interface{} `json:"hash_type,omitempty"`
-		ID              int64       `json:"id,omitempty"`
-		IdentityName    string      `json:"identity_name,omitempty"`
-		ImportedAt      FlareTime   `json:"imported_at,omitempty"`
-		KnownPasswordID interface{} `json:"known_password_id,omitempty"`
+		Domain          string    `json:"domain,omitempty"`
+		Hash            string    `json:"hash,omitempty"`
+		HashType        any       `json:"hash_type,omitempty"`
+		ID              int64     `json:"id,omitempty"`
+		IdentityName    string    `json:"identity_name,omitempty"`
+		ImportedAt      FlareTime `json:"imported_at,omitempty"`
+		KnownPasswordID any       `json:"known_password_id,omitempty"`
 		Source          struct {
-			BreachedAt     interface{} `json:"breached_at,omitempty"`
-			DescriptionEn  string      `json:"description_en,omitempty"`
-			DescriptionFr  string      `json:"description_fr,omitempty"`
-			ID             string      `json:"id,omitempty"`
-			IsAlertEnabled bool        `json:"is_alert_enabled,omitempty"`
-			LeakedAt       interface{} `json:"leaked_at,omitempty"`
-			Name           string      `json:"name,omitempty"`
+			BreachedAt     any    `json:"breached_at,omitempty"`
+			DescriptionEn  string `json:"description_en,omitempty"`
+			DescriptionFr  string `json:"description_fr,omitempty"`
+			ID             string `json:"id,omitempty"`
+			IsAlertEnabled bool   `json:"is_alert_enabled,omitempty"`
+			LeakedAt       any    `json:"leaked_at,omitempty"`
+			Name           string `json:"name,omitempty"`
 		} `json:"source,omitempty"`
 		SourceID string `json:"source_id,omitempty"`
 	} `json:"items,omitempty"`
@@ -59,20 +59,20 @@ type FlareSearchCredentialsASTP struct {
 // FlareSearchCredentials is the JSON response for the /leaksdb/v2/credentials/_search endpoint
 type FlareSearchCredentials struct {
 	Items []struct {
-		Domain          string      `json:"domain,omitempty"`
-		Hash            string      `json:"hash,omitempty"`
-		ID              int64       `json:"id,omitempty"`
-		IdentityName    string      `json:"identity_name,omitempty"`
-		ImportedAt      FlareTime   `json:"imported_at,omitempty"`
-		KnownPasswordID interface{} `json:"known_password_id,omitempty"`
+		Domain          string    `json:"domain,omitempty"`
+		Hash            string    `json:"hash,omitempty"`
+		ID              int64     `json:"id,omitempty"`
+		IdentityName    string    `json:"identity_name,omitempty"`
+		ImportedAt      FlareTime `json:"imported_at,omitempty"`
+		KnownPasswordID any       `json:"known_password_id,omitempty"`
 		Source          struct {
-			BreachedAt     interface{} `json:"breached_at,omitempty"`
-			DescriptionEn  string      `json:"description_en,omitempty"`
-			DescriptionFr  string      `json:"description_fr,omitempty"`
-			ID             string      `json:"id,omitempty"`
-			IsAlertEnabled bool        `json:"is_alert_enabled,omitempty"`
-			LeakedAt       interface{} `json:"leaked_at,omitempty"`
-			Name           string      `json:"name,omitempty"`
+			BreachedAt     any    `json:"breached_at,omitempty"`
+			DescriptionEn  string `json:"description_en,omitempty"`
+			DescriptionFr  string `json:"description_fr,omitempty"`
+			ID             string `json:"id,omitempty"`
+			IsAlertEnabled bool   `json:"is_alert_enabled,omitempty"`
+			LeakedAt       any    `json:"leaked_at,omitempty"`
+			Name           string `json:"name,omitempty"`
 		} `json:"source,omitempty"`
 		SourceID string `json:"source_id,omitempty"`
 	} `json:"items,omitempty"`
@@ -177,31 +177,31 @@ type FlareTime struct {
 type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 	Activity struct {
 		Data struct {
-			EsID       string      `json:"es_id,omitempty"`
-			EsScore    interface{} `json:"es_score,omitempty"`
+			EsID       string `json:"es_id,omitempty"`
+			EsScore    any    `json:"es_score,omitempty"`
 			Highlights struct {
 			} `json:"highlights,omitempty"`
 			ID       string `json:"id,omitempty"`
 			Index    string `json:"index,omitempty"`
 			Metadata struct {
-				EstimatedCreatedAt FlareTime   `json:"estimated_created_at,omitempty"`
-				EventID            interface{} `json:"event_id,omitempty"`
-				FirstCrawledAt     FlareTime   `json:"first_crawled_at,omitempty"`
-				LastCrawledAt      FlareTime   `json:"last_crawled_at,omitempty"`
-				PayloadDigest      string      `json:"payload_digest,omitempty"`
-				ScrapedAt          FlareTime   `json:"scraped_at,omitempty"`
-				Source             string      `json:"source,omitempty"`
-				CrawledBy          interface{} `json:"crawled_by,omitempty"`
+				EstimatedCreatedAt FlareTime `json:"estimated_created_at,omitempty"`
+				EventID            any       `json:"event_id,omitempty"`
+				FirstCrawledAt     FlareTime `json:"first_crawled_at,omitempty"`
+				LastCrawledAt      FlareTime `json:"last_crawled_at,omitempty"`
+				PayloadDigest      string    `json:"payload_digest,omitempty"`
+				ScrapedAt          FlareTime `json:"scraped_at,omitempty"`
+				Source             string    `json:"source,omitempty"`
+				CrawledBy          any       `json:"crawled_by,omitempty"`
 			} `json:"metadata,omitempty"`
-			UID         string      `json:"uid,omitempty"`
-			URL         interface{} `json:"url,omitempty"`
-			BrowserURL  interface{} `json:"browser_url,omitempty"`
-			Name        interface{} `json:"name,omitempty"`
-			InstalledAt FlareTime   `json:"installed_at,omitempty"`
-			UpdatedAt   interface{} `json:"updated_at,omitempty"`
-			SellerID    interface{} `json:"seller_id,omitempty"`
-			Isp         interface{} `json:"isp,omitempty"`
-			Information interface{} `json:"information,omitempty"`
+			UID         string    `json:"uid,omitempty"`
+			URL         any       `json:"url,omitempty"`
+			BrowserURL  any       `json:"browser_url,omitempty"`
+			Name        any       `json:"name,omitempty"`
+			InstalledAt FlareTime `json:"installed_at,omitempty"`
+			UpdatedAt   any       `json:"updated_at,omitempty"`
+			SellerID    any       `json:"seller_id,omitempty"`
+			Isp         any       `json:"isp,omitempty"`
+			Information any       `json:"information,omitempty"`
 			Credentials []struct {
 				URL         string `json:"url,omitempty"`
 				Username    string `json:"username,omitempty"`
@@ -216,23 +216,23 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 				Value      string `json:"value,omitempty"`
 			} `json:"cookies,omitempty"`
 			UserInformation struct {
-				IPAddress          string      `json:"ip_address,omitempty"`
-				IPNetwork          interface{} `json:"ip_network,omitempty"`
-				Username           string      `json:"username,omitempty"`
-				CountryCode        string      `json:"country_code,omitempty"`
-				ZipCode            string      `json:"zip_code,omitempty"`
-				Location           string      `json:"location,omitempty"`
-				Hwid               string      `json:"hwid,omitempty"`
-				CurrentLanguage    string      `json:"current_language,omitempty"`
-				ScreensizeWidth    int         `json:"screensize_width,omitempty"`
-				ScreensizeHeight   int         `json:"screensize_height,omitempty"`
-				Timezone           string      `json:"timezone,omitempty"`
-				Os                 string      `json:"os,omitempty"`
-				Uac                string      `json:"uac,omitempty"`
-				ProcessElevation   interface{} `json:"process_elevation,omitempty"`
-				AvailableKeyboards []string    `json:"available_keyboards,omitempty"`
-				Hardware           []string    `json:"hardware,omitempty"`
-				AntiViruses        interface{} `json:"anti_viruses,omitempty"`
+				IPAddress          string   `json:"ip_address,omitempty"`
+				IPNetwork          any      `json:"ip_network,omitempty"`
+				Username           string   `json:"username,omitempty"`
+				CountryCode        string   `json:"country_code,omitempty"`
+				ZipCode            string   `json:"zip_code,omitempty"`
+				Location           string   `json:"location,omitempty"`
+				Hwid               string   `json:"hwid,omitempty"`
+				CurrentLanguage    string   `json:"current_language,omitempty"`
+				ScreensizeWidth    int      `json:"screensize_width,omitempty"`
+				ScreensizeHeight   int      `json:"screensize_height,omitempty"`
+				Timezone           string   `json:"timezone,omitempty"`
+				Os                 string   `json:"os,omitempty"`
+				Uac                string   `json:"uac,omitempty"`
+				ProcessElevation   any      `json:"process_elevation,omitempty"`
+				AvailableKeyboards []string `json:"available_keyboards,omitempty"`
+				Hardware           []string `json:"hardware,omitempty"`
+				AntiViruses        any      `json:"anti_viruses,omitempty"`
 			} `json:"user_information,omitempty"`
 			MalwareInformation struct {
 				MalwareFamily string    `json:"malware_family,omitempty"`
@@ -240,83 +240,83 @@ type FlareFireworkActivitiesIndexSourceIDv2Response struct {
 				FileLocation  string    `json:"file_location,omitempty"`
 				InfectionDate FlareTime `json:"infection_date,omitempty"`
 			} `json:"malware_information,omitempty"`
-			Files     []string    `json:"files,omitempty"`
-			Resources []string    `json:"resources,omitempty"` // sometimes credentials are here in the format, "Host: URL  |  Username: EMAIL  |  Password: PASSWORD", But a lot of the time, the password value is redacted...
-			Price     interface{} `json:"price,omitempty"`
-			Currency  interface{} `json:"currency,omitempty"`
+			Files     []string `json:"files,omitempty"`
+			Resources []string `json:"resources,omitempty"` // sometimes credentials are here in the format, "Host: URL  |  Username: EMAIL  |  Password: PASSWORD", But a lot of the time, the password value is redacted...
+			Price     any      `json:"price,omitempty"`
+			Currency  any      `json:"currency,omitempty"`
 			Features  struct {
-				Domains         []string    `json:"domains,omitempty"`
-				Emails          []string    `json:"emails,omitempty"`
-				IPAddresses     []string    `json:"ip_addresses,omitempty"`
-				IPAddressesCidr []string    `json:"ip_addresses_cidr,omitempty"`
-				ReversedDomains []string    `json:"reversed_domains,omitempty"`
-				Urls            []string    `json:"urls,omitempty"`
-				Usernames       []string    `json:"usernames,omitempty"`
-				Vulnerabilities interface{} `json:"vulnerabilities,omitempty"`
+				Domains         []string `json:"domains,omitempty"`
+				Emails          []string `json:"emails,omitempty"`
+				IPAddresses     []string `json:"ip_addresses,omitempty"`
+				IPAddressesCidr []string `json:"ip_addresses_cidr,omitempty"`
+				ReversedDomains []string `json:"reversed_domains,omitempty"`
+				Urls            []string `json:"urls,omitempty"`
+				Usernames       []string `json:"usernames,omitempty"`
+				Vulnerabilities any      `json:"vulnerabilities,omitempty"`
 			} `json:"features,omitempty"`
 		} `json:"data,omitempty"`
-		Duplicates []interface{} `json:"duplicates,omitempty"`
+		Duplicates []any `json:"duplicates,omitempty"`
 		Header     struct {
-			Actor           interface{}   `json:"actor,omitempty"`
-			Bank            interface{}   `json:"bank,omitempty"`
-			Bin             interface{}   `json:"bin,omitempty"`
-			Brand           interface{}   `json:"brand,omitempty"`
-			CredentialCount int           `json:"credential_count,omitempty"`
-			CategoryName    string        `json:"category_name,omitempty"`
-			ContentHash     string        `json:"content_hash,omitempty"`
-			ContentPreview  string        `json:"content_preview,omitempty"`
-			Country         interface{}   `json:"country,omitempty"`
-			Duplicates      []interface{} `json:"duplicates,omitempty"`
-			EsScore         interface{}   `json:"es_score,omitempty"`
-			Expiration      interface{}   `json:"expiration,omitempty"`
+			Actor           any    `json:"actor,omitempty"`
+			Bank            any    `json:"bank,omitempty"`
+			Bin             any    `json:"bin,omitempty"`
+			Brand           any    `json:"brand,omitempty"`
+			CredentialCount int    `json:"credential_count,omitempty"`
+			CategoryName    string `json:"category_name,omitempty"`
+			ContentHash     string `json:"content_hash,omitempty"`
+			ContentPreview  string `json:"content_preview,omitempty"`
+			Country         any    `json:"country,omitempty"`
+			Duplicates      []any  `json:"duplicates,omitempty"`
+			EsScore         any    `json:"es_score,omitempty"`
+			Expiration      any    `json:"expiration,omitempty"`
 			Highlights      struct {
 			} `json:"highlights,omitempty"`
-			Host          interface{} `json:"host,omitempty"`
-			ID            string      `json:"id,omitempty"`
-			InfectionDate FlareTime   `json:"infection_date,omitempty"`
-			ParentID      interface{} `json:"parent_id,omitempty"`
-			ParentTitle   interface{} `json:"parent_title,omitempty"`
-			ParentTitleEn interface{} `json:"parent_title_en,omitempty"`
-			ParentUID     interface{} `json:"parent_uid,omitempty"`
-			ParentUids    []string    `json:"parent_uids,omitempty"`
+			Host          any       `json:"host,omitempty"`
+			ID            string    `json:"id,omitempty"`
+			InfectionDate FlareTime `json:"infection_date,omitempty"`
+			ParentID      any       `json:"parent_id,omitempty"`
+			ParentTitle   any       `json:"parent_title,omitempty"`
+			ParentTitleEn any       `json:"parent_title_en,omitempty"`
+			ParentUID     any       `json:"parent_uid,omitempty"`
+			ParentUids    []string  `json:"parent_uids,omitempty"`
 			Risk          struct {
 				Score int `json:"score,omitempty"`
 			} `json:"risk,omitempty"`
-			SimilarItemsCount         int           `json:"similar_items_count,omitempty"`
-			Source                    string        `json:"source,omitempty"`
-			SourceName                string        `json:"source_name,omitempty"`
-			TargetName                string        `json:"target_name,omitempty"`
-			Tags                      []interface{} `json:"tags,omitempty"`
-			Notes                     interface{}   `json:"notes,omitempty"`
-			StateCode                 interface{}   `json:"state_code,omitempty"`
-			Timestamp                 FlareTime     `json:"timestamp,omitempty"`
-			Title                     string        `json:"title,omitempty"`
-			Type                      string        `json:"type,omitempty"`
-			UID                       string        `json:"uid,omitempty"`
-			UserRiskScore             interface{}   `json:"user_risk_score,omitempty"`
-			UserNotes                 interface{}   `json:"user_notes,omitempty"`
-			IgnoredAt                 interface{}   `json:"ignored_at,omitempty"`
-			RemediatedAt              interface{}   `json:"remediated_at,omitempty"`
-			Verb                      string        `json:"verb,omitempty"`
-			ExternalURL               string        `json:"external_url,omitempty"`
-			ExternalNetloc            string        `json:"external_netloc,omitempty"`
-			CanHaveDuplicates         bool          `json:"can_have_duplicates,omitempty"`
-			PriorityActionUUIDRelated bool          `json:"priority_action_uuid_related,omitempty"`
-			AnalyzersItemsUids        []interface{} `json:"analyzers_items_uids,omitempty"`
-			VictimName                interface{}   `json:"victim_name,omitempty"`
+			SimilarItemsCount         int       `json:"similar_items_count,omitempty"`
+			Source                    string    `json:"source,omitempty"`
+			SourceName                string    `json:"source_name,omitempty"`
+			TargetName                string    `json:"target_name,omitempty"`
+			Tags                      []any     `json:"tags,omitempty"`
+			Notes                     any       `json:"notes,omitempty"`
+			StateCode                 any       `json:"state_code,omitempty"`
+			Timestamp                 FlareTime `json:"timestamp,omitempty"`
+			Title                     string    `json:"title,omitempty"`
+			Type                      string    `json:"type,omitempty"`
+			UID                       string    `json:"uid,omitempty"`
+			UserRiskScore             any       `json:"user_risk_score,omitempty"`
+			UserNotes                 any       `json:"user_notes,omitempty"`
+			IgnoredAt                 any       `json:"ignored_at,omitempty"`
+			RemediatedAt              any       `json:"remediated_at,omitempty"`
+			Verb                      string    `json:"verb,omitempty"`
+			ExternalURL               string    `json:"external_url,omitempty"`
+			ExternalNetloc            string    `json:"external_netloc,omitempty"`
+			CanHaveDuplicates         bool      `json:"can_have_duplicates,omitempty"`
+			PriorityActionUUIDRelated bool      `json:"priority_action_uuid_related,omitempty"`
+			AnalyzersItemsUids        []any     `json:"analyzers_items_uids,omitempty"`
+			VictimName                any       `json:"victim_name,omitempty"`
 		} `json:"header,omitempty"`
-		HistoryLogs interface{} `json:"history_logs,omitempty"`
+		HistoryLogs any `json:"history_logs,omitempty"`
 		Metadata    struct {
-			EstimatedCreatedAt FlareTime   `json:"estimated_created_at,omitempty"`
-			EventID            interface{} `json:"event_id,omitempty"`
-			FirstCrawledAt     FlareTime   `json:"first_crawled_at,omitempty"`
-			LastCrawledAt      FlareTime   `json:"last_crawled_at,omitempty"`
-			PayloadDigest      string      `json:"payload_digest,omitempty"`
-			ScrapedAt          FlareTime   `json:"scraped_at,omitempty"`
-			Source             string      `json:"source,omitempty"`
-			CrawledBy          interface{} `json:"crawled_by,omitempty"`
+			EstimatedCreatedAt FlareTime `json:"estimated_created_at,omitempty"`
+			EventID            any       `json:"event_id,omitempty"`
+			FirstCrawledAt     FlareTime `json:"first_crawled_at,omitempty"`
+			LastCrawledAt      FlareTime `json:"last_crawled_at,omitempty"`
+			PayloadDigest      string    `json:"payload_digest,omitempty"`
+			ScrapedAt          FlareTime `json:"scraped_at,omitempty"`
+			Source             string    `json:"source,omitempty"`
+			CrawledBy          any       `json:"crawled_by,omitempty"`
 		} `json:"metadata,omitempty"`
-		SimilarItems []interface{} `json:"similar_items,omitempty"`
+		SimilarItems []any `json:"similar_items,omitempty"`
 	} `json:"activity,omitempty"`
 }
 
@@ -335,23 +335,23 @@ type FlareListByBulkAccountResponse map[string]Entry
 
 // Entry represents each entry in the API response
 type Entry struct {
-	Links     map[string]interface{} `json:"links"`
-	Name      string                 `json:"name"`
-	Passwords []Password             `json:"passwords"`
+	Links     map[string]any `json:"links"`
+	Name      string         `json:"name"`
+	Passwords []Password     `json:"passwords"`
 }
 
 // Password represents the details of a breached credential
 type Password struct {
-	CredentialHash string                 `json:"credential_hash"`
-	Domain         *string                `json:"domain"` // Use *string to handle null values
-	Extra          map[string]interface{} `json:"extra"`
-	Hash           string                 `json:"hash"`
-	HashType       string                 `json:"hash_type"`
-	ID             int                    `json:"id"`
-	ImportedAt     string                 `json:"imported_at"`
-	Source         Source                 `json:"source"`
-	SourceID       string                 `json:"source_id"`
-	SourceParams   interface{}            `json:"source_params"`
+	CredentialHash string         `json:"credential_hash"`
+	Domain         *string        `json:"domain"` // Use *string to handle null values
+	Extra          map[string]any `json:"extra"`
+	Hash           string         `json:"hash"`
+	HashType       string         `json:"hash_type"`
+	ID             int            `json:"id"`
+	ImportedAt     string         `json:"imported_at"`
+	Source         Source         `json:"source"`
+	SourceID       string         `json:"source_id"`
+	SourceParams   any            `json:"source_params"`
 }
 
 // Source represents the breach source details
@@ -384,17 +384,17 @@ type Cookie struct {
 
 // CookieBro ...
 type CookieBro struct {
-	Name             string      `json:"name,omitempty"`
-	Value            string      `json:"value,omitempty"`
-	Domain           string      `json:"domain,omitempty"`
-	HostOnly         bool        `json:"hostOnly,omitempty"`
-	Path             string      `json:"path,omitempty"`
-	Secure           bool        `json:"secure,omitempty"`
-	HTTPOnly         bool        `json:"httpOnly,omitempty"`
-	SameSite         string      `json:"sameSite,omitempty"`
-	Session          bool        `json:"session,omitempty"`
-	FirstPartyDomain string      `json:"firstPartyDomain,omitempty"`
-	PartitionKey     interface{} `json:"partitionKey,omitempty"`
-	ExpirationDate   int64       `json:"expirationDate,omitempty"`
-	StoreID          string      `json:"storeId,omitempty"`
+	Name             string `json:"name,omitempty"`
+	Value            string `json:"value,omitempty"`
+	Domain           string `json:"domain,omitempty"`
+	HostOnly         bool   `json:"hostOnly,omitempty"`
+	Path             string `json:"path,omitempty"`
+	Secure           bool   `json:"secure,omitempty"`
+	HTTPOnly         bool   `json:"httpOnly,omitempty"`
+	SameSite         string `json:"sameSite,omitempty"`
+	Session          bool   `json:"session,omitempty"`
+	FirstPartyDomain string `json:"firstPartyDomain,omitempty"`
+	PartitionKey     any    `json:"partitionKey,omitempty"`
+	ExpirationDate   int64  `json:"expirationDate,omitempty"`
+	StoreID          string `json:"storeId,omitempty"`
 }

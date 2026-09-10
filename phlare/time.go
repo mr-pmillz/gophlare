@@ -58,7 +58,7 @@ func (ft *FlareTime) Value() (driver.Value, error) {
 
 // Scan implements the sql.Scanner interface for database deserialization.
 // It reads a time.Time value from the database and stores it in FlareTime.
-func (ft *FlareTime) Scan(value interface{}) error {
+func (ft *FlareTime) Scan(value any) error {
 	if value == nil {
 		*ft = FlareTime{}
 		return nil

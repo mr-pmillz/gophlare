@@ -20,13 +20,13 @@ type Options struct {
 	Version                         string
 	From                            string
 	To                              string
-	Domains                         interface{}
-	FilesToDownload                 interface{}
-	OutOfScope                      interface{}
-	Emails                          interface{}
-	UserIDFormat                    interface{}
-	Severity                        interface{}
-	EventsFilterTypes               interface{}
+	Domains                         any
+	FilesToDownload                 any
+	OutOfScope                      any
+	Emails                          any
+	UserIDFormat                    any
+	Severity                        any
+	EventsFilterTypes               any
 	Timeout                         int
 	MaxZipFilesToDownload           int
 	Verbose                         bool
