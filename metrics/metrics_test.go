@@ -304,10 +304,14 @@ func TestNilRecorderIsANoOp(t *testing.T) {
 }
 
 func TestDefaultRecorderIsShared(t *testing.T) {
-	if Default() == nil {
+	// Assigned first so staticcheck does not read this as comparing an
+	// expression with itself (SA4000); the point is pointer identity.
+	first, second := Default(), Default()
+
+	if first == nil {
 		t.Fatal("Default() = nil, want a recorder")
 	}
-	if Default() != Default() {
+	if first != second {
 		t.Error("Default() returned different recorders; the CLI relies on a single process-wide recorder")
 	}
 }

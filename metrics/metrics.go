@@ -60,6 +60,10 @@ type Recorder struct {
 	started time.Time
 	byKey   map[callKey]*counters
 
+	// reported guards ReportOnce so the success path and the fatal path can
+	// both call it without printing the report twice.
+	reported sync.Once
+
 	// Quota state observed from response headers. Tracking first and last
 	// separately is what makes the delta authoritative: Flare's own accounting
 	// includes a 10-minute free-repeat window we cannot model locally.
