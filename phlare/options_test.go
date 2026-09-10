@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mr-pmillz/gophlare/metrics"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -39,12 +40,15 @@ func createTestCommand() *cobra.Command {
 	// integers
 	cmd.Flags().IntP("timeout", "", 900, "timeout duration for API requests in seconds")
 	cmd.Flags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files.")
+	cmd.Flags().IntP("monthly-quota", "", metrics.DefaultMonthlyQuota, "your Flare monthly Global Search quota")
+	cmd.Flags().IntP("global-search-page-size", "", DefaultGlobalSearchPageSize, "events per global search request")
 	// booleans
 	cmd.Flags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by *@email domain(s), download and parse all the matching zip files for passwords and live cookies")
 	cmd.Flags().BoolP("keep-zip-files", "", false, "keep all the matching downloaded zip files from the stealer logs")
 	cmd.Flags().BoolP("search-credentials-by-domain", "", false, "search for credentials by domain")
 	cmd.Flags().BoolP("search-emails-in-bulk", "", false, "search list of emails for credentials.")
 	cmd.Flags().BoolP("verbose", "v", false, "enable verbose output")
+	cmd.Flags().BoolP("metrics", "", false, "print a Flare API usage and quota report at the end of the run")
 	cmd.Flags().BoolP("search-stealer-logs-by-host-domain", "", false, "search the stealer logs by host domain(s), download and parse all the matching zip files for passwords and live cookies")
 	cmd.Flags().BoolP("search-stealer-logs-by-wildcard-host", "", false, "search the stealer logs by host wildcard domain(s), (*.example.com) download and parse all the matching zip files for passwords and live cookies")
 
@@ -515,6 +519,95 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 
 			if tt.checkOpts != nil && !tt.wantErr {
 				tt.checkOpts(t, opts)
+			}
+		})
+	}
+}
+
+// TestOptions_LoadFromCommandMetricsFlags covers the three metrics flags,
+// including the deliberate page-size default of 5.
+func TestOptions_LoadFromCommandMetricsFlags(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []string
+		wantMetrics  bool
+		wantQuota    int
+		wantPageSize int
+	}{
+		{
+			name:         "defaults",
+			args:         nil,
+			wantMetrics:  false,
+			wantQuota:    metrics.DefaultMonthlyQuota,
+			wantPageSize: DefaultGlobalSearchPageSize,
+		},
+		{
+			name:         "metrics enabled",
+			args:         []string{"--metrics"},
+			wantMetrics:  true,
+			wantQuota:    metrics.DefaultMonthlyQuota,
+			wantPageSize: DefaultGlobalSearchPageSize,
+		},
+		{
+			name:         "custom quota and page size",
+			args:         []string{"--metrics", "--monthly-quota", "25000", "--global-search-page-size", "10"},
+			wantMetrics:  true,
+			wantQuota:    25000,
+			wantPageSize: 10,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			cmd := createTestCommand()
+			if err := cmd.ParseFlags(tt.args); err != nil {
+				t.Fatalf("ParseFlags(%v) error = %v", tt.args, err)
+			}
+
+			opts := &Options{}
+			if err := opts.LoadFromCommand(cmd); err != nil {
+				t.Fatalf("LoadFromCommand() error = %v", err)
+			}
+
+			if opts.Metrics != tt.wantMetrics {
+				t.Errorf("Metrics = %v, want %v", opts.Metrics, tt.wantMetrics)
+			}
+			if opts.MonthlyQuota != tt.wantQuota {
+				t.Errorf("MonthlyQuota = %d, want %d", opts.MonthlyQuota, tt.wantQuota)
+			}
+			if opts.GlobalSearchPageSize != tt.wantPageSize {
+				t.Errorf("GlobalSearchPageSize = %d, want %d", opts.GlobalSearchPageSize, tt.wantPageSize)
+			}
+		})
+	}
+}
+
+// TestConfigureCommandRegistersMetricsFlags guards against the real
+// ConfigureCommand drifting from the test helper above.
+func TestConfigureCommandRegistersMetricsFlags(t *testing.T) {
+	cmd := &cobra.Command{Use: "search"}
+	if err := ConfigureCommand(cmd); err != nil {
+		t.Fatalf("ConfigureCommand() error = %v", err)
+	}
+
+	tests := []struct {
+		flag        string
+		wantDefault string
+	}{
+		{"metrics", "false"},
+		{"monthly-quota", "10000"},
+		{"global-search-page-size", "5"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.flag, func(t *testing.T) {
+			f := cmd.PersistentFlags().Lookup(tt.flag)
+			if f == nil {
+				// Explicit return so staticcheck sees the nil path terminate.
+				t.Fatalf("ConfigureCommand did not register --%s", tt.flag)
+				return
+			}
+			if f.DefValue != tt.wantDefault {
+				t.Errorf("--%s default = %q, want %q", tt.flag, f.DefValue, tt.wantDefault)
 			}
 		})
 	}

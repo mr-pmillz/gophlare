@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mr-pmillz/gophlare/metrics"
 	"github.com/mr-pmillz/gophlare/phlare"
 	"github.com/mr-pmillz/gophlare/utils"
 )
@@ -22,8 +23,8 @@ type FlareCredentialPairs struct {
 	SourceID   string
 	Domain     string
 	ImportedAt phlare.FlareTime
-	LeakedAt   interface{}
-	BreachedAt interface{}
+	LeakedAt   any
+	BreachedAt any
 }
 
 // FlareCreds ...
@@ -48,7 +49,10 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		return utils.LogError(err)
 	}
 
-	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout)
+	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout,
+		phlare.WithMetricsRecorder(metrics.Default()),
+		phlare.WithGlobalSearchPageSize(opts.GlobalSearchPageSize),
+	)
 	if err != nil {
 		return utils.LogError(err)
 	}
@@ -56,7 +60,10 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 	allCSVFiles := make([]string, 0)
 	if len(scope.Domains) == 0 && opts.Query != "" {
 		utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for using custom query: %s \n\tFrom: %s To: %s", opts.Query, opts.From, opts.To)
-		results, err := phlare.QueryGlobalEvents(fc, "", flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain, opts.SearchStealerLogsByWildcardHost)
+		// A custom query has no domain, so attribute its API usage to a
+		// synthetic entity rather than leaving it unattributed.
+		fcQuery := fc.ForEntity(metrics.EntityCustomQuery)
+		results, err := phlare.QueryGlobalEvents(fcQuery, "", flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain, opts.SearchStealerLogsByWildcardHost)
 		if err != nil {
 			return utils.LogError(err)
 		}
@@ -66,7 +73,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 			return nil
 		}
 		utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
-		_, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, "", scope.UserIDFormats, opts.KeepZipFiles, db)
+		_, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fcQuery, opts.MaxZipFilesToDownload, flareOutputDir, "", scope.UserIDFormats, opts.KeepZipFiles, db)
 		if err != nil {
 			return utils.LogError(err)
 		}
@@ -87,7 +94,10 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 		for _, domain := range scope.Domains {
 			utils.InfoLabelWithColorf("FLARE", "cyan", "Checking Stealer Logs for %s From: %s To: %s", domain, opts.From, opts.To)
 
-			results, err := phlare.QueryGlobalEvents(fc, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain, opts.SearchStealerLogsByWildcardHost)
+			// Scope this domain's API usage so the --metrics report can show
+			// which domain cost what. Shares the HTTP client and recorder.
+			fcDomain := fc.ForEntity(domain)
+			results, err := phlare.QueryGlobalEvents(fcDomain, domain, flareOutputDir, opts.Query, opts.From, opts.To, scope.Severity, scope.EventsFilterTypes, opts.SearchStealerLogsByHostDomain, opts.SearchStealerLogsByWildcardHost)
 			if err != nil {
 				return utils.LogError(err)
 			}
@@ -98,7 +108,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 			}
 			utils.InfoLabelWithColorf("FLARE", "green", "Got %d hits from the Flare Stealer Logs", numResults)
 
-			allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fc, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles, db)
+			allFlareStealerLogInScopeCredentials, allFlareStealerLogCredentials, err := downloadZipFilesAndProcessPasswordResults(results, fcDomain, opts.MaxZipFilesToDownload, flareOutputDir, domain, scope.UserIDFormats, opts.KeepZipFiles, db)
 			if err != nil {
 				return utils.LogError(err)
 			}
@@ -467,7 +477,10 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 		return nil, utils.LogError(err)
 	}
 	// new flare client
-	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout)
+	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout,
+		phlare.WithMetricsRecorder(metrics.Default()),
+		phlare.WithGlobalSearchPageSize(opts.GlobalSearchPageSize),
+	)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -483,7 +496,7 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 		outputJSON := fmt.Sprintf("%s/flare-leaks-%s.json", flareOutputDir, domain)
 		outputCSV := fmt.Sprintf("%s/flare-leaks-%s.csv", flareOutputDir, domain)
 		utils.InfoLabelWithColorf("FLARE LEAK DATA", "blue", "Checking Flare Leaked Credentials API for %s", domain)
-		data, err := fc.FlareSearchCredentialsByDomainASTP(domain)
+		data, err := fc.ForEntity(domain).FlareSearchCredentialsByDomainASTP(domain)
 		if err != nil {
 			utils.LogWarningf("something went wrong retrieving flare leak data for %s, Error: %s", domain, err.Error())
 			continue
@@ -759,7 +772,10 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 		return utils.LogError(err)
 	}
 	// new flare client
-	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout)
+	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout,
+		phlare.WithMetricsRecorder(metrics.Default()),
+		phlare.WithGlobalSearchPageSize(opts.GlobalSearchPageSize),
+	)
 	if err != nil {
 		return utils.LogError(err)
 	}
@@ -770,7 +786,7 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 	}
 
 	utils.InfoLabelWithColorf("FLARE", "cyan", "Searching for emails in bulk...")
-	matchedEmailCredResults, err := fc.FlareBulkCredentialLookup(emails, flareOutputDir)
+	matchedEmailCredResults, err := fc.ForEntity(metrics.EntityBulkEmails).FlareBulkCredentialLookup(emails, flareOutputDir)
 	if err != nil {
 		return utils.LogError(err)
 	}

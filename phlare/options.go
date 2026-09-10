@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mr-pmillz/gophlare/config"
+	"github.com/mr-pmillz/gophlare/metrics"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +30,9 @@ type Options struct {
 	EventsFilterTypes               any
 	Timeout                         int
 	MaxZipFilesToDownload           int
+	MonthlyQuota                    int
+	GlobalSearchPageSize            int
+	Metrics                         bool
 	Verbose                         bool
 	SearchStealerLogsByDomain       bool
 	KeepZipFiles                    bool
@@ -64,12 +68,15 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	// integers
 	cmd.PersistentFlags().IntP("timeout", "", 900, "timeout duration for API requests in seconds")
 	cmd.PersistentFlags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files.")
+	cmd.PersistentFlags().IntP("monthly-quota", "", metrics.DefaultMonthlyQuota, "your Flare monthly Global Search quota, used as the denominator in the --metrics report. Flare sets this per license, so verify it on your tenants page")
+	cmd.PersistentFlags().IntP("global-search-page-size", "", DefaultGlobalSearchPageSize, "events per global search request (the API size param, max 10). Flare bills per request, so larger pages consume less quota but are likelier to hit its ~30s gateway timeout")
 	// booleans
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by *@email domain(s), download and parse all the matching zip files for passwords and live cookies")
 	cmd.PersistentFlags().BoolP("keep-zip-files", "", false, "keep all the matching downloaded zip files from the stealer logs")
 	cmd.PersistentFlags().BoolP("search-credentials-by-domain", "", false, "search for credentials by domain")
 	cmd.PersistentFlags().BoolP("search-emails-in-bulk", "", false, "search list of emails for credentials.")
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "enable verbose output")
+	cmd.PersistentFlags().BoolP("metrics", "", false, "print a Flare API usage and quota report at the end of the run, and write flare-api-metrics.json to the output dir")
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-host-domain", "", false, "search the stealer logs by host domain(s), download and parse all the matching zip files for passwords and live cookies")
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-wildcard-host", "", false, "search the stealer logs by host wildcard domain(s), (*.example.com) download and parse all the matching zip files for passwords and live cookies")
 
@@ -386,6 +393,24 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	opts.MaxZipFilesToDownload = cmdMaxZipsDownloadLimit
+
+	cmdMonthlyQuota, err := cmd.Flags().GetInt("monthly-quota")
+	if err != nil {
+		return err
+	}
+	opts.MonthlyQuota = cmdMonthlyQuota
+
+	cmdGlobalSearchPageSize, err := cmd.Flags().GetInt("global-search-page-size")
+	if err != nil {
+		return err
+	}
+	opts.GlobalSearchPageSize = cmdGlobalSearchPageSize
+
+	cmdMetrics, err := cmd.Flags().GetBool("metrics")
+	if err != nil {
+		return err
+	}
+	opts.Metrics = cmdMetrics
 
 	return nil
 }
