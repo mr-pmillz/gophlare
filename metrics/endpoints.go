@@ -45,12 +45,14 @@ type Endpoint string
 
 // The Flare API endpoints gophlare calls.
 const (
-	EndpointTokenGenerate         Endpoint = "/tokens/generate"
-	EndpointGlobalEventsSearch    Endpoint = "/firework/v4/events/global/_search"
-	EndpointActivityByID          Endpoint = "/firework/v2/activities/{uid}"
-	EndpointActivityDownload      Endpoint = "/firework/v2/activities/{uid}/download"
-	EndpointActivityDownloadFile  Endpoint = "/firework/v2/activities/{uid}/download_file"
-	EndpointASTPCredentialsSearch Endpoint = "/astp/v2/credentials/_search"
+	EndpointTokenGenerate        Endpoint = "/tokens/generate"
+	EndpointGlobalEventsSearch   Endpoint = "/firework/v4/events/global/_search"
+	EndpointActivityByID         Endpoint = "/firework/v2/activities/{uid}"
+	EndpointActivityDownload     Endpoint = "/firework/v2/activities/{uid}/download"
+	EndpointActivityDownloadFile Endpoint = "/firework/v2/activities/{uid}/download_file"
+	// EndpointASTPCredentialsSearch is an API path, not a secret; gosec's G101
+	// heuristic fires on the word "credentials".
+	EndpointASTPCredentialsSearch Endpoint = "/astp/v2/credentials/_search" //nolint:gosec
 	EndpointASTPCookiesSearch     Endpoint = "/astp/v2/cookies/_search"
 	EndpointBulkAccounts          Endpoint = "/leaksdb/identities/by_accounts"
 )
