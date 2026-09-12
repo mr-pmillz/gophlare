@@ -1,0 +1,51 @@
+# Dependabot version updates for the gophlare repo.
+# Reference: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+#
+# One update stream per package ecosystem actually present in the repo (the Go
+# module, GitHub Actions, and the release Dockerfile's base image). Within each
+# ecosystem, minor + patch bumps are grouped into a single weekly PR to cut
+# noise; major bumps open individually so breaking changes get a dedicated
+# review. Commit prefixes follow the repo's conventional-commit convention
+# (`chore` / `ci`), and PRs target `develop` (the gitflow integration branch —
+# `main` is updated only via release/hotfix PRs per branch-policy.yml).
+version: 2
+
+updates:
+  # Go module — root go.mod / go.sum.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      go-modules:
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions — Dependabot scans /.github/workflows automatically.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      github-actions:
+        update-types: ["minor", "patch"]
+
+  # Container base images (Dockerfile and goreleaser.dockerfile).
+  - package-ecosystem: "docker"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      docker:
+        update-types: ["minor", "patch"]

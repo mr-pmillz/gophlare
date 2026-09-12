@@ -33,14 +33,26 @@ func NewHTTPClientWithTimeOut(skipVerify bool, timeout int) *Client {
 	}
 }
 
-func (c Client) DoReq(u, method string, target interface{}, headers map[string]string, params map[string]string, body []byte) (int, error) {
+// DoReq performs a request and returns only the status code. Its signature is
+// deliberately unchanged: bloodhound/api.go and external SDK consumers call it.
+// Use DoReqWithHeaders when response headers matter — Flare reports quota state
+// only in headers.
+func (c Client) DoReq(u, method string, target any, headers map[string]string, params map[string]string, body []byte) (int, error) {
+	statusCode, _, err := c.DoReqWithHeaders(u, method, target, headers, params, body)
+	return statusCode, err
+}
+
+// DoReqWithHeaders performs a request and additionally returns the response
+// headers. Headers are returned for non-2xx responses too, so a 429's quota
+// headers are not lost. A transport failure returns a nil header.
+func (c Client) DoReqWithHeaders(u, method string, target any, headers map[string]string, params map[string]string, body []byte) (int, http.Header, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		bodyReader = bytes.NewBuffer(body)
 	}
 	req, err := http.NewRequest(method, u, bodyReader)
 	if err != nil {
-		return 0, utils.LogError(err)
+		return 0, nil, utils.LogError(err)
 	}
 
 	if body != nil {
@@ -61,7 +73,7 @@ func (c Client) DoReq(u, method string, target interface{}, headers map[string]s
 	// req.Close = true
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return 0, utils.LogError(err)
+		return 0, nil, utils.LogError(err)
 	}
 	defer resp.Body.Close()
 
@@ -72,13 +84,13 @@ func (c Client) DoReq(u, method string, target interface{}, headers map[string]s
 	// connection can be reused, and let the caller branch on statusCode.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return resp.StatusCode, nil
+		return resp.StatusCode, resp.Header, nil
 	}
 
-	return resp.StatusCode, DecodeResponse(resp, target)
+	return resp.StatusCode, resp.Header, DecodeResponse(resp, target)
 }
 
-func DecodeResponse(resp *http.Response, target interface{}) error {
+func DecodeResponse(resp *http.Response, target any) error {
 	if target == nil {
 		return nil
 	}
@@ -109,7 +121,7 @@ func DecodeResponse(resp *http.Response, target interface{}) error {
 	}
 }
 
-func decodeXML(body io.Reader, target interface{}) error {
+func decodeXML(body io.Reader, target any) error {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, body); err != nil {
 		return utils.LogError(err)

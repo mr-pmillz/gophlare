@@ -15,7 +15,7 @@ type Scope struct {
 }
 
 // resolveToSlice converts an interface{} (nil, string, or []string) into a []string.
-func resolveToSlice(val interface{}) []string {
+func resolveToSlice(val any) []string {
 	if val == nil {
 		return make([]string, 0)
 	}

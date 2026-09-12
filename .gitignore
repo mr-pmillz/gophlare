@@ -24,7 +24,6 @@ git-cliff-*/*
 *.tar.gz
 *.tgz
 todo.md
-phlare/flareClient_test.go
 gophlare
 *.json
 RELEASE_CHANGELOG.md
@@ -32,3 +31,12 @@ report.xml
 coverage.xml
 *.txt
 .aiignore
+
+# Repository automation and release configuration
+!.github/**/*.yml
+!.github/**/*.yaml
+!.goreleaser.yml
+!.golangci-lint.yml
+
+__pycache__/
+.github/scripts/__pycache__/

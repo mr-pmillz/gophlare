@@ -185,7 +185,7 @@ func TestNewScope(t *testing.T) {
 func TestResolveToSlice(t *testing.T) {
 	tests := []struct {
 		name string
-		val  interface{}
+		val  any
 		want []string
 	}{
 		{"nil returns empty slice", nil, []string{}},

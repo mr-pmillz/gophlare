@@ -1,0 +1,36 @@
+name: Branch Policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  check-branch-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate PR branches
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$BASE" != main ]]; then
+            exit 0
+          fi
+          if [[ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]]; then
+            echo '::error::Release PRs into main must originate in this repository.'
+            exit 1
+          fi
+          if [[ "$HEAD" == develop ]]; then
+            exit 0
+          fi
+          version='(0|[1-9][0-9]*)'
+          if [[ ! "$HEAD" =~ ^(release|hotfix)/v?${version}\.${version}\.${version}$ ]]; then
+            echo '::error::Target develop for features; main accepts develop, release/vX.Y.Z, or hotfix/vX.Y.Z.'
+            exit 1
+          fi

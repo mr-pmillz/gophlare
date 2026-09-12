@@ -427,8 +427,8 @@ type FlareCredentialPairInput struct {
 	SourceID   string
 	Domain     string
 	ImportedAt FlareTime
-	LeakedAt   interface{} // can be time.Time, string, or nil
-	BreachedAt interface{} // can be time.Time, string, or nil
+	LeakedAt   any // can be time.Time, string, or nil
+	BreachedAt any // can be time.Time, string, or nil
 }
 
 // InsertFlareCredentialPairs inserts Flare credential pair data into the FlareCredentialPairsDB table in batches
