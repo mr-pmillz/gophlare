@@ -14,6 +14,7 @@
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
   <a href="#supported-api-endpoints">Supported API Endpoints</a> •
+  <a href="#flare-api-usage-metrics">Usage Metrics</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#todo">ToDo</a>
 </p>
@@ -29,6 +30,7 @@ Gophlare also has several convenience features baked in such as:
 3. Stealer logs cookies parser that can sort cookies by expiration date and CookieBro export to JSON support.
 4. Getting credentials by domain name.
 5. Hash identification for `hash` results that can differentiate between passwords, password hashes, and encrypted values.
+6. API usage and quota metrics via `--metrics`, showing how many calls each domain cost and how much of your monthly Global Search quota remains.
 
 ## Installation
 
@@ -46,6 +48,9 @@ Gophlare currently supports the following API endpoints:
 * [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search)
 * [/astp/v2/credentials/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-credentials-search)
 * [/astp/v2/cookies/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-cookies-search)
+* /leaksdb/identities/by_accounts
+
+Of these, only [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search) draws on your monthly [Global Search quota](https://api.docs.flare.io/concepts/rate-limits-and-quotas). See [Flare API Usage Metrics](#flare-api-usage-metrics).
 
 ## Usage
 
@@ -70,9 +75,12 @@ Flags:
       --events-filter-types string             flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
       --files-to-download string               comma separated list of files to match on and download if they exist from the query
   -f, --from string                            from date used for a filter for stealer log searches. ex. 2021-01-01
+      --global-search-page-size int            events per global search request (the API size param, max 10). larger pages reduce request count but may be slower; quota savings are not guaranteed (default 5)
   -h, --help                                   help for search
       --keep-zip-files                         keep all the matching downloaded zip files from the stealer logs
   -m, --max-zip-download-limit int             maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files. (default 50)
+      --metrics                                print a Flare API usage and quota report at the end of the run, and write flare-api-metrics.json to the output dir
+      --monthly-quota int                      your Flare monthly Global Search quota, used as the denominator in the --metrics report. Flare sets this per license, so verify it on your tenants page (default 10000)
       --out-of-scope string                    out of scope domains, IPs, or CIDRs
   -o, --output string                          report output dir
   -q, --query string                           query to use for searching stealer logs.
@@ -125,6 +133,88 @@ cli flags should override options set in config.yaml. For example, the following
 ```shell
 ./gophlare search --config config/config.yaml --search-credentials-by-domain -o .
 ```
+
+### Flare API Usage Metrics
+
+Flare bills Global Search against a monthly quota (10,000 searches on a typical
+license). Because gophlare paginates with a cursor, a single domain with a few
+thousand stealer-log events can issue hundreds of requests, so it is easy to
+spend a large share of a month's quota without noticing.
+
+Pass `--metrics` to get a usage report at the end of any run, plus a
+machine-readable `flare-api-metrics.json` in the output dir:
+
+```shell
+./gophlare search --config config/config.yaml --search-stealer-logs-by-domain --metrics -o .
+```
+
+```text
+ FLARE API USAGE — v1.5.0 · 4m12s
+
+ GLOBAL SEARCH QUOTA
+   Monthly quota .................   10,000  (--monthly-quota, operator-supplied)
+   Observed quota decrease ......       87  via X-Flare-Global-Searches-Remaining
+   Remaining .....................    8,913  10.9% of monthly quota used
+   Quota-bearing calls counted ...       92  5 above observed — see note
+
+ BY ENDPOINT
+   ENDPOINT                            BILLS  CALLS  2xx  429  5xx  RETRIES  AVG
+   /astp/v2/credentials/_search        no     34     34   0    0    0        8.1s
+   /firework/v2/activities/{uid}       no     35     35   0    0    0        310ms
+   /firework/v4/events/global/_search  yes    92     90   1    1    1        1.9s
+   /leaksdb/identities/by_accounts     ?      3      3    0    0    0        4s
+   TOTAL                                      165    163  1    1    1
+
+ BY ENTITY
+   ENTITY           ENDPOINT                            CALLS  QUOTA
+   example.com      /astp/v2/credentials/_search        34     —
+                    /firework/v2/activities/{uid}       35     —
+                    /firework/v4/events/global/_search  61     61
+   sub.example.com  /firework/v4/events/global/_search  31     31
+   TOTAL                                                165    92
+
+ note: counted (92) exceeds observed (87) — Flare does not bill repeat searches
+       within 10 minutes, and 429/5xx retry billing is undocumented.
+       The observed interval excludes the first request and can include other clients.
+```
+
+**Which endpoints bill?** Only Global Search draws on the monthly quota. Per
+Flare's docs the ASTP credentials search "does not count towards your search
+quota", and the same holds for the ASTP cookies search; activity retrieval and
+the stealer-log downloads are on the basic rate-limit tier, not the search
+quota. Billing for `/leaksdb/identities/by_accounts` is **not documented**, so
+it is reported as `?` and excluded from quota totals rather than guessed at.
+
+**Observed vs. counted.** `Observed quota decrease` is the difference between
+the first and last `X-Flare-Global-Searches-Remaining` headers. These describe
+organization-wide state after requests: the difference excludes the first
+request and any usage before the first header, and can include other clients.
+It is not a measurement of this run's total spend. A single observation or any
+increase in remaining quota produces `n/a` (an increase can mean a quota reset,
+allocation change, or responses arriving out of order). The JSON field
+`observed_consumed` carries this interval decrease and is omitted when unknown;
+`quota_observations` and `quota_increased` explain its availability.
+
+The local counters (`quota_units` and `counted_quota_calls`) count attempts on
+quota-bearing endpoints as an upper bound, including failures and retries.
+They do not measure billed units. Flare documents quota by search and result
+batch (up to 100 results per unit), with a grace window for repeated searches.
+See [Flare's quota documentation](https://docs.flare.io/global-search-quota) and
+[API quota headers](https://api.docs.flare.io/concepts/rate-limits-and-quotas).
+
+**Page size.** `--global-search-page-size` accepts **1–10**, defaulting to **5**.
+Larger pages reduce HTTP requests, but can take longer and do not guarantee
+quota savings. `--monthly-quota` must be positive. Both settings and `METRICS`
+can also be supplied in config, using `GLOBAL_SEARCH_PAGE_SIZE` and
+`MONTHLY_QUOTA`; explicit CLI flags take precedence.
+
+Metrics are always collected; `--metrics` controls report emission. Each CLI
+invocation owns a recorder. Library callers of the search helpers can use
+`Options.MetricsRecorder` or the shared `metrics.Default()` recorder. Direct
+`phlare.NewFlareClient` callers opt in with `phlare.WithMetricsRecorder(recorder)`.
+A report is written on normal completion and reported search failures, using
+the resolved output directory. Paginated searches stop after five consecutive
+retries for a page, allowing failures to return and the report to be written.
 
 ## gophlare as a library
 
@@ -235,3 +325,9 @@ Global Flags:
 - [X] Export cookies to separate cookie bro output JSON files per stealer log ID
 - [X] Add Dockerfile and push to ghcr.io container registry
 - [X] Add example library usage to README.md
+
+## Contributing and releases
+
+Feature and fix PRs target `develop`. Stable releases use `release/vX.Y.Z` or
+`hotfix/vX.Y.Z` PRs into `main`. See [CONTRIBUTING.md](CONTRIBUTING.md) for checks,
+release steps, and GitHub App/ruleset setup.

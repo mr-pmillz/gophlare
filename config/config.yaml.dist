@@ -2,6 +2,9 @@ COMPANY: "CHANGETHIS"
 OUTPUT: "CHANGETHIS"
 USER_AGENT: ""
 TIMEOUT: 600
+METRICS: false
+MONTHLY_QUOTA: 10000
+GLOBAL_SEARCH_PAGE_SIZE: 5
 # Accepts multiple input formats: MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD
 # Always returns the date in time.RFC3339 (YYYY-MM-DDT00:00:00Z)
 # TO if left blank defaults to today's date

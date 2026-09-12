@@ -1,11 +1,7 @@
 SHELL := /bin/bash
 BIN="./bin"
-SRC=$(shell find . -name "*.go")
+SRC=$(shell git ls-files --cached --others --exclude-standard '*.go')
 CURRENT_TAG=$(shell git describe --tags --abbrev=0)
-
-GOLANGCI := $(shell command -v golangci-lint 2>/dev/null)
-TPARSE := $(shell command -v tparse 2>/dev/null)
-GOTESTFMT := $(shell command -v gotestfmt 2>/dev/null)
 
 .PHONY: fmt lint build test clean compile compress
 
@@ -17,33 +13,19 @@ release: clean build compile compress
 
 fmt:
 	$(info ******************** checking formatting ********************)
-	@test -z $(shell gofmt -l $(SRC)) || (gofmt -d $(SRC); exit 1)
+	@test -z "$$(gofmt -l $(SRC))" || (gofmt -d $(SRC); exit 1)
 
 lint:
 	$(info ******************** running lint tools ********************)
 	golangci-lint run -c .golangci-lint.yml -v ./... --timeout 10m
 
 test:
-	$(info ******************** running tests ********************)
-    ifeq ($(GITHUB_ACTIONS), true)
-        ifndef GOTESTFMT
-			$(warning "could not find gotestfmt in $(PATH), running: go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest")
-			$(shell go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest)
-        endif
-		go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt
-	else ifneq ($(GITLAB_CI),)
-        ifndef GOTESTFMT
-			$(warning "could not find gotestfmt in $(PATH), running: go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest")
-			$(shell go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest)
-        endif
-		go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt -c gitlab
-    else
-        ifndef TPARSE
-			$(warning "could not find tparse in $(PATH), running: go install github.com/mfridman/tparse@latest")
-			$(shell go install github.com/mfridman/tparse@latest)
-        endif
-		@set -o pipefail; go test -covermode=atomic -coverprofile=coverage/coverage.out -json ./... | $(TPARSE) -all
-    endif
+	@mkdir -p coverage
+	@if pgrep -f '(^|/)go test' >/dev/null; then \
+		go test -p=1 -race -covermode=atomic -coverprofile=coverage/coverage.out ./...; \
+	else \
+		go test -race -covermode=atomic -coverprofile=coverage/coverage.out ./...; \
+	fi
 
 changelog:
 	$(info ******************** running git-cliff updating CHANGELOG.md ********************)
@@ -53,9 +35,7 @@ clean:
 	rm -rf $(BIN) 2>/dev/null
 
 build:
-	go env -w GOFLAGS=-mod=mod
-	go mod tidy
-	go build -v -trimpath -ldflags="-s -w" .
+	go build -mod=readonly -v -trimpath -ldflags="-s -w" .
 
 compile:
 	GOOS=linux GOARCH=amd64 go build -o bin/linux/amd64/gophlare-$(CURRENT_TAG)-linux-amd64 -trimpath -ldflags="-s -w" main.go

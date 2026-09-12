@@ -2,21 +2,13 @@ project_name: gophlare
 version: 2
 env:
   - GO111MODULE=on
-  - GITHUB_TOKEN={{ .Env.GITHUB_TOKEN }}
-before:
-  hooks:
-    # You may remove this if you don't use go modules.
-    - go mod tidy
 builds:
   - env: [CGO_ENABLED=0]
     id: gophlare
     binary: gophlare
     flags:
       - -trimpath
-    asmflags:
-      - all=-trimpath={{.Env.GOPATH}}
-    gcflags:
-      - all=-trimpath={{.Env.GOPATH}}
+      - -mod=readonly
     ldflags: |
       -s -w
     goos:
@@ -74,3 +66,13 @@ dockers:
       - "--platform=linux/arm64"
     extra_files:
       - entrypoint.sh
+
+docker_manifests:
+  - name_template: "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/mr-pmillz/{{ .ProjectName }}:latest"
+    image_templates:
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/mr-pmillz/{{ .ProjectName }}:{{ .Tag }}-arm64"

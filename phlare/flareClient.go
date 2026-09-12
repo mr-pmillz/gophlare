@@ -4,29 +4,100 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/mr-pmillz/gophlare/metrics"
 	"github.com/mr-pmillz/gophlare/utils"
 )
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.4.1"
+	gophlareClientVersion = "v1.5.0"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
 
+// DefaultGlobalSearchPageSize is the `size` sent to the global events search.
+//
+// Deliberately 5, not the documented maximum of 10: it was reduced from 10 for
+// reliability and must stay there. Operators who know their tenant tolerates
+// larger pages can raise it with --global-search-page-size to reduce requests.
+// Quota is billed by search/result batch, so savings are not guaranteed.
+const DefaultGlobalSearchPageSize = 5
+
+// MaxGlobalSearchPageSize is the documented limit for the global events API.
+const MaxGlobalSearchPageSize = 10
+
+// ClientOption customizes a FlareClient at construction. Options are applied
+// before the token request, so BaseURL and the metrics recorder also cover
+// /tokens/generate.
+type ClientOption func(*FlareClient)
+
+// WithMetricsRecorder attaches a usage recorder. Without one, no metrics are
+// collected and every record call is a no-op.
+func WithMetricsRecorder(r *metrics.Recorder) ClientOption {
+	return func(fc *FlareClient) { fc.Metrics = r }
+}
+
+// WithBaseURL overrides the Flare API root, primarily so tests can point the
+// client at an httptest server.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(fc *FlareClient) {
+		if baseURL != "" {
+			fc.BaseURL = strings.TrimRight(baseURL, "/")
+		}
+	}
+}
+
+// WithGlobalSearchPageSize sets the `size` for global events searches. A
+// non-positive value is ignored so the default stands.
+func WithGlobalSearchPageSize(size int) ClientOption {
+	return func(fc *FlareClient) {
+		if size > 0 {
+			fc.GlobalSearchPageSize = size
+		}
+	}
+}
+
+// WithEntity presets the attribution label for requests that carry no domain
+// parameter. Prefer ForEntity on an existing client.
+func WithEntity(entity string) ClientOption {
+	return func(fc *FlareClient) { fc.Entity = entity }
+}
+
 // NewFlareClient initializes and returns a new FlareClient with the provided API key, tenant ID, and timeout settings.
-func NewFlareClient(apiKey, userAgent string, tenantID, timeout int) (*FlareClient, error) {
-	c := NewHTTPClientWithTimeOut(false, timeout) // sets a default timeout of 10 minutes for queries that take a long time
-	flareGetTokenURL := fmt.Sprintf("%s/tokens/generate", flareAPIBaseURL)
+// Optional ClientOptions customize the base URL, metrics recorder, global search page size, and entity attribution.
+func NewFlareClient(apiKey, userAgent string, tenantID, timeout int, opts ...ClientOption) (*FlareClient, error) {
 	finalUserAgent := ""
 	if userAgent != "" {
 		finalUserAgent = userAgent
 	} else {
 		finalUserAgent = fmt.Sprintf("gophlare/%s", gophlareClientVersion)
 	}
+
+	fc := &FlareClient{
+		Client:               NewHTTPClientWithTimeOut(false, timeout), // sets a default timeout of 10 minutes for queries that take a long time
+		DefaultUserAgent:     finalUserAgent,
+		TenantID:             tenantID,
+		APIKey:               apiKey,
+		ClientTimeout:        timeout,
+		BaseURL:              flareAPIBaseURL,
+		GlobalSearchPageSize: DefaultGlobalSearchPageSize,
+	}
+	// Applied before the token request so WithBaseURL and WithMetricsRecorder
+	// take effect for /tokens/generate too.
+	for _, opt := range opts {
+		opt(fc)
+	}
+
+	if fc.GlobalSearchPageSize > MaxGlobalSearchPageSize {
+		return nil, fmt.Errorf("global search page size must not exceed %d", MaxGlobalSearchPageSize)
+	}
+
+	flareGetTokenURL := fmt.Sprintf("%s/tokens/generate", fc.baseURL())
 
 	// Create the Authorization Basic header
 	authString := fmt.Sprintf(":%s", apiKey) // ":" for empty username
@@ -46,28 +117,75 @@ func NewFlareClient(apiKey, userAgent string, tenantID, timeout int) (*FlareClie
 	}
 
 	tokenResp := &FlareAuthResponse{}
-	statusCode, err := c.DoReq(flareGetTokenURL, "POST", tokenResp, headers, nil, requestBody)
+	started := time.Now()
+	statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGetTokenURL, "POST", tokenResp, headers, nil, requestBody)
+	fc.record(metrics.EndpointTokenGenerate, metrics.EntityAuth, statusCode, respHeader, started, false)
 	if err != nil {
 		utils.LogWarningf("Failed to request JWT token from Flare API. Error: %s\n", err.Error())
 		utils.LogWarningf("retrying...")
-		statusCode, err = c.DoReq(flareGetTokenURL, "POST", tokenResp, headers, nil, requestBody)
+		started = time.Now()
+		statusCode, respHeader, err = fc.Client.DoReqWithHeaders(flareGetTokenURL, "POST", tokenResp, headers, nil, requestBody)
+		fc.record(metrics.EndpointTokenGenerate, metrics.EntityAuth, statusCode, respHeader, started, true)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 	}
-	if statusCode == 200 {
-		return &FlareClient{
-			Token:            &tokenResp.Token,
-			Client:           c,
-			DefaultUserAgent: finalUserAgent,
-			TenantID:         tenantID,
-			APIKey:           apiKey,
-			TokenExp:         EpochToTime(tokenResp.RefreshTokenExp),
-			ClientTimeout:    timeout,
-		}, nil
-	} else {
+	if statusCode != 200 {
 		return nil, fmt.Errorf("failed to obtain Flare API token")
 	}
+
+	fc.Token = &tokenResp.Token
+	fc.TokenExp = EpochToTime(tokenResp.RefreshTokenExp)
+	return fc, nil
+}
+
+// ForEntity returns a shallow copy of the client whose requests are attributed
+// to entity. The receiver is not mutated, and the copy shares the underlying
+// HTTP client and metrics recorder, so per-domain scoping costs nothing.
+func (fc *FlareClient) ForEntity(entity string) *FlareClient {
+	if fc == nil {
+		return nil
+	}
+	scoped := *fc
+	scoped.Entity = entity
+	return &scoped
+}
+
+// record attributes one completed request to the metrics recorder. A nil
+// recorder is a no-op. An empty entity falls back to the client's own Entity,
+// which is how requests with no domain parameter get attributed.
+func (fc *FlareClient) record(endpoint metrics.Endpoint, entity string, status int, respHeader http.Header, started time.Time, retry bool) {
+	if fc == nil || fc.Metrics == nil {
+		return
+	}
+	if entity == "" {
+		entity = fc.Entity
+	}
+	fc.Metrics.Record(metrics.Call{
+		Endpoint: endpoint,
+		Entity:   entity,
+		Status:   status,
+		Duration: time.Since(started),
+		Header:   respHeader,
+		Retry:    retry,
+	})
+}
+
+// baseURL preserves the default for SDK clients built with a struct literal.
+func (fc *FlareClient) baseURL() string {
+	if fc.BaseURL == "" {
+		return flareAPIBaseURL
+	}
+	return fc.BaseURL
+}
+
+// pageSize returns the configured global search page size, guarding against a
+// zero value on a FlareClient built without the constructor.
+func (fc *FlareClient) pageSize() int {
+	if fc.GlobalSearchPageSize > 0 {
+		return fc.GlobalSearchPageSize
+	}
+	return DefaultGlobalSearchPageSize
 }
 
 // IsAPITokenExpired returns true if the API token has expired
@@ -84,7 +202,15 @@ func (fc *FlareClient) RefreshAPIToken() (*FlareClient, error) {
 		return fc, nil
 	}
 	utils.InfoLabelWithColorf("FLARE API TOKEN", "yellow", "API token expired, refreshing...")
-	updatedFC, err := NewFlareClient(fc.APIKey, fc.DefaultUserAgent, fc.TenantID, fc.ClientTimeout)
+	// Carry the current configuration across. Without this the refresh would
+	// hand back a client with a fresh recorder, silently resetting every
+	// counter mid-run, and would drop a test's BaseURL override.
+	updatedFC, err := NewFlareClient(fc.APIKey, fc.DefaultUserAgent, fc.TenantID, fc.ClientTimeout,
+		WithBaseURL(fc.BaseURL),
+		WithMetricsRecorder(fc.Metrics),
+		WithGlobalSearchPageSize(fc.GlobalSearchPageSize),
+		WithEntity(fc.Entity),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
@@ -114,11 +240,14 @@ func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFirew
 	} else {
 		refreshedFC = fc
 	}
-	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", flareAPIBaseURL, uid)
+	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", fc.baseURL(), uid)
 	headers := refreshedFC.defaultHeaders()
 	data := &FlareFireworkActivitiesIndexSourceIDv2Response{}
 
-	statusCode, err := refreshedFC.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
+	started := time.Now()
+	statusCode, respHeader, err := refreshedFC.Client.DoReqWithHeaders(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
+	// No domain parameter here, so attribution comes from the client's Entity.
+	refreshedFC.record(metrics.EndpointActivityByID, "", statusCode, respHeader, started, false)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -148,7 +277,7 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 	downloadedFilePaths := make([]string, 0)
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
-			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", flareAPIBaseURL, data.Activity.Data.UID)
+			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", fc.baseURL(), data.Activity.Data.UID)
 			headers := fc.defaultHeaders()
 			headers["Accept"] = acceptHeaderTextPlain
 			params := map[string]string{
@@ -164,7 +293,9 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 
 			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 			resp := &FlareStealerLogZipFileDownloadResponse{}
-			statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", resp, headers, params, nil)
+			started := time.Now()
+			statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGetEventActivitiesByIDURL, "GET", resp, headers, params, nil)
+			fc.record(metrics.EndpointActivityDownload, "", statusCode, respHeader, started, false)
 			if err != nil {
 				return nil, utils.LogError(err)
 			}
@@ -204,7 +335,7 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
 			// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
-			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", flareAPIBaseURL, data.Activity.Data.UID)
+			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.baseURL(), data.Activity.Data.UID)
 			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 			headers := fc.defaultHeaders()
 			headers["Accept"] = acceptHeaderTextPlain
@@ -216,7 +347,9 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 			sanitizedFileName := utils.SanitizeString(stealerLogsFile)
 			outputFilePath := fmt.Sprintf("%s/flare-%s-%s", outputDir, data.Activity.Data.ID, sanitizedFileName) // this has file extension
 
-			statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", outputFilePath, headers, params, nil)
+			started := time.Now()
+			statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGetEventActivitiesByIDURL, "GET", outputFilePath, headers, params, nil)
+			fc.record(metrics.EndpointActivityDownloadFile, "", statusCode, respHeader, started, false)
 			if err != nil {
 				return nil, utils.LogError(err)
 			}
@@ -247,7 +380,7 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 	// can check data.Activity.Data.Cookies for cookies names that are high-value targets.
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
-		flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", flareAPIBaseURL, data.Activity.Data.UID)
+		flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.baseURL(), data.Activity.Data.UID)
 		utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 		headers := fc.defaultHeaders()
 		headers["Accept"] = acceptHeaderTextPlain
@@ -259,7 +392,9 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 		sanitizedFileName := utils.SanitizeString(stealerLogsFile)
 		outputFilePath := fmt.Sprintf("%s/flare-%s-%s", outputDir, data.Activity.Data.ID, sanitizedFileName) // this has file extension
 
-		statusCode, err := fc.Client.DoReq(flareGetEventActivitiesByIDURL, "GET", outputFilePath, headers, params, nil)
+		started := time.Now()
+		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGetEventActivitiesByIDURL, "GET", outputFilePath, headers, params, nil)
+		fc.record(metrics.EndpointActivityDownloadFile, "", statusCode, respHeader, started, false)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
@@ -289,10 +424,10 @@ func getPastISO8601Date(yearsAgo int) string {
 //nolint:gocognit
 //nolint:dupl
 func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
-	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", flareAPIBaseURL)
+	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", fc.baseURL())
 	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
-	size := 5
+	size := fc.pageSize()
 	var queryString string
 	switch {
 	case query != "":
@@ -352,6 +487,9 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 	}()
 	defer close(progressDone)
 
+	// Retries are bounded per page and reset after a successful response.
+	retries := 0
+
 flarePaginate: //nolint:dupl
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
@@ -360,25 +498,24 @@ flarePaginate: //nolint:dupl
 			return nil, utils.LogError(err)
 		}
 		data := &FlareEventsGlobalSearchResults{}
-		statusCode, err := fc.Client.DoReq(flareGlobalEventsSearchURL, "POST", data, headers, nil, postBodyJSON)
+		started := time.Now()
+		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGlobalEventsSearchURL, "POST", data, headers, nil, postBodyJSON)
+		fc.record(metrics.EndpointGlobalEventsSearch, domain, statusCode, respHeader, started, retries > 0)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 
-		if statusCode == 429 {
-			time.Sleep(10 * time.Second)
+		delay, err := searchRetryDelay(statusCode, retries)
+		if err != nil {
+			return nil, err
+		}
+		if delay > 0 {
+			retries++
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", statusCode, retries, maxSearchRetries, delay)
+			time.Sleep(delay)
 			continue
 		}
-
-		// 502/503/504 are Flare's gateway giving up on a slow backend query
-		// (gateway timeout ≈ 30s). Usually transient when Flare's under
-		// load; retrying after a short pause typically succeeds. Bounded
-		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
-			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
-			time.Sleep(15 * time.Second)
-			continue
-		}
+		retries = 0
 
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
@@ -421,7 +558,7 @@ flarePaginate: //nolint:dupl
 // FlareBulkCredentialLookup queries the Flare API in batches of 100 emails and aggregates results
 func (fc *FlareClient) FlareBulkCredentialLookup(emails []string, outputDir string) (*FlareListByBulkAccountResponse, error) {
 	const batchSize = 100
-	flareListByBulkAccountsURL := fmt.Sprintf("%s/leaksdb/identities/by_accounts", flareAPIBaseURL)
+	flareListByBulkAccountsURL := fmt.Sprintf("%s/leaksdb/identities/by_accounts", fc.baseURL())
 	headers := fc.defaultHeaders()
 
 	// Result accumulator
@@ -466,7 +603,7 @@ func (fc *FlareClient) defaultHeaders() map[string]string {
 
 // fetchBatchData handles making a single batched API request and parsing the response
 func (fc *FlareClient) fetchBatchData(url string, headers map[string]string, accounts []string) (FlareListByBulkAccountResponse, error) {
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"accounts": accounts,
 	}
 
@@ -476,7 +613,9 @@ func (fc *FlareClient) fetchBatchData(url string, headers map[string]string, acc
 	}
 
 	batchData := make(FlareListByBulkAccountResponse)
-	respStatus, err := fc.Client.DoReq(url, "POST", &batchData, headers, nil, postBody)
+	started := time.Now()
+	respStatus, respHeader, err := fc.Client.DoReqWithHeaders(url, "POST", &batchData, headers, nil, postBody)
+	fc.record(metrics.EndpointBulkAccounts, metrics.EntityBulkEmails, respStatus, respHeader, started, false)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
@@ -508,7 +647,7 @@ func mergeResults(main, batch FlareListByBulkAccountResponse) FlareListByBulkAcc
 //
 //nolint:dupl
 func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cookieNames, paths []string) (*FlareSearchCookiesResponse, error) {
-	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", flareAPIBaseURL)
+	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", fc.baseURL())
 	headers := fc.defaultHeaders()
 	allData := &FlareSearchCookiesResponse{}
 	size := 500
@@ -543,6 +682,9 @@ func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cook
 	}()
 	defer close(progressDone)
 
+	// Retries are bounded per page and reset after a successful response.
+	retries := 0
+
 flarePaginate:
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
@@ -551,25 +693,24 @@ flarePaginate:
 			return nil, utils.LogError(err)
 		}
 		data := &FlareSearchCookiesResponse{}
-		statusCode, err := fc.Client.DoReq(flareSearchCookiesURL, "POST", data, headers, nil, postBodyJSON)
+		started := time.Now()
+		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareSearchCookiesURL, "POST", data, headers, nil, postBodyJSON)
+		fc.record(metrics.EndpointASTPCookiesSearch, domain, statusCode, respHeader, started, retries > 0)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 
-		if statusCode == 429 {
-			time.Sleep(10 * time.Second)
+		delay, err := searchRetryDelay(statusCode, retries)
+		if err != nil {
+			return nil, err
+		}
+		if delay > 0 {
+			retries++
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", statusCode, retries, maxSearchRetries, delay)
+			time.Sleep(delay)
 			continue
 		}
-
-		// 502/503/504 are Flare's gateway giving up on a slow backend query
-		// (gateway timeout ≈ 30s). Usually transient when Flare's under
-		// load; retrying after a short pause typically succeeds. Bounded
-		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
-			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
-			time.Sleep(15 * time.Second)
-			continue
-		}
+		retries = 0
 
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
@@ -608,7 +749,7 @@ flarePaginate:
 //
 //nolint:dupl
 func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*FlareSearchCredentialsASTP, error) {
-	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", flareAPIBaseURL)
+	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", fc.baseURL())
 	headers := fc.defaultHeaders()
 	allData := &FlareSearchCredentialsASTP{}
 	// Flare's gateway times out at ~30s; latency on this endpoint scales
@@ -645,6 +786,9 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 	}()
 	defer close(progressDone)
 
+	// Retries are bounded per page and reset after a successful response.
+	retries := 0
+
 flarePaginate:
 	for {
 		// marshal each time for 'from' parameter pagination via *data.Next
@@ -653,25 +797,24 @@ flarePaginate:
 			return nil, utils.LogError(err)
 		}
 		data := &FlareSearchCredentialsASTP{}
-		statusCode, err := fc.Client.DoReq(flareLeaksByDomainURL, "POST", data, headers, nil, postBodyJSON)
+		started := time.Now()
+		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareLeaksByDomainURL, "POST", data, headers, nil, postBodyJSON)
+		fc.record(metrics.EndpointASTPCredentialsSearch, domain, statusCode, respHeader, started, retries > 0)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 
-		if statusCode == 429 {
-			time.Sleep(10 * time.Second)
+		delay, err := searchRetryDelay(statusCode, retries)
+		if err != nil {
+			return nil, err
+		}
+		if delay > 0 {
+			retries++
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", statusCode, retries, maxSearchRetries, delay)
+			time.Sleep(delay)
 			continue
 		}
-
-		// 502/503/504 are Flare's gateway giving up on a slow backend query
-		// (gateway timeout ≈ 30s). Usually transient when Flare's under
-		// load; retrying after a short pause typically succeeds. Bounded
-		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
-			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
-			time.Sleep(15 * time.Second)
-			continue
-		}
+		retries = 0
 
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
@@ -698,4 +841,23 @@ flarePaginate:
 	}
 
 	return allData, nil
+}
+
+// HTTP timeouts bound individual attempts, not a pagination retry loop.
+const maxSearchRetries = 5
+
+func searchRetryDelay(status, retries int) (time.Duration, error) {
+	var delay time.Duration
+	switch status {
+	case http.StatusTooManyRequests:
+		delay = 10 * time.Second
+	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		delay = 15 * time.Second
+	default:
+		return 0, nil
+	}
+	if retries >= maxSearchRetries {
+		return 0, fmt.Errorf("flare API returned %d after %d retries", status, retries)
+	}
+	return delay, nil
 }

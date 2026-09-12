@@ -1,0 +1,40 @@
+"""Validate stable release names and the versions compiled into gophlare."""
+
+import pathlib
+import re
+import sys
+
+VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+
+
+def release_tag(branch):
+    match = re.fullmatch(rf"(?:release|hotfix)/v?({VERSION})", branch)
+    if match is None:
+        raise ValueError("Use release/vX.Y.Z or hotfix/vX.Y.Z with a stable version")
+    return f"v{match[1]}"
+
+
+def check_version(tag, root=pathlib.Path(".")):
+    if re.fullmatch(rf"v{VERSION}", tag) is None:
+        raise ValueError("Release tags must be stable versions: vX.Y.Z")
+    for path, variable in [("cmd/root.go", "version"), ("phlare/flareClient.go", "gophlareClientVersion")]:
+        source = (root / path).read_text()
+        match = re.search(rf'\b{variable}\s*=\s*"([^"]+)"', source)
+        if match is None or match[1] != tag:
+            raise ValueError(f"{path}: {variable} must equal {tag}")
+
+
+def main(args):
+    if args[0] == "tag":
+        print(release_tag(args[1]))
+    elif args[0] == "version":
+        check_version(args[1])
+    else:
+        raise ValueError("Unknown policy command")
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except (ValueError, IndexError) as exc:
+        sys.exit(str(exc))
