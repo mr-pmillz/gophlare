@@ -1,5 +1,12 @@
 # Flare API Query Metrics Implementation Plan
 
+> Review correction: quota header differences cover an incomplete organization-wide
+> interval, not total run spend. Single observations and quota increases yield
+> unknown consumption. Page size reduces requests, with no guaranteed quota savings.
+> The CLI now reports from resolved options with a recorder per invocation.
+> See the README for current behavior; the design below records the original plan.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a `--metrics` flag that reports how many Flare API calls a run made, how many of them billed against the monthly Global Search quota, and how much quota remains — broken out per endpoint and per entity.

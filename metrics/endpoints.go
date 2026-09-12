@@ -5,8 +5,8 @@
 // Flare's own accounting is not fully reproducible client-side — repeating a
 // search within 10 minutes is free, and whether a retried 429 or 5xx bills is
 // undocumented — so this package treats the X-Flare-Global-Searches-Remaining
-// response header as the source of truth and reports local counters alongside
-// it as an upper bound.
+// response header as observed organization-wide state and reports local request
+// counters alongside it as an upper bound, not billed units.
 package metrics
 
 import "slices"
@@ -65,7 +65,8 @@ const (
 	// QuotaNo means the endpoint is documented as not counting against the
 	// Global Search quota.
 	QuotaNo QuotaClass = iota
-	// QuotaYes means each request counts against the Global Search quota.
+	// QuotaYes means searches on the endpoint can consume Global Search quota.
+	// Request counts are only an upper bound on billed search/result batches.
 	QuotaYes
 	// QuotaUnknown means Flare does not document this endpoint's billing. It is
 	// reported as "?" so gophlare never asserts a cost it cannot substantiate.

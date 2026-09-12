@@ -76,8 +76,18 @@ func TestRecorderQuotaHeaderVariants(t *testing.T) {
 			name:          "single observation yields no delta but a remaining value",
 			headers:       []http.Header{remainingHeader("7500")},
 			wantSeen:      true,
-			wantConsumed:  new(0),
 			wantRemaining: new(7500),
+		},
+		{
+			name:     "negative remaining is ignored",
+			headers:  []http.Header{remainingHeader("-1")},
+			wantSeen: false,
+		},
+		{
+			name:          "quota reset invalidates consumption",
+			headers:       []http.Header{remainingHeader("100"), remainingHeader("10000"), remainingHeader("99")},
+			wantSeen:      true,
+			wantRemaining: new(99),
 		},
 		{
 			name:          "header appearing mid-run still anchors the delta",

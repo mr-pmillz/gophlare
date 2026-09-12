@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a new feature, behavior, or workflow improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for product behavior, workflow, output, or documentation improvements. Include sanitized API responses when proposing endpoint support.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What workflow or limitation should this address?
+      placeholder: "When testing authorized targets, I want to..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you want.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention any existing flags, workflows, or tools you tried.
+    validations:
+      required: false
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Add example commands, output shape, or documentation changes if useful.
+      render: text
+    validations:
+      required: false

@@ -50,7 +50,7 @@ func DownloadAllStealerLogPasswordFiles(opts *phlare.Options, scope *phlare.Scop
 	}
 
 	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout,
-		phlare.WithMetricsRecorder(metrics.Default()),
+		phlare.WithMetricsRecorder(usageRecorder(opts)),
 		phlare.WithGlobalSearchPageSize(opts.GlobalSearchPageSize),
 	)
 	if err != nil {
@@ -478,7 +478,7 @@ func FlareLeaksDatabaseSearchByDomain(opts *phlare.Options, domains []string) (*
 	}
 	// new flare client
 	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout,
-		phlare.WithMetricsRecorder(metrics.Default()),
+		phlare.WithMetricsRecorder(usageRecorder(opts)),
 		phlare.WithGlobalSearchPageSize(opts.GlobalSearchPageSize),
 	)
 	if err != nil {
@@ -773,7 +773,7 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 	}
 	// new flare client
 	fc, err := phlare.NewFlareClient(opts.APIKeys.APIKeys.FlareAPI, opts.UserAgent, opts.APIKeys.APIKeys.FlareTenantID, opts.Timeout,
-		phlare.WithMetricsRecorder(metrics.Default()),
+		phlare.WithMetricsRecorder(usageRecorder(opts)),
 		phlare.WithGlobalSearchPageSize(opts.GlobalSearchPageSize),
 	)
 	if err != nil {

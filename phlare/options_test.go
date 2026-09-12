@@ -612,3 +612,36 @@ func TestConfigureCommandRegistersMetricsFlags(t *testing.T) {
 		})
 	}
 }
+
+func TestMetricsOptionValidation(t *testing.T) {
+	for _, tt := range []struct{ flag, value string }{
+		{"monthly-quota", "0"}, {"monthly-quota", "-1"},
+		{"global-search-page-size", "0"}, {"global-search-page-size", "11"},
+	} {
+		t.Run(tt.flag+tt.value, func(t *testing.T) {
+			viper.Reset()
+			defer viper.Reset()
+			cmd := createTestCommand()
+			if err := cmd.Flags().Set(tt.flag, tt.value); err != nil {
+				t.Fatal(err)
+			}
+			if err := (&Options{}).LoadFromCommand(cmd); err == nil {
+				t.Fatal("expected invalid option error")
+			}
+		})
+	}
+}
+
+func TestInvalidMetricsEnvironmentIndirectionReturnsError(t *testing.T) {
+	for _, key := range []string{"MONTHLY_QUOTA", "METRICS"} {
+		t.Run(key, func(t *testing.T) {
+			viper.Reset()
+			defer viper.Reset()
+			viper.Set(key, "GOPHLARE_TEST_SETTING")
+			t.Setenv("GOPHLARE_TEST_SETTING", "invalid")
+			if err := (&Options{}).LoadFromCommand(createTestCommand()); err == nil {
+				t.Fatal("invalid environment value should return an error")
+			}
+		})
+	}
+}

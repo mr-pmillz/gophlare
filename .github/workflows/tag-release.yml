@@ -1,0 +1,63 @@
+name: Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    name: Tag release on merge
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (startsWith(github.event.pull_request.head.ref, 'release/') ||
+       startsWith(github.event.pull_request.head.ref, 'hotfix/'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate version and merged commit
+        id: version
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$MERGE_SHA" origin/main
+          TAG="$(python3 .github/scripts/release_policy.py tag "$HEAD_REF")"
+          python3 .github/scripts/release_policy.py version "$TAG"
+          printf 'tag=%s\n' "$TAG" >> "$GITHUB_OUTPUT"
+          if git rev-parse --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
+            test "$(git rev-parse "refs/tags/${TAG}^{commit}")" = "$MERGE_SHA" || {
+              echo '::error::Release tag already belongs to a different commit.'
+              exit 1
+            }
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Generate repository-scoped GitHub App token
+        if: steps.version.outputs.exists != 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.GOPHLARE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GOPHLARE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+      - name: Create tag at the PR merge commit
+        if: steps.version.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/${TAG}" -f "sha=${MERGE_SHA}"

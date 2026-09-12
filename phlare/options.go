@@ -1,6 +1,7 @@
 package phlare
 
 import (
+	"fmt"
 	"reflect"
 	"time"
 
@@ -10,9 +11,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	monthlyQuotaFlag         = "monthly-quota"
+	globalSearchPageSizeFlag = "global-search-page-size"
+)
+
 // Options holds configuration options for various command-line arguments and flags.
 // The struct includes settings for API keys, user information, query parameters, file processing, and operational flags.
 type Options struct {
+	MetricsRecorder                 *metrics.Recorder
 	APIKeys                         *config.GoPhlareConfig
 	Company                         string
 	Output                          string
@@ -68,8 +75,8 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	// integers
 	cmd.PersistentFlags().IntP("timeout", "", 900, "timeout duration for API requests in seconds")
 	cmd.PersistentFlags().IntP("max-zip-download-limit", "m", 50, "maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files.")
-	cmd.PersistentFlags().IntP("monthly-quota", "", metrics.DefaultMonthlyQuota, "your Flare monthly Global Search quota, used as the denominator in the --metrics report. Flare sets this per license, so verify it on your tenants page")
-	cmd.PersistentFlags().IntP("global-search-page-size", "", DefaultGlobalSearchPageSize, "events per global search request (the API size param, max 10). Flare bills per request, so larger pages consume less quota but are likelier to hit its ~30s gateway timeout")
+	cmd.PersistentFlags().IntP(monthlyQuotaFlag, "", metrics.DefaultMonthlyQuota, "your Flare monthly Global Search quota, used as the denominator in the --metrics report. Flare sets this per license, so verify it on your tenants page")
+	cmd.PersistentFlags().IntP(globalSearchPageSizeFlag, "", DefaultGlobalSearchPageSize, "events per global search request (the API size param, max 10). larger pages reduce request count but may be slower; quota savings are not guaranteed")
 	// booleans
 	cmd.PersistentFlags().BoolP("search-stealer-logs-by-domain", "", false, "search the stealer logs by *@email domain(s), download and parse all the matching zip files for passwords and live cookies")
 	cmd.PersistentFlags().BoolP("keep-zip-files", "", false, "keep all the matching downloaded zip files from the stealer logs")
@@ -394,23 +401,47 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	}
 	opts.MaxZipFilesToDownload = cmdMaxZipsDownloadLimit
 
-	cmdMonthlyQuota, err := cmd.Flags().GetInt("monthly-quota")
+	return opts.loadMetricsOptions(cmd)
+}
+
+func (opts *Options) loadMetricsOptions(cmd *cobra.Command) error {
+	for _, setting := range []struct {
+		name   string
+		target *int
+	}{
+		{monthlyQuotaFlag, &opts.MonthlyQuota},
+		{globalSearchPageSizeFlag, &opts.GlobalSearchPageSize},
+	} {
+		fallback, err := cmd.Flags().GetInt(setting.name)
+		if err != nil {
+			return err
+		}
+		value, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
+			Flag: setting.name, Opts: fallback,
+		})
+		if err != nil {
+			return err
+		}
+		var ok bool
+		*setting.target, ok = value.(int)
+		if !ok {
+			return fmt.Errorf("%s must be an integer", setting.name)
+		}
+	}
+	value, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{Flag: "metrics", Opts: false})
 	if err != nil {
 		return err
 	}
-	opts.MonthlyQuota = cmdMonthlyQuota
-
-	cmdGlobalSearchPageSize, err := cmd.Flags().GetInt("global-search-page-size")
-	if err != nil {
-		return err
+	var ok bool
+	opts.Metrics, ok = value.(bool)
+	if !ok {
+		return fmt.Errorf("metrics must be a boolean")
 	}
-	opts.GlobalSearchPageSize = cmdGlobalSearchPageSize
-
-	cmdMetrics, err := cmd.Flags().GetBool("metrics")
-	if err != nil {
-		return err
+	if opts.MonthlyQuota <= 0 {
+		return fmt.Errorf("monthly-quota must be positive")
 	}
-	opts.Metrics = cmdMetrics
-
+	if opts.GlobalSearchPageSize < 1 || opts.GlobalSearchPageSize > MaxGlobalSearchPageSize {
+		return fmt.Errorf("global-search-page-size must be between 1 and %d", MaxGlobalSearchPageSize)
+	}
 	return nil
 }

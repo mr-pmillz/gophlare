@@ -75,7 +75,7 @@ Flags:
       --events-filter-types string             flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
       --files-to-download string               comma separated list of files to match on and download if they exist from the query
   -f, --from string                            from date used for a filter for stealer log searches. ex. 2021-01-01
-      --global-search-page-size int            events per global search request (the API size param, max 10). Flare bills per request, so larger pages consume less quota but are likelier to hit its ~30s gateway timeout (default 5)
+      --global-search-page-size int            events per global search request (the API size param, max 10). larger pages reduce request count but may be slower; quota savings are not guaranteed (default 5)
   -h, --help                                   help for search
       --keep-zip-files                         keep all the matching downloaded zip files from the stealer logs
   -m, --max-zip-download-limit int             maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files. (default 50)
@@ -153,7 +153,7 @@ machine-readable `flare-api-metrics.json` in the output dir:
 
  GLOBAL SEARCH QUOTA
    Monthly quota .................   10,000  (--monthly-quota, operator-supplied)
-   Consumed this run (observed) ..       87  via X-Flare-Global-Searches-Remaining
+   Observed quota decrease ......       87  via X-Flare-Global-Searches-Remaining
    Remaining .....................    8,913  10.9% of monthly quota used
    Quota-bearing calls counted ...       92  5 above observed — see note
 
@@ -175,7 +175,7 @@ machine-readable `flare-api-metrics.json` in the output dir:
 
  note: counted (92) exceeds observed (87) — Flare does not bill repeat searches
        within 10 minutes, and 429/5xx retry billing is undocumented.
-       Observed is authoritative.
+       The observed interval excludes the first request and can include other clients.
 ```
 
 **Which endpoints bill?** Only Global Search draws on the monthly quota. Per
@@ -185,22 +185,36 @@ the stealer-log downloads are on the basic rate-limit tier, not the search
 quota. Billing for `/leaksdb/identities/by_accounts` is **not documented**, so
 it is reported as `?` and excluded from quota totals rather than guessed at.
 
-**Observed vs. counted.** `Consumed this run (observed)` is derived from the
-`X-Flare-Global-Searches-Remaining` response header and is authoritative.
-The local counter is only an upper bound, because Flare does not bill a repeated
-search within 10 minutes of the original and does not document whether a retried
-429 or 5xx bills. Where the two disagree, the report says so. If Flare returns no
-quota header, the report states that instead of showing a misleading zero.
+**Observed vs. counted.** `Observed quota decrease` is the difference between
+the first and last `X-Flare-Global-Searches-Remaining` headers. These describe
+organization-wide state after requests: the difference excludes the first
+request and any usage before the first header, and can include other clients.
+It is not a measurement of this run's total spend. A single observation or any
+increase in remaining quota produces `n/a` (an increase can mean a quota reset,
+allocation change, or responses arriving out of order). The JSON field
+`observed_consumed` carries this interval decrease and is omitted when unknown;
+`quota_observations` and `quota_increased` explain its availability.
 
-**Reducing quota burn.** `--global-search-page-size` sets the API `size`
-parameter, defaulting to **5**. Flare bills per request rather than per result,
-so raising it to the documented maximum of 10 roughly halves quota consumption
-on the only endpoint that bills — at the cost of slower requests that are more
-likely to hit Flare's ~30s gateway timeout. Raise it only if your tenant
-tolerates larger pages.
+The local counters (`quota_units` and `counted_quota_calls`) count attempts on
+quota-bearing endpoints as an upper bound, including failures and retries.
+They do not measure billed units. Flare documents quota by search and result
+batch (up to 100 results per unit), with a grace window for repeated searches.
+See [Flare's quota documentation](https://docs.flare.io/global-search-quota) and
+[API quota headers](https://api.docs.flare.io/concepts/rate-limits-and-quotas).
 
-Metrics are always collected; `--metrics` only controls whether the report is
-emitted. Library consumers can read `metrics.Default().Snapshot(quota)` directly.
+**Page size.** `--global-search-page-size` accepts **1–10**, defaulting to **5**.
+Larger pages reduce HTTP requests, but can take longer and do not guarantee
+quota savings. `--monthly-quota` must be positive. Both settings and `METRICS`
+can also be supplied in config, using `GLOBAL_SEARCH_PAGE_SIZE` and
+`MONTHLY_QUOTA`; explicit CLI flags take precedence.
+
+Metrics are always collected; `--metrics` controls report emission. Each CLI
+invocation owns a recorder. Library callers of the search helpers can use
+`Options.MetricsRecorder` or the shared `metrics.Default()` recorder. Direct
+`phlare.NewFlareClient` callers opt in with `phlare.WithMetricsRecorder(recorder)`.
+A report is written on normal completion and reported search failures, using
+the resolved output directory. Paginated searches stop after five consecutive
+retries for a page, allowing failures to return and the report to be written.
 
 ## gophlare as a library
 
@@ -311,3 +325,9 @@ Global Flags:
 - [X] Export cookies to separate cookie bro output JSON files per stealer log ID
 - [X] Add Dockerfile and push to ghcr.io container registry
 - [X] Add example library usage to README.md
+
+## Contributing and releases
+
+Feature and fix PRs target `develop`. Stable releases use `release/vX.Y.Z` or
+`hotfix/vX.Y.Z` PRs into `main`. See [CONTRIBUTING.md](CONTRIBUTING.md) for checks,
+release steps, and GitHub App/ruleset setup.

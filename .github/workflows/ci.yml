@@ -1,162 +1,157 @@
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push with tags
 on:
   push:
-    tags:
-      - '*'
+    branches: [main, develop, 'release/**', 'hotfix/**']
   pull_request:
+    branches: [main, develop, 'release/**', 'hotfix/**']
+  workflow_call:
 
 permissions:
-  contents: write
-  packages: write
-  attestations: write
-  id-token: write
+  contents: read
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # The "build" workflow
   build:
-    # The type of runner that the job will run on
-    strategy:
-      matrix:
-        go-version: [1.26]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
-
-      # Setup Go
-      - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # ratchet:actions/setup-go@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-
-      # Run build of the application
-      - name: Run build
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - run: make fmt build
+      - name: Verify module files
         run: |
-          go env -w GOFLAGS=-mod=mod
-          go mod tidy
-          go build -v
-  test:
-    needs: build
-    strategy:
-      matrix:
-        go-version: [1.26]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+          go mod tidy -diff
+          go mod verify
 
-      # Setup Go
-      - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # ratchet:actions/setup-go@v6
-        with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-
-      - name: Set GOPATH
-        run: |
-          echo "GOPATH=$(go env GOPATH)/bin" >> $GITHUB_ENV
-
-      # Install gotestfmt on the VM running the action.
-      - name: Set up gotestfmt
-        uses: GoTestTools/gotestfmt-action@7dd37bbcc925453b6d7465164cf3bcbd87bc691d # ratchet:GoTestTools/gotestfmt-action@v2
-        with:
-          # Optional: pass GITHUB_TOKEN to avoid rate limiting.
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Run Tests
-      - name: Tests
-        run: |
-          set -euo pipefail
-          go test -json -v ./... 2>&1 | tee coverage/gotest.log | gotestfmt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload the original go test log as an artifact for later review.
-      - name: Upload test log
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7
-        if: always()
-        with:
-          name: test-log
-          path: coverage/gotest.log
-          if-no-files-found: error
   golangci:
-    needs: build
     name: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # ratchet:actions/setup-go@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          go-version: 1.26.3
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # ratchet:golangci/golangci-lint-action@v9
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          # Optional: the value can be v2.3 or v2.3.4 or latest to use the latest version.
-          version: latest
-          # Optional: golangci-lint command line arguments.
-          args: --config ./.golangci-lint.yml
-  # ================
-  # RELEASE JOB
-  #   runs after a successful build
-  #   only runs on push "*" tag
-  # ================
-  release:
-    needs: [build, test, golangci]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
         with:
-          fetch-depth: 0
-
-      # Setup Go
-      - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # ratchet:actions/setup-go@v6
-        with:
-          go-version: 1.26.3
-          cache: true
-
-      - name: Set GOPATH
+          version: v2.12.2
+          args: --config .golangci-lint.yml --timeout 10m
+      - name: Validate GitHub workflows
         run: |
-          echo "GOPATH=$(go env GOPATH)/bin" >> $GITHUB_ENV
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          # v1.7.12 predates GitHub's native coverage permission. Ignore only
+          # that known scope diagnostic; retain all other workflow checks.
+          actionlint -color -ignore 'unknown permission scope "code-quality"'
+      - name: Test release branch policy
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 
-      - name: Generate changelog
-        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # ratchet:orhun/git-cliff-action@v4
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          config: cliff.toml
-          args: -r .  --latest
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - name: Run tests with race detection and coverage
+        run: |
+          set -euo pipefail
+          mkdir -p coverage
+          go test -race -covermode=atomic -coverprofile=coverage/coverage.txt -json ./... | tee coverage/gotest.json
+      - name: Generate coverage reports
+        run: |
+          set -euo pipefail
+          go tool cover -func=coverage/coverage.txt | tee coverage/coverage-summary.txt
+          go tool cover -html=coverage/coverage.txt -o coverage/coverage.html
+          go install github.com/boumenot/gocover-cobertura@4afa1205ab3b54ae098dd4724c1657aad10f7484 # v1.5.0
+          gocover-cobertura < coverage/coverage.txt > coverage/coverage.xml
+          {
+            echo '## Coverage'
+            echo '```'
+            tail -n 1 coverage/coverage-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
+
+  vulnerabilities:
+    name: Vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+      - name: Check imported packages for known vulnerabilities
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+          govulncheck -scan=package ./...
+
+  checks:
+    name: CI checks
+    if: always()
+    needs: [build, golangci, coverage, vulnerabilities]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all checks to pass
         env:
-          OUTPUT: RELEASE_CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD: ${{ needs.build.result }}
+          LINT: ${{ needs.golangci.result }}
+          TESTS: ${{ needs.coverage.result }}
+          SECURITY: ${{ needs.vulnerabilities.result }}
+        run: test "$BUILD" = success && test "$LINT" = success && test "$TESTS" = success && test "$SECURITY" = success
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # ratchet:docker/login-action@v4
+  reports:
+    name: Publish test and coverage reports
+    needs: coverage
+    # Forks still get test/coverage artifacts. Only trusted repository events
+    # enter this separate job with report-writing permissions; it runs no Go code.
+    if: >-
+      !cancelled() && github.actor != 'dependabot[bot]' && (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: write
+      code-quality: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # ratchet:goreleaser/goreleaser-action@v7
-        if: startsWith(github.ref, 'refs/tags/v')
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean --release-notes RELEASE_CHANGELOG.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload assets
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7
+          name: coverage-report
+          path: coverage/
+      - uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
         with:
-          name: gophlare
-          path: dist/*
+          name: Go Tests
+          path: coverage/gotest.json
+          reporter: golang-json
+          fail-on-error: false
+      - uses: actions/upload-code-coverage@1c15be36fc3733ba839b1dd643bd9556e4426dc1 # v1.4.1
+        if: needs.coverage.result == 'success'
+        with:
+          file: coverage/coverage.xml
+          language: Go
+          label: code-coverage/go
+          fail-on-error: false

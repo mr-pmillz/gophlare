@@ -62,15 +62,17 @@ type Recorder struct {
 
 	// reported guards ReportOnce so the success path and the fatal path can
 	// both call it without printing the report twice.
-	reported sync.Once
+	reported  sync.Once
+	reportErr error
 
-	// Quota state observed from response headers. Tracking first and last
-	// separately is what makes the delta authoritative: Flare's own accounting
-	// includes a 10-minute free-repeat window we cannot model locally.
-	quotaHeaderSeen bool
-	firstRemaining  *int
-	lastRemaining   *int
-	batchReached    int
+	// Response headers describe organization-wide state after a request, not
+	// a baseline before this run. A delta only covers the observed interval.
+	quotaHeaderSeen   bool
+	quotaObservations int
+	quotaIncreased    bool
+	firstRemaining    *int
+	lastRemaining     *int
+	batchReached      int
 }
 
 // NewRecorder returns a Recorder that starts timing the run immediately.
@@ -81,8 +83,8 @@ func NewRecorder() *Recorder {
 	}
 }
 
-// defaultRecorder is the process-wide recorder the CLI uses, so instrumentation
-// does not have to be threaded through every layer of the command tree.
+// defaultRecorder is the shared fallback for library search helpers. The CLI
+// supplies a separate recorder for each invocation.
 var defaultRecorder = NewRecorder()
 
 // Default returns the process-wide recorder.
@@ -136,7 +138,11 @@ func (r *Recorder) noteQuotaHeaders(h http.Header) {
 		return
 	}
 	if raw := strings.TrimSpace(h.Get(HeaderGlobalSearchesRemaining)); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil {
+		if n, err := strconv.Atoi(raw); err == nil && n >= 0 {
+			r.quotaObservations++
+			if r.lastRemaining != nil && n > *r.lastRemaining {
+				r.quotaIncreased = true
+			}
 			if !r.quotaHeaderSeen {
 				r.quotaHeaderSeen = true
 				first := n
@@ -173,7 +179,7 @@ type EntityStat struct {
 	// QuotaUnits counts only endpoints with documented billing.
 	QuotaUnits int `json:"quota_units"`
 	// QuotaUnknown is true when this entity used an endpoint whose billing is
-	// undocumented, so QuotaUnits understates the real cost.
+	// undocumented. Those endpoints are excluded from the local estimate.
 	QuotaUnknown bool           `json:"quota_unknown"`
 	ByEndpoint   []EndpointStat `json:"by_endpoint"`
 }
@@ -191,11 +197,15 @@ type Snapshot struct {
 	// QuotaHeaderSeen reports whether Flare ever returned a quota header. When
 	// false, every field below derived from it is nil and the report says so
 	// rather than printing a misleading zero.
-	QuotaHeaderSeen bool `json:"quota_header_seen"`
-	RemainingFirst  *int `json:"remaining_first,omitempty"`
-	RemainingLast   *int `json:"remaining_last,omitempty"`
-	// ObservedConsumed is the authoritative quota spend for this run:
-	// RemainingFirst - RemainingLast.
+	QuotaHeaderSeen   bool `json:"quota_header_seen"`
+	RemainingFirst    *int `json:"remaining_first,omitempty"`
+	RemainingLast     *int `json:"remaining_last,omitempty"`
+	QuotaObservations int  `json:"quota_observations"`
+	QuotaIncreased    bool `json:"quota_increased"`
+	// ObservedConsumed is RemainingFirst - RemainingLast over the observed
+	// interval, not this run's spend. It excludes the first request and may
+	// include other clients' usage. Nil means fewer than two observations or
+	// an increase (quota reset, allocation change, or out-of-order responses).
 	ObservedConsumed *int `json:"observed_consumed,omitempty"`
 	// CountedQuotaCalls is the local tally of quota-bearing requests. It is an
 	// upper bound on spend, since Flare does not bill repeat searches within 10
@@ -231,10 +241,12 @@ func (r *Recorder) Snapshot(monthlyQuota int) Snapshot {
 
 	s.Duration = time.Since(r.started)
 	s.QuotaHeaderSeen = r.quotaHeaderSeen
+	s.QuotaObservations = r.quotaObservations
+	s.QuotaIncreased = r.quotaIncreased
 	s.RemainingFirst = copyInt(r.firstRemaining)
 	s.RemainingLast = copyInt(r.lastRemaining)
 	s.BatchReached = r.batchReached
-	if r.firstRemaining != nil && r.lastRemaining != nil {
+	if r.quotaObservations >= 2 && !r.quotaIncreased {
 		consumed := *r.firstRemaining - *r.lastRemaining
 		s.ObservedConsumed = &consumed
 	}

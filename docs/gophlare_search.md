@@ -28,7 +28,7 @@ gophlare search [flags]
       --events-filter-types string             flare global events filter types. Available values: illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object. can be a string, or comma-separated list of strings (default "illicit_networks,open_web,leak,domain,listing,forum_content,blog_content,blog_post,profile,chat_message,ransomleak,infected_devices,financial_data,bot,stealer_log,paste,social_media,source_code,source_code_files,stack_exchange,google,service,buckets,bucket,bucket_object")
       --files-to-download string               comma separated list of files to match on and download if they exist from the query
   -f, --from string                            from date used for a filter for stealer log searches. ex. 2021-01-01 
-      --global-search-page-size int            events per global search request (the API size param, max 10). Flare bills per request, so larger pages consume less quota but are likelier to hit its ~30s gateway timeout (default 5)
+      --global-search-page-size int            events per global search request (the API size param, max 10). larger pages reduce request count but may be slower; quota savings are not guaranteed (default 5)
   -h, --help                                   help for search
       --keep-zip-files                         keep all the matching downloaded zip files from the stealer logs
   -m, --max-zip-download-limit int             maximum number of zip files to download from the stealer logs. Set to 0 to download all zip files. (default 50)

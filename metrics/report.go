@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -48,9 +49,8 @@ func (r *Recorder) ReportOnce(opts ReportOptions) error {
 	if r == nil || !opts.Enabled {
 		return nil
 	}
-	var err error
-	r.reported.Do(func() { err = r.emit(opts) })
-	return err
+	r.reported.Do(func() { r.reportErr = r.emit(opts) })
+	return r.reportErr
 }
 
 // emit renders the report and, when an output dir is set, writes the JSON.
@@ -63,19 +63,18 @@ func (r *Recorder) emit(opts ReportOptions) error {
 	snapshot := r.Snapshot(opts.MonthlyQuota)
 	snapshot.Version = opts.Version
 
-	if err := snapshot.Render(w, opts.Colorize); err != nil {
-		return err
-	}
-	if opts.OutputDir == "" {
-		return nil
-	}
-
+	// Persist independently of terminal output: a broken pipe must not discard
+	// the artifact, and an unwritable directory must not suppress the table.
+	var fileErr error
 	path := filepath.Join(opts.OutputDir, MetricsJSONFileName)
-	if err := WriteJSON(snapshot, path); err != nil {
-		return err
+	if opts.OutputDir != "" {
+		fileErr = WriteJSON(snapshot, path)
 	}
-	_, err := fmt.Fprintf(w, "\n metrics written to: %s\n", path)
-	return err
+	renderErr := snapshot.Render(w, opts.Colorize)
+	if opts.OutputDir != "" && fileErr == nil && renderErr == nil {
+		_, renderErr = fmt.Fprintf(w, "\n metrics written to: %s\n", path)
+	}
+	return errors.Join(fileErr, renderErr)
 }
 
 // WriteJSON persists a snapshot as indented JSON.
@@ -148,17 +147,23 @@ func (s Snapshot) renderQuota(w io.Writer, heading func(string) string) error {
 
 	switch {
 	case !s.QuotaHeaderSeen:
-		row("Consumed this run (observed)", "n/a", "API returned no quota header this run")
+		row("Observed quota decrease", "n/a", "API returned no quota header this run")
+	case s.QuotaIncreased:
+		row("Observed quota decrease", "n/a", "quota increased or responses arrived out of order")
+	case s.ObservedConsumed == nil:
+		row("Observed quota decrease", "n/a", "only one quota observation; no baseline")
 	case s.ObservedConsumed != nil:
-		row("Consumed this run (observed)", humanInt(*s.ObservedConsumed),
+		row("Observed quota decrease", humanInt(*s.ObservedConsumed),
 			"via "+HeaderGlobalSearchesRemaining)
 	}
 
 	if s.RemainingLast != nil {
 		note := ""
-		if s.MonthlyQuota > 0 {
+		if s.MonthlyQuota > 0 && *s.RemainingLast <= s.MonthlyQuota {
 			used := float64(s.MonthlyQuota-*s.RemainingLast) / float64(s.MonthlyQuota) * 100
 			note = fmt.Sprintf("%.1f%% of monthly quota used", used)
+		} else {
+			note = "exceeds configured monthly quota; verify --monthly-quota"
 		}
 		row("Remaining", humanInt(*s.RemainingLast), note)
 	}
@@ -248,11 +253,24 @@ func (s Snapshot) renderEntities(w io.Writer, heading func(string) string) error
 
 // renderNotes explains the two ways the numbers above can mislead.
 func (s Snapshot) renderNotes(w io.Writer) error {
+	if s.CountedQuotaCalls > 0 {
+		if _, err := fmt.Fprintln(w, " note: endpoint/entity QUOTA values count request attempts as an upper bound, not billed units."); err != nil {
+			return err
+		}
+	}
+
+	if s.QuotaHeaderSeen {
+		if _, err := fmt.Fprintln(w, " note: quota headers describe organization-wide state after each request.\n"+
+			"       The observed decrease excludes usage before the first header (including\n"+
+			"       the first request) and may include other clients' usage."); err != nil {
+			return err
+		}
+	}
 	if s.ObservedConsumed != nil && s.CountedQuotaCalls > *s.ObservedConsumed {
 		if _, err := fmt.Fprintf(w,
-			" note: counted (%d) exceeds observed (%d) — Flare does not bill repeat searches\n"+
-				"       within 10 minutes, and 429/5xx retry billing is undocumented.\n"+
-				"       Observed is authoritative.\n",
+			" note: counted (%d) exceeds observed (%d). Calls are an upper bound, not billed units.\n"+
+				"       Flare bills searches/result batches; repeats within 10 minutes can be free,\n"+
+				"       and retry billing is undocumented. The observed interval is incomplete.\n",
 			s.CountedQuotaCalls, *s.ObservedConsumed); err != nil {
 			return err
 		}

@@ -9,8 +9,7 @@ All notable changes to this project will be documented [here](https://github.com
 - Cmd: emit Flare API usage report when --metrics is set
 
 Adds `--metrics`, `--monthly-quota` (default 10000), and
-`--global-search-page-size` (default 5, unchanged). The report fires from
-RootCmd.PersistentPostRun on success and from a fatalf helper on the
+`--global-search-page-size` (default 5, unchanged). The report uses the resolved search options on success and on
 dispatch-path failures, since quota is spent even when a run fails and
 utils.LogFatalf calls os.Exit. ReportOnce is sync.Once-guarded. -
 ([b592928](https://github.com/mr-pmillz/gophlare/commit/b592928))
@@ -44,13 +43,31 @@ are documented as free; /leaksdb/identities/by_accounts is undocumented and
 reported as "?"), a concurrency-safe recorder, and a report renderer with
 per-endpoint and per-entity tables plus a JSON artifact.
 
-The header-derived figure is treated as authoritative and the local counter
-as an upper bound, because Flare does not bill a repeated search within 10
+The header-derived figure covers only the interval between responses (not the
+full run or exclusively this client), and the local counter is an upper bound, because Flare does not bill a repeated search within 10
 minutes and does not document retry billing. With no quota header the report
 says so rather than printing a misleading zero. 93.6% coverage. -
 ([991d20c](https://github.com/mr-pmillz/gophlare/commit/991d20c),
 [c56aa29](https://github.com/mr-pmillz/gophlare/commit/c56aa29),
 [f132827](https://github.com/mr-pmillz/gophlare/commit/f132827))
+
+### 🐛 Review fixes
+
+- Report incomplete quota intervals honestly; omit consumption for a single
+  observation or a quota increase, and reject negative remaining values.
+- Keep report output paths consistent with config and isolate each CLI run's
+  recorder. Preserve the JSON artifact if terminal output fails.
+- Validate page size and quota options, bound retries per page, and restore the
+  default API URL for clients built with struct literals.
+- Add tested GitHub release, changelog, branch policy, and coverage workflows,
+  repository templates, and release setup documentation.
+
+### 🛡️ Dependency security
+
+- Require Go 1.26.6 in go.mod and the Docker builder.
+- Upgrade x/crypto, x/net, kin-openapi, Excelize, and oapi-codegen to releases
+  fixing Dependabot alerts #13–#34. Upgrade klauspost/compress for GO-2026-5841.
+- Require imported-package vulnerability scanning in CI and before releases.
 
 ### 🚜 Refactor
 

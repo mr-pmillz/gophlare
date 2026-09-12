@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -23,9 +24,12 @@ const (
 //
 // Deliberately 5, not the documented maximum of 10: it was reduced from 10 for
 // reliability and must stay there. Operators who know their tenant tolerates
-// larger pages can raise it with --global-search-page-size, which halves quota
-// consumption on the only endpoint that bills.
+// larger pages can raise it with --global-search-page-size to reduce requests.
+// Quota is billed by search/result batch, so savings are not guaranteed.
 const DefaultGlobalSearchPageSize = 5
+
+// MaxGlobalSearchPageSize is the documented limit for the global events API.
+const MaxGlobalSearchPageSize = 10
 
 // ClientOption customizes a FlareClient at construction. Options are applied
 // before the token request, so BaseURL and the metrics recorder also cover
@@ -43,7 +47,7 @@ func WithMetricsRecorder(r *metrics.Recorder) ClientOption {
 func WithBaseURL(baseURL string) ClientOption {
 	return func(fc *FlareClient) {
 		if baseURL != "" {
-			fc.BaseURL = baseURL
+			fc.BaseURL = strings.TrimRight(baseURL, "/")
 		}
 	}
 }
@@ -89,7 +93,11 @@ func NewFlareClient(apiKey, userAgent string, tenantID, timeout int, opts ...Cli
 		opt(fc)
 	}
 
-	flareGetTokenURL := fmt.Sprintf("%s/tokens/generate", fc.BaseURL)
+	if fc.GlobalSearchPageSize > MaxGlobalSearchPageSize {
+		return nil, fmt.Errorf("global search page size must not exceed %d", MaxGlobalSearchPageSize)
+	}
+
+	flareGetTokenURL := fmt.Sprintf("%s/tokens/generate", fc.baseURL())
 
 	// Create the Authorization Basic header
 	authString := fmt.Sprintf(":%s", apiKey) // ":" for empty username
@@ -163,6 +171,14 @@ func (fc *FlareClient) record(endpoint metrics.Endpoint, entity string, status i
 	})
 }
 
+// baseURL preserves the default for SDK clients built with a struct literal.
+func (fc *FlareClient) baseURL() string {
+	if fc.BaseURL == "" {
+		return flareAPIBaseURL
+	}
+	return fc.BaseURL
+}
+
 // pageSize returns the configured global search page size, guarding against a
 // zero value on a FlareClient built without the constructor.
 func (fc *FlareClient) pageSize() int {
@@ -224,7 +240,7 @@ func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFirew
 	} else {
 		refreshedFC = fc
 	}
-	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", fc.BaseURL, uid)
+	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", fc.baseURL(), uid)
 	headers := refreshedFC.defaultHeaders()
 	data := &FlareFireworkActivitiesIndexSourceIDv2Response{}
 
@@ -261,7 +277,7 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 	downloadedFilePaths := make([]string, 0)
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
-			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", fc.BaseURL, data.Activity.Data.UID)
+			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", fc.baseURL(), data.Activity.Data.UID)
 			headers := fc.defaultHeaders()
 			headers["Accept"] = acceptHeaderTextPlain
 			params := map[string]string{
@@ -319,7 +335,7 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
 			// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
-			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.BaseURL, data.Activity.Data.UID)
+			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.baseURL(), data.Activity.Data.UID)
 			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 			headers := fc.defaultHeaders()
 			headers["Accept"] = acceptHeaderTextPlain
@@ -364,7 +380,7 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 	// can check data.Activity.Data.Cookies for cookies names that are high-value targets.
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
-		flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.BaseURL, data.Activity.Data.UID)
+		flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.baseURL(), data.Activity.Data.UID)
 		utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
 		headers := fc.defaultHeaders()
 		headers["Accept"] = acceptHeaderTextPlain
@@ -408,7 +424,7 @@ func getPastISO8601Date(yearsAgo int) string {
 //nolint:gocognit
 //nolint:dupl
 func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
-	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", fc.BaseURL)
+	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", fc.baseURL())
 	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
 	size := fc.pageSize()
@@ -471,9 +487,8 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 	}()
 	defer close(progressDone)
 
-	// retrying carries across an iteration so the re-attempt after a 429 or 5xx
-	// is recorded as a retry rather than as another page.
-	retrying := false
+	// Retries are bounded per page and reset after a successful response.
+	retries := 0
 
 flarePaginate: //nolint:dupl
 	for {
@@ -485,28 +500,22 @@ flarePaginate: //nolint:dupl
 		data := &FlareEventsGlobalSearchResults{}
 		started := time.Now()
 		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGlobalEventsSearchURL, "POST", data, headers, nil, postBodyJSON)
-		fc.record(metrics.EndpointGlobalEventsSearch, domain, statusCode, respHeader, started, retrying)
-		retrying = false
+		fc.record(metrics.EndpointGlobalEventsSearch, domain, statusCode, respHeader, started, retries > 0)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 
-		if statusCode == 429 {
-			retrying = true
-			time.Sleep(10 * time.Second)
+		delay, err := searchRetryDelay(statusCode, retries)
+		if err != nil {
+			return nil, err
+		}
+		if delay > 0 {
+			retries++
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", statusCode, retries, maxSearchRetries, delay)
+			time.Sleep(delay)
 			continue
 		}
-
-		// 502/503/504 are Flare's gateway giving up on a slow backend query
-		// (gateway timeout ≈ 30s). Usually transient when Flare's under
-		// load; retrying after a short pause typically succeeds. Bounded
-		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
-			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
-			retrying = true
-			time.Sleep(15 * time.Second)
-			continue
-		}
+		retries = 0
 
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
@@ -549,7 +558,7 @@ flarePaginate: //nolint:dupl
 // FlareBulkCredentialLookup queries the Flare API in batches of 100 emails and aggregates results
 func (fc *FlareClient) FlareBulkCredentialLookup(emails []string, outputDir string) (*FlareListByBulkAccountResponse, error) {
 	const batchSize = 100
-	flareListByBulkAccountsURL := fmt.Sprintf("%s/leaksdb/identities/by_accounts", fc.BaseURL)
+	flareListByBulkAccountsURL := fmt.Sprintf("%s/leaksdb/identities/by_accounts", fc.baseURL())
 	headers := fc.defaultHeaders()
 
 	// Result accumulator
@@ -638,7 +647,7 @@ func mergeResults(main, batch FlareListByBulkAccountResponse) FlareListByBulkAcc
 //
 //nolint:dupl
 func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cookieNames, paths []string) (*FlareSearchCookiesResponse, error) {
-	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", fc.BaseURL)
+	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", fc.baseURL())
 	headers := fc.defaultHeaders()
 	allData := &FlareSearchCookiesResponse{}
 	size := 500
@@ -673,9 +682,8 @@ func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cook
 	}()
 	defer close(progressDone)
 
-	// retrying carries across an iteration so the re-attempt after a 429 or 5xx
-	// is recorded as a retry rather than as another page.
-	retrying := false
+	// Retries are bounded per page and reset after a successful response.
+	retries := 0
 
 flarePaginate:
 	for {
@@ -687,28 +695,22 @@ flarePaginate:
 		data := &FlareSearchCookiesResponse{}
 		started := time.Now()
 		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareSearchCookiesURL, "POST", data, headers, nil, postBodyJSON)
-		fc.record(metrics.EndpointASTPCookiesSearch, domain, statusCode, respHeader, started, retrying)
-		retrying = false
+		fc.record(metrics.EndpointASTPCookiesSearch, domain, statusCode, respHeader, started, retries > 0)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 
-		if statusCode == 429 {
-			retrying = true
-			time.Sleep(10 * time.Second)
+		delay, err := searchRetryDelay(statusCode, retries)
+		if err != nil {
+			return nil, err
+		}
+		if delay > 0 {
+			retries++
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", statusCode, retries, maxSearchRetries, delay)
+			time.Sleep(delay)
 			continue
 		}
-
-		// 502/503/504 are Flare's gateway giving up on a slow backend query
-		// (gateway timeout ≈ 30s). Usually transient when Flare's under
-		// load; retrying after a short pause typically succeeds. Bounded
-		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
-			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
-			retrying = true
-			time.Sleep(15 * time.Second)
-			continue
-		}
+		retries = 0
 
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
@@ -747,7 +749,7 @@ flarePaginate:
 //
 //nolint:dupl
 func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*FlareSearchCredentialsASTP, error) {
-	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", fc.BaseURL)
+	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", fc.baseURL())
 	headers := fc.defaultHeaders()
 	allData := &FlareSearchCredentialsASTP{}
 	// Flare's gateway times out at ~30s; latency on this endpoint scales
@@ -784,9 +786,8 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 	}()
 	defer close(progressDone)
 
-	// retrying carries across an iteration so the re-attempt after a 429 or 5xx
-	// is recorded as a retry rather than as another page.
-	retrying := false
+	// Retries are bounded per page and reset after a successful response.
+	retries := 0
 
 flarePaginate:
 	for {
@@ -798,28 +799,22 @@ flarePaginate:
 		data := &FlareSearchCredentialsASTP{}
 		started := time.Now()
 		statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareLeaksByDomainURL, "POST", data, headers, nil, postBodyJSON)
-		fc.record(metrics.EndpointASTPCredentialsSearch, domain, statusCode, respHeader, started, retrying)
-		retrying = false
+		fc.record(metrics.EndpointASTPCredentialsSearch, domain, statusCode, respHeader, started, retries > 0)
 		if err != nil {
 			return nil, utils.LogError(err)
 		}
 
-		if statusCode == 429 {
-			retrying = true
-			time.Sleep(10 * time.Second)
+		delay, err := searchRetryDelay(statusCode, retries)
+		if err != nil {
+			return nil, err
+		}
+		if delay > 0 {
+			retries++
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", statusCode, retries, maxSearchRetries, delay)
+			time.Sleep(delay)
 			continue
 		}
-
-		// 502/503/504 are Flare's gateway giving up on a slow backend query
-		// (gateway timeout ≈ 30s). Usually transient when Flare's under
-		// load; retrying after a short pause typically succeeds. Bounded
-		// only by the outer client timeout (default 10 minutes).
-		if statusCode == 500 || statusCode == 502 || statusCode == 503 || statusCode == 504 {
-			utils.LogWarningf("Flare API returned %d, retrying in 15 seconds", statusCode)
-			retrying = true
-			time.Sleep(15 * time.Second)
-			continue
-		}
+		retries = 0
 
 		if statusCode != 200 {
 			return nil, fmt.Errorf("error retrieving flare leak db results, received non 200 HTTP response status code: %d", statusCode)
@@ -846,4 +841,23 @@ flarePaginate:
 	}
 
 	return allData, nil
+}
+
+// HTTP timeouts bound individual attempts, not a pagination retry loop.
+const maxSearchRetries = 5
+
+func searchRetryDelay(status, retries int) (time.Duration, error) {
+	var delay time.Duration
+	switch status {
+	case http.StatusTooManyRequests:
+		delay = 10 * time.Second
+	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		delay = 15 * time.Second
+	default:
+		return 0, nil
+	}
+	if retries >= maxSearchRetries {
+		return 0, fmt.Errorf("flare API returned %d after %d retries", status, retries)
+	}
+	return delay, nil
 }

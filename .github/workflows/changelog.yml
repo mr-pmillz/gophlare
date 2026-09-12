@@ -1,0 +1,137 @@
+name: Changelog
+
+on:
+  push:
+    branches:
+      - 'release/**'
+      - 'hotfix/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: changelog-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    name: Update CHANGELOG.md on release branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Updating the branch with a GitHub App token triggers this workflow again.
+    # Skip the App's changelog commit so that run cannot create a loop.
+    if: >-
+      github.event.head_commit.message != 'chore: update changelog'
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Validate release version
+        id: ver
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          TAG="$(python3 .github/scripts/release_policy.py tag "$BRANCH")"
+          python3 .github/scripts/release_policy.py version "$TAG"
+          printf 'tag=%s\n' "$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub App token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # ratchet:actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.GOPHLARE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GOPHLARE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: read
+
+      - name: Generate CHANGELOG.md
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # ratchet:orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          # --tag labels the unreleased commits as this version. steps.ver.tag
+          # is semver-validated above, so it is safe to interpolate here.
+          args: --tag ${{ steps.ver.outputs.tag }} --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_REPO: ${{ github.repository }}
+          # App token (not the default GITHUB_TOKEN) so git-cliff's GitHub API
+          # enrichment authenticates. The commit step also uses this token so
+          # GitHub creates a verified commit on behalf of the App.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Create verified CHANGELOG.md commit if changed
+        env:
+          BRANCH: ${{ github.ref_name }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "::notice::CHANGELOG.md unchanged; nothing to commit."
+            exit 0
+          fi
+
+          # Build the new Git objects through the API. Creating the commit with
+          # a GitHub App installation token makes GitHub sign it for the App.
+          PARENT_SHA="$(git rev-parse HEAD)"
+          BASE_TREE_SHA="$(git rev-parse "${PARENT_SHA}^{tree}")"
+          BLOB_SHA="$(
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" \
+              -F 'content=@CHANGELOG.md' \
+              -f 'encoding=utf-8' \
+              --jq '.sha'
+          )"
+          TREE_SHA="$(
+            jq -n \
+              --arg base_tree "$BASE_TREE_SHA" \
+              --arg blob_sha "$BLOB_SHA" \
+              '{
+                base_tree: $base_tree,
+                tree: [{
+                  path: "CHANGELOG.md",
+                  mode: "100644",
+                  type: "blob",
+                  sha: $blob_sha
+                }]
+              }' |
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/git/trees" \
+                --input - \
+                --jq '.sha'
+          )"
+          COMMIT_RESPONSE="$(
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/commits" \
+              -f 'message=chore: update changelog' \
+              -f "tree=${TREE_SHA}" \
+              -f "parents[]=${PARENT_SHA}"
+          )"
+          COMMIT_SHA="$(jq -er '.sha' <<<"$COMMIT_RESPONSE")"
+
+          if ! jq -e \
+            '.verification.verified == true and .verification.reason == "valid"' \
+            <<<"$COMMIT_RESPONSE" >/dev/null; then
+            REASON="$(jq -r '.verification.reason // "missing"' <<<"$COMMIT_RESPONSE")"
+            echo "::error::GitHub did not return a valid signature for commit ${COMMIT_SHA} (reason: ${REASON}); branch not updated."
+            exit 1
+          fi
+
+          # Never overwrite a commit that landed while the changelog was being
+          # generated. force=false permits only a fast-forward ref update.
+          UPDATED_SHA="$(
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}" \
+              -f "sha=${COMMIT_SHA}" \
+              -F 'force=false' \
+              --jq '.object.sha'
+          )"
+          if [[ "$UPDATED_SHA" != "$COMMIT_SHA" ]]; then
+            echo "::error::Branch update returned ${UPDATED_SHA}; expected ${COMMIT_SHA}."
+            exit 1
+          fi
+
+          echo "::notice::Created verified changelog commit ${COMMIT_SHA} on ${BRANCH}."

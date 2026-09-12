@@ -3,6 +3,7 @@ package metrics
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -74,7 +75,7 @@ func TestRenderWithoutQuotaHeaderMakesNoClaim(t *testing.T) {
 func TestRenderExplainsCountedExceedingObserved(t *testing.T) {
 	r := NewRecorder()
 	// Three global searches, but Flare only decremented the allocation by one:
-	// the other two fell inside its 10-minute free-repeat window.
+	// the first request is outside the interval; repeated searches may be free.
 	r.Record(Call{Endpoint: EndpointGlobalEventsSearch, Entity: "example.com", Status: 200, Header: remainingHeader("9000")})
 	r.Record(Call{Endpoint: EndpointGlobalEventsSearch, Entity: "example.com", Status: 200, Header: remainingHeader("9000")})
 	r.Record(Call{Endpoint: EndpointGlobalEventsSearch, Entity: "example.com", Status: 200, Header: remainingHeader("8999")})
@@ -84,8 +85,8 @@ func TestRenderExplainsCountedExceedingObserved(t *testing.T) {
 	if !strings.Contains(out, "within 10 minutes") {
 		t.Errorf("report should explain the counted/observed gap:\n%s", out)
 	}
-	if !strings.Contains(out, "Observed is authoritative") {
-		t.Errorf("report should name observed as authoritative:\n%s", out)
+	if !strings.Contains(out, "excludes usage before the first header") {
+		t.Errorf("report should explain the missing baseline:\n%s", out)
 	}
 	if !strings.Contains(out, "2 above observed") {
 		t.Errorf("report should quantify the gap as 2:\n%s", out)
@@ -279,5 +280,46 @@ func TestRenderColorizedStillContainsData(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("colorized report missing %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestRenderSingleHeaderDoesNotClaimZeroConsumption(t *testing.T) {
+	r := NewRecorder()
+	r.Record(Call{Endpoint: EndpointGlobalEventsSearch, Status: 200, Header: remainingHeader("9999")})
+	out := renderRecorder(t, r, 10000)
+	if !strings.Contains(out, "only one quota observation; no baseline") || strings.Contains(out, "Consumed this run") {
+		t.Fatalf("report claims consumption without a baseline:\n%s", out)
+	}
+}
+
+func TestRenderQuotaIncreaseAndAllocationMismatch(t *testing.T) {
+	r := NewRecorder()
+	r.Record(Call{Endpoint: EndpointGlobalEventsSearch, Header: remainingHeader("99")})
+	r.Record(Call{Endpoint: EndpointGlobalEventsSearch, Header: remainingHeader("20000")})
+	out := renderRecorder(t, r, 10000)
+	if !strings.Contains(out, "quota increased") || !strings.Contains(out, "exceeds configured monthly quota") {
+		t.Fatalf("missing quota state warnings:\n%s", out)
+	}
+	if strings.Contains(out, "-100.0%") {
+		t.Fatalf("negative monthly usage:\n%s", out)
+	}
+}
+
+type failingWriter struct{ err error }
+
+func (w failingWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func TestReportPreservesArtifactAndErrorOnBrokenWriter(t *testing.T) {
+	r := NewRecorder()
+	dir := t.TempDir()
+	wantErr := errors.New("broken pipe")
+	opts := ReportOptions{Enabled: true, OutputDir: dir, Writer: failingWriter{wantErr}}
+	for range 2 {
+		if err := r.ReportOnce(opts); !errors.Is(err, wantErr) {
+			t.Fatalf("ReportOnce error = %v, want %v", err, wantErr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, MetricsJSONFileName)); err != nil {
+		t.Fatalf("artifact lost when output failed: %v", err)
 	}
 }

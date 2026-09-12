@@ -10,10 +10,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// usageRecorder preserves the shared recorder for library callers, while each
+// CLI invocation owns a fresh recorder and ReportOnce lifecycle.
+func usageRecorder(opts *phlare.Options) *metrics.Recorder {
+	if opts.MetricsRecorder != nil {
+		return opts.MetricsRecorder
+	}
+	return metrics.Default()
+}
+
 // reportMetrics emits the Flare API usage report. Safe to call more than once —
 // ReportOnce is sync.Once-guarded — and a no-op unless --metrics is set.
 func reportMetrics(opts *phlare.Options) {
-	if err := metrics.Default().ReportOnce(metrics.ReportOptions{
+	if err := usageRecorder(opts).ReportOnce(metrics.ReportOptions{
 		Enabled:      opts.Metrics,
 		MonthlyQuota: opts.MonthlyQuota,
 		OutputDir:    opts.Output,
@@ -74,6 +83,8 @@ Example Commands:
 			utils.LogFatalf("Could not LoadFromCommand: %s\n", err)
 		}
 
+		opts.gophlareOptions.MetricsRecorder = metrics.NewRecorder()
+
 		// ensure required flags represented via config.yaml parsed by viper are not empty!
 		switch {
 		case opts.gophlareOptions.Output == "":
@@ -115,6 +126,7 @@ Example Commands:
 				fatalf(&opts.gophlareOptions, "Could not search emails in bulk: %+v\n%s\n", scope.Emails, err)
 			}
 		}
+		reportMetrics(&opts.gophlareOptions)
 	},
 }
 
