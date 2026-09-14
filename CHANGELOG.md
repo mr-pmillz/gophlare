@@ -2,80 +2,273 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
-## [1.5.0](https://github.com/mr-pmillz/gophlare/compare/v1.4.1...v1.5.0) - 2026-09-10
+## [1.4.2](https://github.com/mr-pmillz/gophlare/compare/v1.4.1...v1.4.2) - 2026-09-14
 
-### 🚀 Features
+### ✨ New features
 
-- Cmd: emit Flare API usage report when --metrics is set
+- Feat(phlare): add DoReqWithHeaders to expose response headers
 
-Adds `--metrics`, `--monthly-quota` (default 10000), and
-`--global-search-page-size` (default 5, unchanged). The report uses the resolved search options on success and on
-dispatch-path failures, since quota is spent even when a run fails and
-utils.LogFatalf calls os.Exit. ReportOnce is sync.Once-guarded. -
-([b592928](https://github.com/mr-pmillz/gophlare/commit/b592928))
+Flare reports quota state only in response headers
+(X-Flare-Global-Searches-Remaining), which DoReq discarded entirely. The
+request body moves to DoReqWithHeaders and DoReq delegates to it, so its
+signature and behavior are unchanged for bloodhound/api.go and external SDK
+consumers.
 
-- Phlare: record usage metrics for every Flare API call
+Headers are returned on non-2xx responses too, so a 429's quota headers
+survive the existing error-body drain path.
 
-NewFlareClient gains variadic ClientOptions (WithMetricsRecorder,
-WithBaseURL, WithGlobalSearchPageSize, WithEntity), so existing call sites
-and SDK consumers compile unchanged. ForEntity returns a shallow copy for
-per-domain attribution. RefreshAPIToken now carries the recorder across —
-without that, every token refresh silently reset all counters mid-run.
+Adds the first tests for this file: header surfacing on 2xx and on
+429/504/401, DoReq/DoReqWithHeaders equivalence, the string-target file
+write used by stealer-log downloads, and a nil header on transport failure.
 
-FlareClient.BaseURL replaces the hardcoded flareAPIBaseURL at all eight URL
-builders, which is what finally makes flareClient.go testable; it gains its
-first tests, covering pagination, 429 retry, and refresh behavior. -
-([bf071bb](https://github.com/mr-pmillz/gophlare/commit/bf071bb))
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([861d2d0](https://github.com/mr-pmillz/gophlare/commit/861d2d0d08ae647a167f4d8e1434d0251f1d1fc3))
+- Feat(metrics): add concurrency-safe API usage recorder
 
-- Phlare: add DoReqWithHeaders to expose response headers
+Records every Flare request by endpoint and entity, tracking successes,
+429s, 5xx, and retries. Captures X-Flare-Global-Searches-Remaining and
+derives observed quota spend from the first/last delta, which is
+authoritative: Flare does not bill repeat searches within 10 minutes and
+retry billing is undocumented, so the local counter is only an upper bound.
 
-Flare reports quota state only in the X-Flare-Global-Searches-Remaining
-response header, which DoReq discarded. DoReq now delegates, so its
-signature and behavior are unchanged for bloodhound/api.go and external
-consumers. Headers are returned on non-2xx too, so a 429's quota headers
-survive the error-body drain. -
-([861d2d0](https://github.com/mr-pmillz/gophlare/commit/861d2d0))
+A missing or unparseable header is ignored rather than read as zero, and a
+nil *Recorder absorbs calls so SDK consumers pay nothing when they do not
+opt in.
 
-- Metrics: new package for Flare API usage and quota accounting
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([c56aa29](https://github.com/mr-pmillz/gophlare/commit/c56aa2948225183a3a70f62bb5ce4944ae4401ee))
+- Feat(metrics): add Flare endpoint quota classification catalog
 
-A quota classification catalog (only Global Search bills; the ASTP searches
-are documented as free; /leaksdb/identities/by_accounts is undocumented and
-reported as "?"), a concurrency-safe recorder, and a report renderer with
-per-endpoint and per-entity tables plus a JSON artifact.
+Declares which Flare endpoints draw down the monthly Global Search quota in
+one place. /firework/v4/events/global/_search bills; the ASTP searches are
+documented as not counting; /leaksdb/identities/by_accounts is undocumented
+and classified QuotaUnknown so the report renders "?" rather than asserting
+a cost that cannot be substantiated.
 
-The header-derived figure covers only the interval between responses (not the
-full run or exclusively this client), and the local counter is an upper bound, because Flare does not bill a repeated search within 10
-minutes and does not document retry billing. With no quota header the report
-says so rather than printing a misleading zero. 93.6% coverage. -
-([991d20c](https://github.com/mr-pmillz/gophlare/commit/991d20c),
-[c56aa29](https://github.com/mr-pmillz/gophlare/commit/c56aa29),
-[f132827](https://github.com/mr-pmillz/gophlare/commit/f132827))
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([f132827](https://github.com/mr-pmillz/gophlare/commit/f132827aad72fbc8585e2c10dfaa58cd210d91d4))
+- Docs: add design spec and implementation plan for Flare API metrics
 
-### 🐛 Review fixes
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([d61763e](https://github.com/mr-pmillz/gophlare/commit/d61763e1cb4b48897de545dc61f783387504a9c9))
 
-- Report incomplete quota intervals honestly; omit consumption for a single
-  observation or a quota increase, and reject negative remaining values.
-- Keep report output paths consistent with config and isolate each CLI run's
-  recorder. Preserve the JSON artifact if terminal output fails.
-- Validate page size and quota options, bound retries per page, and restore the
-  default API URL for clients built with struct literals.
-- Add tested GitHub release, changelog, branch policy, and coverage workflows,
-  repository templates, and release setup documentation.
+### ✨: New features
 
-### 🛡️ Dependency security
+- Feat(cmd): emit Flare API usage report when --metrics is set
 
-- Require Go 1.26.6 in go.mod and the Docker builder.
-- Upgrade x/crypto, x/net, kin-openapi, Excelize, and oapi-codegen to releases
-  fixing Dependabot alerts #13–#34. Upgrade klauspost/compress for GO-2026-5841.
-- Require imported-package vulnerability scanning in CI and before releases.
+Adds three flags on the search command via the standard
+utils.ConfigureFlagOpts chain: --metrics (report only; collection is always
+on so SDK consumers get a Snapshot for free), --monthly-quota (default
+10000, labeled operator-supplied since Flare sets it per license), and
+--global-search-page-size (default 5, unchanged).
+
+All three NewFlareClient call sites get the process-wide recorder, and each
+workflow scopes its client with ForEntity so the report attributes usage per
+domain, plus synthetic entities for custom queries and bulk email lookups.
+
+The report fires from two places. RootCmd.PersistentPostRun covers the
+success path and is generic, so a future Flare-touching subcommand gets it
+free while `gophlare bloodhound` — which makes no Flare calls — no-ops. A
+fatalf helper covers the dispatch-path failures, because quota is spent even
+when a run fails and utils.LogFatalf calls os.Exit, which would skip a
+defer. ReportOnce is sync.Once-guarded so both firing is harmless.
+
+Verified end to end: with empty credentials the fatal path still prints the
+report and writes flare-api-metrics.json before exiting, and correctly
+states that no calls were made and no quota header was seen rather than
+printing a zero.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([b592928](https://github.com/mr-pmillz/gophlare/commit/b592928ada8619d492cdaf6bf7e53a5c71896b2f))
+- Feat(phlare): record usage metrics for every Flare API call
+
+Adds ClientOptions (WithMetricsRecorder, WithBaseURL,
+WithGlobalSearchPageSize, WithEntity) as a variadic tail on NewFlareClient,
+so all existing call sites and external SDK consumers compile unchanged.
+ForEntity returns a shallow copy sharing the HTTP client and recorder, which
+attributes requests per domain without mutating the receiver.
+
+RefreshAPIToken now carries the recorder, base URL, page size, and entity
+across. Without that, every token refresh would hand back a client with a
+fresh recorder and silently reset all counters mid-run.
+
+All eight API call sites move to DoReqWithHeaders and record their endpoint,
+entity, status, and duration. The three pagination loops track a retry flag
+so the attempt after a 429 or 5xx is counted as a retry rather than as
+another page.
+
+Two supporting changes:
+- The hardcoded flareAPIBaseURL is replaced by FlareClient.BaseURL at all
+  eight URL builders. This is what makes the file testable, and it fixes a
+  bug introduced mid-change where only the token URL honored the override,
+  leaving the search calls pointed at the live API.
+- The global search `size` comes from GlobalSearchPageSize, defaulting to 5
+  (unchanged) with a zero-guard for clients built without the constructor.
+
+First tests for this 800-line file: options and defaults, ForEntity
+immutability, recorder survival across refresh, page size on the wire,
+per-page recording with quota-header delta, 429 retry accounting, ASTP
+recorded as non-billing, and entity inheritance for domain-less methods.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([bf071bb](https://github.com/mr-pmillz/gophlare/commit/bf071bb490a836ad3073b2a4a8cc35a262d9e891))
+- Feat(metrics): render usage report table and JSON artifact
+
+Three blocks: quota summary with dot leaders, per-endpoint counts, and a
+long-format per-entity breakdown that stays readable in a narrow terminal.
+Sorted output keeps it golden-testable.
+
+The report refuses to invent numbers. With no quota header it says so
+instead of printing a zero Remaining or a computed percentage, an
+undocumented endpoint renders "?" rather than a cost, and when the local
+count exceeds the header-derived figure it explains the 10-minute
+free-repeat window and names observed as authoritative.
+
+ReportOnce is sync.Once-guarded so the success path and the fatal path can
+both call it. 93.6% coverage.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([991d20c](https://github.com/mr-pmillz/gophlare/commit/991d20c1c98e9fe87ed8269cdda43376e0e26a18))
+
+### 🐛 Bug fixes
+
+- Fix: harden quota metrics and automate secure releases
+
+Correct quota reporting to distinguish organization-wide header observations
+from this run's usage, handle quota resets and incomplete baselines, and
+preserve JSON output and reporting errors when terminal output fails.
+Use a fresh recorder per CLI invocation, honor metrics configuration, and
+validate quota and page-size settings. Bound transient retries per page and
+cover reporting, pagination, and client behavior with regression tests.
+
+Upgrade Go to 1.26.6 and update x/crypto, x/net, kin-openapi, Excelize,
+oapi-codegen, and klauspost/compress to address the supplied Dependabot
+alerts and additional scan findings. Document the advisory mapping and the
+unimported, deprecated OpenPGP package with no available fixed version.
+
+Adapt the nomore403 develop/release/hotfix flow with reusable CI, race and
+coverage checks, vulnerability scanning, branch policy, changelog commits,
+and tagging of exact PR merge commits. Gate publication on CI and validate
+release versions and ancestry; publish multiarch GHCR manifests and archive
+provenance. Use repository-scoped App tokens with GOPHLARE_APP_CLIENT_ID
+and GOPHLARE_APP_PRIVATE_KEY for release notes, changelogs, and tags.
+
+Add contributor guidance, CODEOWNERS, issue/PR templates, and Dependabot
+configuration. Keep module files unchanged during builds and pin CI tools.
+
+Validation: full Go race suite, golangci-lint, build and module checks,
+package-level govulncheck, CLI metrics and Excel export smoke checks,
+release policy tests, and GoReleaser configuration checks passed.
+Actionlint passed with the documented code-quality permission exclusion.
+Live release publication and App authentication were not exercised locally. - ([d80a33c](https://github.com/mr-pmillz/gophlare/commit/d80a33cbeb857e6ab3bb8cf8ce5b9b1292f6c74a))
 
 ### 🚜 Refactor
 
-- Phlare: modernize interface{} to any - ([19bc8b4](https://github.com/mr-pmillz/gophlare/commit/19bc8b4))
+- Refactor(phlare): modernize interface{} to any
+
+Applied by the go fix modernizer. `any` is a pure alias for `interface{}`,
+so this is a symmetric rename with no semantic change (166 insertions, 166
+deletions) — the Options fields stay deliberately untyped for flexible
+string/[]string/file-path input, and all 232 omitempty tags in types.go are
+preserved.
+
+Separated from the metrics feature so that diff stays readable.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([19bc8b4](https://github.com/mr-pmillz/gophlare/commit/19bc8b4ea0e3a560659213cc2c06fc0c485b7f58))
 
 ### 📚 Documentation
 
-- Add design spec and implementation plan for Flare API metrics - ([d61763e](https://github.com/mr-pmillz/gophlare/commit/d61763e))
+- Docs: document Flare API usage metrics and bump to v1.5.0
+
+Bumps both version constants together (cmd/root.go and
+phlare/flareClient.go), regenerates the CLI docs, and adds a README section
+covering which endpoints bill, why the header-derived figure is
+authoritative over the local counter, and the page-size/quota tradeoff.
+
+Notes explicitly that --global-search-page-size defaults to 5 and that
+raising it to 10 roughly halves quota burn at the cost of gateway-timeout
+risk, so the choice stays the operator's.
+
+CHANGELOG written by hand in git-cliff's format; git-cliff is not installed
+on this machine.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([0bcdeab](https://github.com/mr-pmillz/gophlare/commit/0bcdeab7769651bd0c88b006319a673637a3f1d3))
+
+### 🛠 Improvements
+
+- Update .gitignore - ([09e86fe](https://github.com/mr-pmillz/gophlare/commit/09e86fe19e5f1de7cb75e58468b2c6a706ccef40))
+- Update CHANGELOG.md - ([acfb983](https://github.com/mr-pmillz/gophlare/commit/acfb9832a66b6385c1de779f70f59a572a13c2b8))
+
+### ⚙️  Miscellaneous
+
+- Set gophlare version - ([8c6ed12](https://github.com/mr-pmillz/gophlare/commit/8c6ed129e2cebe0aa305684874fbb4307ff4bd87))
+- Merge pull request #12 from mr-pmillz/dependabot/github_actions/develop/github-actions-dc7855c1e5
+
+ci(deps): bump the github-actions group with 4 updates - ([fec3129](https://github.com/mr-pmillz/gophlare/commit/fec3129236bec48f6c50971ca89e8f06d2c68372))
+- Merge branch 'develop' into dependabot/github_actions/develop/github-actions-dc7855c1e5 - ([59bd2f9](https://github.com/mr-pmillz/gophlare/commit/59bd2f9a0fd5eea46c23f8975d8b71ad615e2d6c))
+- Ci(deps): bump the github-actions group with 4 updates
+
+Bumps the github-actions group with 4 updates: [orhun/git-cliff-action](https://github.com/orhun/git-cliff-action), [actions/upload-code-coverage](https://github.com/actions/upload-code-coverage), [docker/setup-buildx-action](https://github.com/docker/setup-buildx-action) and [actions/attest](https://github.com/actions/attest).
+
+
+Updates `orhun/git-cliff-action` from 4.8.0 to 4.9.0
+- [Release notes](https://github.com/orhun/git-cliff-action/releases)
+- [Commits](https://github.com/orhun/git-cliff-action/compare/f50e11560dce63f7c33227798f90b924471a88b5...3d96a18cc4ec17e9dc69ddcc424ccafaf1f78ce2)
+
+Updates `actions/upload-code-coverage` from 1.4.1 to 1.4.2
+- [Commits](https://github.com/actions/upload-code-coverage/compare/1c15be36fc3733ba839b1dd643bd9556e4426dc1...d8e329117199404bba6fc81efe8093dc7c015e34)
+
+Updates `docker/setup-buildx-action` from 4.2.0 to 4.3.0
+- [Release notes](https://github.com/docker/setup-buildx-action/releases)
+- [Commits](https://github.com/docker/setup-buildx-action/compare/bb05f3f5519dd87d3ba754cc423b652a5edd6d2c...37fe631027851001ddb9b187196cc803df7f5f0e)
+
+Updates `actions/attest` from 4.2.1 to 4.2.2
+- [Release notes](https://github.com/actions/attest/releases)
+- [Changelog](https://github.com/actions/attest/blob/main/RELEASE.md)
+- [Commits](https://github.com/actions/attest/compare/508db95dd578ae2727ebd6217d5ba78e4fbda05d...1e69f48acb82d1966a394da916b4c1698aa569d6)
+
+---
+updated-dependencies:
+- dependency-name: orhun/git-cliff-action
+  dependency-version: 4.9.0
+  dependency-type: direct:production
+  update-type: version-update:semver-minor
+  dependency-group: github-actions
+- dependency-name: actions/upload-code-coverage
+  dependency-version: 1.4.2
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+  dependency-group: github-actions
+- dependency-name: docker/setup-buildx-action
+  dependency-version: 4.3.0
+  dependency-type: direct:production
+  update-type: version-update:semver-minor
+  dependency-group: github-actions
+- dependency-name: actions/attest
+  dependency-version: 4.2.2
+  dependency-type: direct:production
+  update-type: version-update:semver-patch
+  dependency-group: github-actions
+...
+
+Signed-off-by: dependabot[bot] <support@github.com> - ([c418c3b](https://github.com/mr-pmillz/gophlare/commit/c418c3b40f429c2caee15cd502ce60ca09908958))
+- Merge pull request #11 from mr-pmillz/dependabot/go_modules/develop/go-modules-87bc5cd2bc
+
+chore(deps): bump the go-modules group with 3 updates - ([5295907](https://github.com/mr-pmillz/gophlare/commit/529590782d3b8d69e708f3cc8a84921f012df6fa))
+- Merge pull request #13 from mr-pmillz/dependabot/github_actions/develop/docker/setup-qemu-action-4.3.0
+
+ci(deps): bump docker/setup-qemu-action from 3.7.0 to 4.3.0 - ([bbaf95a](https://github.com/mr-pmillz/gophlare/commit/bbaf95a9c57c89ba1791097630bb119f9d211d9a))
+- Ci(deps): bump docker/setup-qemu-action from 3.7.0 to 4.3.0
+
+Bumps [docker/setup-qemu-action](https://github.com/docker/setup-qemu-action) from 3.7.0 to 4.3.0.
+- [Release notes](https://github.com/docker/setup-qemu-action/releases)
+- [Commits](https://github.com/docker/setup-qemu-action/compare/c7c53464625b32c7a7e944ae62b3e17d2b600130...1f40c72289eff860ee54a304f1438e3cff362e0a)
+
+---
+updated-dependencies:
+- dependency-name: docker/setup-qemu-action
+  dependency-version: 4.3.0
+  dependency-type: direct:production
+  update-type: version-update:semver-major
+...
+
+Signed-off-by: dependabot[bot] <support@github.com> - ([84548fb](https://github.com/mr-pmillz/gophlare/commit/84548fb86e75abbad7dbd5604159e302e5a84a61))
+- Merge pull request #8 from mr-pmillz/feat/metrics
+
+Metrics Tracking for API Quota Usage - ([359fe75](https://github.com/mr-pmillz/gophlare/commit/359fe75a996919d35a912e8978ceaa08d7fa1981))
 
 ## [1.4.1](https://github.com/mr-pmillz/gophlare/compare/v1.4.0...v1.4.1) - 2026-05-26
 
