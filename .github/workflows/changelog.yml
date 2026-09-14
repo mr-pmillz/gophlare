@@ -52,7 +52,7 @@ jobs:
           permission-pull-requests: read
 
       - name: Generate CHANGELOG.md
-        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # ratchet:orhun/git-cliff-action@v4
+        uses: orhun/git-cliff-action@3d96a18cc4ec17e9dc69ddcc424ccafaf1f78ce2 # ratchet:orhun/git-cliff-action@v4
         with:
           config: cliff.toml
           # --tag labels the unreleased commits as this version. steps.ver.tag
