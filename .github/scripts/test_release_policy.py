@@ -1,7 +1,6 @@
 import os
 import pathlib
 import subprocess
-import tempfile
 import unittest
 
 from release_policy import check_version, release_tag
@@ -36,15 +35,10 @@ class ReleasePolicyTests(unittest.TestCase):
                 result = subprocess.run(["bash", "-c", script], env=env, capture_output=True, check=False)
                 self.assertEqual(result.returncode, expected, result.stderr)
 
-    def test_version_mismatch(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = pathlib.Path(directory)
-            (root / "cmd").mkdir()
-            (root / "phlare").mkdir()
-            (root / "cmd/root.go").write_text('version = "v1.5.0"')
-            client = root / "phlare/flareClient.go"
-            client.write_text('gophlareClientVersion = "v1.5.0"')
-            check_version("v1.5.0", root)
-            client.write_text('gophlareClientVersion = "v1.4.1"')
-            with self.assertRaises(ValueError):
-                check_version("v1.5.0", root)
+    def test_release_versions(self):
+        for tag in ["v0.0.0", "v1.5.0", "v10.20.30"]:
+            with self.subTest(tag=tag):
+                check_version(tag)
+        for tag in ["1.5.0", "v01.2.3", "v1.2.3\n", "v1.2.3;echo bad", "v1.2.3-rc.1", "v1.2.3+dirty", "v1.2.3.4"]:
+            with self.subTest(tag=tag), self.assertRaises(ValueError):
+                check_version(tag)

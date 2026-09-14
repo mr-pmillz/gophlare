@@ -1,6 +1,5 @@
-"""Validate stable release names and the versions compiled into gophlare."""
+"""Validate stable release branch names and tags used to stamp gophlare builds."""
 
-import pathlib
 import re
 import sys
 
@@ -14,14 +13,9 @@ def release_tag(branch):
     return f"v{match[1]}"
 
 
-def check_version(tag, root=pathlib.Path(".")):
+def check_version(tag):
     if re.fullmatch(rf"v{VERSION}", tag) is None:
         raise ValueError("Release tags must be stable versions: vX.Y.Z")
-    for path, variable in [("cmd/root.go", "version"), ("phlare/flareClient.go", "gophlareClientVersion")]:
-        source = (root / path).read_text()
-        match = re.search(rf'\b{variable}\s*=\s*"([^"]+)"', source)
-        if match is None or match[1] != tag:
-            raise ValueError(f"{path}: {variable} must equal {tag}")
 
 
 def main(args):

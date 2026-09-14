@@ -8,6 +8,7 @@ import (
 	"github.com/mr-pmillz/gophlare/cmd/bloodhound"
 	"github.com/mr-pmillz/gophlare/cmd/docs"
 	"github.com/mr-pmillz/gophlare/cmd/search"
+	"github.com/mr-pmillz/gophlare/internal/version"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/projectdiscovery/gologger"
 	"github.com/spf13/cobra"
@@ -17,7 +18,6 @@ import (
 
 var (
 	cfgFile       string
-	version       = "v1.4.2"
 	configFileSet bool
 )
 
@@ -29,7 +29,7 @@ const (
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:     "gophlare",
-	Version: version,
+	Version: version.String(),
 	Short:   "client for flare.io api",
 	Long:    `client for flare.io api`,
 }

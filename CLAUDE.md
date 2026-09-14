@@ -9,8 +9,8 @@ Gophlare is a Go SDK and CLI wrapper for the [flare.io](https://flare.io) API, u
 ## Build & Development Commands
 
 ```bash
-# Build
-go build -v -trimpath -ldflags="-s -w" .
+# Build with a version derived from Git
+make build
 
 # Run tests (local, uses tparse for formatting)
 make test
@@ -81,7 +81,7 @@ Pre-commit hooks run TruffleHog (secret scanning), golangci-lint, and tests on c
 - **Interface{} for multi-type inputs**: `Options` fields like `Domains`, `Emails`, `Severity` use `interface{}` to accept string, `[]string`, or file paths. `Scope` normalizes these via `resolveToSlice()`.
 - **FlareTime**: Custom time type that handles multiple Flare API timestamp formats. Used throughout API response structs and GORM models. When adding new time fields, use `FlareTime` not `time.Time`.
 - **API pagination**: Flare API uses cursor-based pagination via `Next *string` field. Pagination loops use labeled `break flarePaginate` pattern.
-- **Version**: Hardcoded in both `cmd/root.go` (`version` var) and `phlare/flareClient.go` (`gophlareClientVersion` const). Both must be updated together for releases.
+- **Version**: Shared by the CLI and SDK through `internal/version.String()`. Make and GoReleaser inject `internal/version.version` with linker flags; ordinary Go builds/installs use embedded module metadata, falling back to `dev`. Release versions come from tags, with no source-code version bumps. See `CONTRIBUTING.md#build-versions`.
 
 ## Related Projects
 
