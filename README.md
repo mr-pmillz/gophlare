@@ -38,6 +38,10 @@ Gophlare also has several convenience features baked in such as:
 go install -v github.com/mr-pmillz/gophlare@latest
 ```
 
+Check the installed version with `gophlare --version`. Versions are derived
+automatically from release tags or Go build metadata. For local builds, use
+`make build`; see [build versions and releasing](CONTRIBUTING.md#build-versions).
+
 ## Supported API Endpoints
 
 Gophlare currently supports the following API endpoints:

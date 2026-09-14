@@ -23,13 +23,33 @@ vulnerable function is not called. The module-only scan additionally reports
 GO-2026-5932 for deprecated OpenPGP code inside `x/crypto`; gophlare does not
 import that package. See [the dependency review](docs/dependency-security.md).
 
+## Build versions
+
+The CLI, metrics reports, and default HTTP user-agent share `internal/version`.
+There are no release version constants to update in Go source files.
+
+- `make build` and `make compile` embed `git describe --tags --always --dirty`:
+  a tag on a release commit, or a tag/commit description for development builds.
+- GoReleaser embeds the release tag's version (with the `v` prefix); snapshot
+  builds include GoReleaser's snapshot suffix.
+- `go install github.com/mr-pmillz/gophlare@latest` and ordinary `go build .`
+  use [Go's embedded module version](https://go.dev/doc/go1.24#go-command).
+  Local builds may report a pseudo-version and `+dirty` for uncommitted changes.
+  Build the package (`.`), not `main.go`, so Go can include version-control metadata.
+- Docker builds use Go's metadata when the build context includes Git history.
+  For source archives without `.git`, pass `--build-arg VERSION=vX.Y.Z`.
+- Builds without version metadata report `dev`. For an explicit local override,
+  use `make build VERSION=vX.Y.Z`.
+
+Check the result with `./gophlare --version`.
+
 ## Releasing
 
 1. Cut `release/vX.Y.Z` from `develop`, or `hotfix/vX.Y.Z` from `main`. Stable
    versions only; the `v` in the branch name is optional. Prerelease branches
    and tags are rejected to avoid publishing prereleases as `latest`.
-2. Update `version` in `cmd/root.go` and `gophlareClientVersion` in
-   `phlare/flareClient.go` to `vX.Y.Z`. Update docs and relevant release notes.
+2. Update docs and relevant release notes. The branch name selects the release
+   version; GoReleaser embeds it automatically when the tag is built.
 3. Push the branch. Changelog automation generates a verified GitHub App commit.
    Review the generated changelog before merging. The workflow refuses to
    overwrite a newer branch commit; a concurrent push gets its own run.
@@ -44,10 +64,10 @@ import that package. See [the dependency review](docs/dependency-security.md).
 
 `develop` → `main` PRs are also allowed, matching the reference repository's
 policy, but do not automatically tag or publish. Use a release/hotfix branch
-when you want a release. Manual stable tags must match both version strings
-and point to a commit in `main`. To retry a failed publication after a tag was
-created, rerun its Release workflow; rerunning Tag Release leaves existing tags
-alone.
+when you want a release. Manual stable tags must point to a commit in `main`;
+the tag supplies the binary version. To retry a failed publication after a tag
+was created, rerun its Release workflow; rerunning Tag Release leaves existing
+tags alone.
 
 ## GitHub setup
 

@@ -10,7 +10,7 @@ builds:
       - -trimpath
       - -mod=readonly
     ldflags: |
-      -s -w
+      -s -w -X github.com/mr-pmillz/gophlare/internal/version.version=v{{.Version}}
     goos:
       - linux
       - darwin

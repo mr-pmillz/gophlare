@@ -9,8 +9,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mr-pmillz/gophlare/internal/version"
 	"github.com/mr-pmillz/gophlare/metrics"
 )
+
+func TestClientUserAgentVersion(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"token":"test-token","refresh_token_exp":%d}`, time.Now().Add(time.Hour).Unix())
+	}))
+	defer srv.Close()
+
+	for _, userAgent := range []string{"", "custom-client/1.0"} {
+		fc, err := NewFlareClient("test-key", userAgent, 1, 10, WithBaseURL(srv.URL))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := userAgent
+		if want == "" {
+			want = "gophlare/" + version.String()
+		}
+		if fc.DefaultUserAgent != want {
+			t.Errorf("user-agent = %q, want %q", fc.DefaultUserAgent, want)
+		}
+	}
+}
 
 func TestClientRecordsAuthPaginationRetriesAndEntity(t *testing.T) {
 	var attempts atomic.Int32

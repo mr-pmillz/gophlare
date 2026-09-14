@@ -1,7 +1,9 @@
 SHELL := /bin/bash
 BIN="./bin"
 SRC=$(shell git ls-files --cached --others --exclude-standard '*.go')
-CURRENT_TAG=$(shell git describe --tags --abbrev=0)
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+CURRENT_TAG := $(VERSION)
+LDFLAGS := -s -w -X github.com/mr-pmillz/gophlare/internal/version.version=$(VERSION)
 
 .PHONY: fmt lint build test clean compile compress
 
@@ -35,13 +37,13 @@ clean:
 	rm -rf $(BIN) 2>/dev/null
 
 build:
-	go build -mod=readonly -v -trimpath -ldflags="-s -w" .
+	go build -mod=readonly -v -trimpath -ldflags="$(LDFLAGS)" .
 
 compile:
-	GOOS=linux GOARCH=amd64 go build -o bin/linux/amd64/gophlare-$(CURRENT_TAG)-linux-amd64 -trimpath -ldflags="-s -w" main.go
-	GOOS=linux GOARCH=arm64 go build -o bin/linux/arm64/gophlare-$(CURRENT_TAG)-linux-arm64 -trimpath -ldflags="-s -w" main.go
-	GOOS=darwin GOARCH=amd64 go build -o bin/darwin/amd64/gophlare-$(CURRENT_TAG)-x86_64-macos-darwin_amd64 -trimpath -ldflags="-s -w" main.go
-	GOOS=darwin GOARCH=arm64 go build -o bin/darwin/arm64/gophlare-$(CURRENT_TAG)-x86_64-macos-darwin_arm64 -trimpath -ldflags="-s -w" main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/linux/amd64/gophlare-$(CURRENT_TAG)-linux-amd64 -trimpath -ldflags="$(LDFLAGS)" .
+	GOOS=linux GOARCH=arm64 go build -o bin/linux/arm64/gophlare-$(CURRENT_TAG)-linux-arm64 -trimpath -ldflags="$(LDFLAGS)" .
+	GOOS=darwin GOARCH=amd64 go build -o bin/darwin/amd64/gophlare-$(CURRENT_TAG)-x86_64-macos-darwin_amd64 -trimpath -ldflags="$(LDFLAGS)" .
+	GOOS=darwin GOARCH=arm64 go build -o bin/darwin/arm64/gophlare-$(CURRENT_TAG)-x86_64-macos-darwin_arm64 -trimpath -ldflags="$(LDFLAGS)" .
 
 compress:
 	gzip -9 bin/linux/amd64/gophlare-$(CURRENT_TAG)-linux-amd64

@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.4.3](https://github.com/mr-pmillz/gophlare/compare/v1.4.2...v1.4.3) - 2026-09-14
+
+### ✨: New features
+
+- Feat: derive gophlare version from Git and Go build metadata
+
+Remove the duplicated release version strings from cmd/root.go and
+phlare/flareClient.go so releases no longer require source-code version
+bumps. Follow sj's build-time version injection pattern and share one
+resolver across the CLI, metrics reports, and default HTTP user-agent.
+
+Add internal/version with linker-injected versions taking precedence over
+runtime/debug.ReadBuildInfo. Use the embedded module version for ordinary
+Go builds and go install module@version, falling back to dev when metadata
+is unavailable. When gophlare is imported as an SDK, resolve its dependency
+version and module replacements instead of reporting the host program's
+version. Preserve caller-supplied user-agent strings.
+
+Wire version metadata into every existing build path:
+- Make derives VERSION from git describe --tags --always --dirty and uses
+  it for local builds, cross-compiled binaries, and archive filenames.
+- Cross-compilation builds the package instead of main.go so Go can retain
+  module and version-control metadata.
+- GoReleaser injects v-prefixed release and snapshot versions.
+- Docker includes Git for automatic metadata and accepts a VERSION build
+  argument for source archives without Git history.
+
+Replace release-policy checks against hardcoded Go strings with stable
+tag validation. Keep branch-name, stable-version, and ancestry protections
+while allowing release branches and tags to supply the binary version.
+Update installation, contributor, and repository guidance to explain the
+automatic version sources, development fallbacks, and explicit overrides.
+
+Add coverage for release and development metadata, missing metadata,
+linker overrides, SDK dependency replacements, custom user-agents, and
+valid/invalid stable release tags.
+
+Validation:
+- make fmt and make build passed.
+- make test passed with race detection; internal/version reached 100%
+  statement coverage. Local HTTP tests required loopback socket access.
+- make lint passed with zero issues.
+- Python release-policy tests and goreleaser check passed.
+- GoReleaser snapshot build and --version verification passed.
+- CLI smoke checks verified Git-derived Make versions, native Go module
+  metadata, the dev fallback, and explicit release-version injection.
+- git diff --check passed.
+
+The Dockerfile was reviewed; a container image was not built locally. - ([7649cf8](https://github.com/mr-pmillz/gophlare/commit/7649cf876297fe3dea098a7d545a776adab7ef42))
+
+### ⚙️  Miscellaneous
+
+- Merge pull request #16 from mr-pmillz/feat/auto-version
+
+feat: derive gophlare version from Git and Go build metadata - ([aad1855](https://github.com/mr-pmillz/gophlare/commit/aad18556d7eabce338cb89765dc0a2e7097a445e))
+- Merge pull request #15 from mr-pmillz/main
+
+sync main back to develop - ([493479f](https://github.com/mr-pmillz/gophlare/commit/493479f5b57e806e4250abdaac190b47b93b5bba))
+
 ## [1.4.2](https://github.com/mr-pmillz/gophlare/compare/v1.4.1...v1.4.2) - 2026-09-14
 
 ### ✨ New features
@@ -194,6 +253,10 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> - ([0bcdeab](
 
 ### ⚙️  Miscellaneous
 
+- Merge pull request #14 from mr-pmillz/release/v1.4.2
+
+Release/v1.4.2 - ([2484a7e](https://github.com/mr-pmillz/gophlare/commit/2484a7e394cf42e1708425d55f42d5401ba3fe8e))
+- Chore: update changelog - ([e33d1d9](https://github.com/mr-pmillz/gophlare/commit/e33d1d9340faac24b6be4f674026f24088449cb5))
 - Set gophlare version - ([8c6ed12](https://github.com/mr-pmillz/gophlare/commit/8c6ed129e2cebe0aa305684874fbb4307ff4bd87))
 - Merge pull request #12 from mr-pmillz/dependabot/github_actions/develop/github-actions-dc7855c1e5
 
@@ -266,6 +329,9 @@ updated-dependencies:
 ...
 
 Signed-off-by: dependabot[bot] <support@github.com> - ([84548fb](https://github.com/mr-pmillz/gophlare/commit/84548fb86e75abbad7dbd5604159e302e5a84a61))
+- Merge pull request #9 from mr-pmillz/develop
+
+Develop - ([6aa53e9](https://github.com/mr-pmillz/gophlare/commit/6aa53e987f770455b2b01c18acb533c84773de63))
 - Merge pull request #8 from mr-pmillz/feat/metrics
 
 Metrics Tracking for API Quota Usage - ([359fe75](https://github.com/mr-pmillz/gophlare/commit/359fe75a996919d35a912e8978ceaa08d7fa1981))
