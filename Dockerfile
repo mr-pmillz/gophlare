@@ -1,12 +1,13 @@
 FROM golang:1.26.6-alpine AS builder
 
 ENV GO111MODULE=on
-RUN apk add --no-cache build-base
+RUN apk add --no-cache build-base git
 
 WORKDIR /app
 COPY . /app
 RUN go mod download
-RUN GOOS=linux GOARCH=amd64 go build -v -trimpath -ldflags="-s -w" -o /gophlare .
+ARG VERSION
+RUN GOOS=linux GOARCH=amd64 go build -v -trimpath -ldflags="-s -w -X github.com/mr-pmillz/gophlare/internal/version.version=${VERSION}" -o /gophlare .
 RUN rm -rf /app
 
 FROM alpine:latest

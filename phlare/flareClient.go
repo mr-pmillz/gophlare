@@ -9,13 +9,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/mr-pmillz/gophlare/internal/version"
 	"github.com/mr-pmillz/gophlare/metrics"
 	"github.com/mr-pmillz/gophlare/utils"
 )
 
 const (
 	flareAPIBaseURL       = "https://api.flare.io"
-	gophlareClientVersion = "v1.4.2"
 	nullString            = "null"
 	acceptHeaderTextPlain = "text/plain; charset=utf-8"
 )
@@ -75,7 +75,7 @@ func NewFlareClient(apiKey, userAgent string, tenantID, timeout int, opts ...Cli
 	if userAgent != "" {
 		finalUserAgent = userAgent
 	} else {
-		finalUserAgent = fmt.Sprintf("gophlare/%s", gophlareClientVersion)
+		finalUserAgent = fmt.Sprintf("gophlare/%s", version.String())
 	}
 
 	fc := &FlareClient{
