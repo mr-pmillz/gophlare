@@ -1,0 +1,92 @@
+openapi: 3.0.3
+info:
+  title: Flare Tokens API
+  version: "1"
+  description: >-
+    Hand-authored for gophlare. Flare documents these endpoints only as prose
+    pages, not in its published OpenAPI specs. Sources:
+    https://api.docs.flare.io/api-reference/tokens/endpoints/generate and
+    https://api.docs.flare.io/api-reference/tokens/endpoints/test.
+    Keep this file in sync with those pages.
+servers:
+  - url: https://api.flare.io
+paths:
+  /tokens/generate:
+    post:
+      operationId: generateToken
+      summary: Generate an API Token
+      description: >-
+        Generates an API token from an API key sent verbatim in the
+        Authorization header. API tokens expire after 1 hour.
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          description: Your Flare API key.
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenGenerateRequest"
+      responses:
+        "200":
+          description: The generated API token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenGenerateResponse"
+  /tokens/test:
+    get:
+      operationId: testToken
+      summary: Test an API Token
+      responses:
+        "200":
+          description: The identity the API token authenticates as.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenTestResponse"
+components:
+  schemas:
+    TokenGenerateRequest:
+      type: object
+      properties:
+        tenant_id:
+          type: integer
+          description: >-
+            The tenant you want to authenticate to. When unspecified, the API
+            token is generated for your default tenant.
+    TokenGenerateResponse:
+      type: object
+      required: [token, refresh_token_exp]
+      properties:
+        token:
+          type: string
+          description: The generated API token. It expires after 1 hour.
+        refresh_token_exp:
+          type: integer
+          format: int64
+          description: >-
+            Unix timestamp of the expiration of the refresh token, which is
+            returned in cookies. This is not the API token's expiry.
+    TokenTestResponse:
+      type: object
+      properties:
+        api_key_id:
+          type: integer
+          description: The ID of the API key that was used to generate this token.
+        organization_id:
+          type: integer
+        scopes:
+          type: array
+          items:
+            type: string
+        tenant_id:
+          type: integer
+          description: The currently authenticated tenant ID.
+        user_email:
+          type: string
+        user_id:
+          type: integer

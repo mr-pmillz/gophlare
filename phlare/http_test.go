@@ -156,3 +156,29 @@ func TestDoReqWithHeadersTransportFailureReturnsNilHeader(t *testing.T) {
 		t.Errorf("header = %v, want nil on a transport failure", hdr)
 	}
 }
+
+// TestDoReqWithHeadersKeepsExistingQuery matters because URLs returned by the
+// API, such as an identity's links.next, carry their cursor in the query.
+func TestDoReqWithHeadersKeepsExistingQuery(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	c := NewHTTPClientWithTimeOut(false, 10)
+
+	if _, _, err := c.DoReqWithHeaders(srv.URL+"/next?from=WzFd%3D", "GET", nil, nil, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if gotQuery != "from=WzFd%3D" {
+		t.Errorf("query = %q, want the URL's own query untouched", gotQuery)
+	}
+
+	if _, _, err := c.DoReqWithHeaders(srv.URL+"/next?from=abc", "GET", nil, nil, map[string]string{"size": "10"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if gotQuery != "from=abc&size=10" {
+		t.Errorf("query = %q, want params merged into the URL's query", gotQuery)
+	}
+}

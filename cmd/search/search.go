@@ -160,7 +160,7 @@ func downloadZipFilesAndProcessPasswordResults(results *phlare.FlareEventsGlobal
 	allStealerLogEventData := make([]phlare.FlareFireworkActivitiesIndexSourceIDv2Response, 0)
 
 	for _, result := range results.Items {
-		if !isStealerLog(result.Metadata.Type) {
+		if !isStealerLog(string(result.Metadata.Type)) {
 			continue
 		}
 		if limitReached(count, limit) {
@@ -737,25 +737,11 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		flareData.Domain = v.Domain
 		flareData.SourceID = v.SourceID
 		flareData.ImportedAt = v.ImportedAt
-		if leakedAt, ok := v.Source.LeakedAt.(time.Time); ok {
-			flareData.LeakedAt = leakedAt
+		if !v.Source.LeakedAt.IsZero() {
+			flareData.LeakedAt = v.Source.LeakedAt.Time
 		}
-		if leakedAt, ok := v.Source.LeakedAt.(string); ok {
-			parsedTime, err := time.Parse(time.RFC3339, leakedAt)
-			if err != nil {
-				flareData.LeakedAt = leakedAt
-			}
-			flareData.LeakedAt = parsedTime
-		}
-		if breachedAt, ok := v.Source.BreachedAt.(time.Time); ok {
-			flareData.BreachedAt = breachedAt
-		}
-		if breachedAt, ok := v.Source.LeakedAt.(string); ok {
-			parsedTime, err := time.Parse(time.RFC3339, breachedAt)
-			if err != nil {
-				flareData.BreachedAt = breachedAt
-			}
-			flareData.BreachedAt = parsedTime
+		if !v.Source.BreachedAt.IsZero() {
+			flareData.BreachedAt = v.Source.BreachedAt.Time
 		}
 		// append data here in case there are multiple passwords for the same Name
 		flareCreds.Data = append(flareCreds.Data, flareData)
@@ -791,10 +777,7 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 		return utils.LogError(err)
 	}
 	// parse passwords from results
-	flareCreds, err := mapBulkEmailCredsToCSVFormat(matchedEmailCredResults)
-	if err != nil {
-		return utils.LogError(err)
-	}
+	flareCreds := mapBulkEmailCredsToCSVFormat(matchedEmailCredResults)
 	// write to CSV file
 	csvOutputFile := fmt.Sprintf("%s/flare-bulk-credential-lookup.csv", flareOutputDir)
 	if err = utils.WriteStructToCSVFile(flareCreds.Data, csvOutputFile); err != nil {
@@ -817,10 +800,8 @@ func SearchEmailsInBulk(opts *phlare.Options, emails []string) error {
 
 // mapBulkEmailCredsToCSVFormat converts bulk email credential lookup data into a standardized CSV data format.
 // matchedEmailCredResults is the bulk account response containing mapped emails and associated credential data.
-// Returns a pointer to FlareCreds, which holds the transformed credential pairs, or an error if parsing fails.
-//
-//nolint:gocognit
-func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *phlare.FlareListByBulkAccountResponse) (*FlareCreds, error) {
+// Returns a pointer to FlareCreds, which holds the transformed credential pairs.
+func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *phlare.FlareListByBulkAccountResponse) *FlareCreds {
 	flareCreds := &FlareCreds{}
 	for email, emailResults := range *matchedEmailCredResults {
 		if len(emailResults.Passwords) > 0 {
@@ -841,31 +822,17 @@ func mapBulkEmailCredsToCSVFormat(matchedEmailCredResults *phlare.FlareListByBul
 				}
 				// fill out remaining values to cred
 				cred.SourceID = password.SourceID
-				if password.ImportedAt != "" {
-					importedAt, err := time.Parse(time.RFC3339, password.ImportedAt)
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse ImportedAt for email %s: %w", email, err)
-					}
-					cred.ImportedAt = phlare.FlareTime{Time: importedAt}
+				cred.ImportedAt = password.ImportedAt
+				if !password.Source.BreachedAt.IsZero() {
+					cred.BreachedAt = password.Source.BreachedAt.Time
 				}
-				if password.Source.BreachedAt != "" {
-					breachedAt, err := time.Parse(time.RFC3339, password.Source.BreachedAt)
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse BreachedAt for email %s: %w", email, err)
-					}
-					cred.BreachedAt = breachedAt
+				if !password.Source.LeakedAt.IsZero() {
+					cred.LeakedAt = password.Source.LeakedAt.Time
 				}
-				if password.Source.LeakedAt != "" {
-					leakedAt, err := time.Parse(time.RFC3339, password.Source.LeakedAt)
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse LeakedAt for email %s: %w", email, err)
-					}
-					cred.LeakedAt = leakedAt
-				}
-				cred.Domain = *password.Domain
+				cred.Domain = password.Domain
 				flareCreds.Data = append(flareCreds.Data, cred)
 			}
 		}
 	}
-	return flareCreds, nil
+	return flareCreds
 }

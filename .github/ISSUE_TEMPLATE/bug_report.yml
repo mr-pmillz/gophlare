@@ -23,7 +23,7 @@ body:
     attributes:
       label: Environment
       description: Include OS, architecture, shell, and Go version if building from source.
-      placeholder: "macOS 15 arm64, zsh, Go 1.26"
+      placeholder: "macOS 15 arm64, zsh, Go 1.27"
     validations:
       required: true
   - type: textarea

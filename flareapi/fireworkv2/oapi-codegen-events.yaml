@@ -1,0 +1,22 @@
+# oapi-codegen configuration. Regenerate with `make generate`.
+package: fireworkv2
+generate:
+  models: true
+output: events.gen.go
+output-options:
+  # Keep every schema, including ones no operation references, so the
+  # package models the whole API rather than only what gophlare calls.
+  skip-prune: true
+  name-normalizer: ToCamelCaseWithInitialisms
+  # Optional and nullable fields become values tagged omitzero rather than
+  # pointers, matching the style of gophlare's existing API structs.
+  prefer-skip-optional-pointer: true
+  prefer-skip-optional-pointer-with-omitzero: true
+  prefer-skip-optional-pointer-on-container-types: true
+  type-mapping:
+    string:
+      formats:
+        # The Flare API mixes RFC 3339 and timezone-less timestamps.
+        date-time:
+          type: flaretime.Time
+          import: github.com/mr-pmillz/gophlare/flareapi/flaretime

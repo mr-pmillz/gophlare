@@ -11,29 +11,31 @@ import (
 	valid "github.com/asaskevich/govalidator"
 )
 
-// FormatDate Accepts multiple input formats: MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD
-// Always returns the date in time.RFC3339 (YYYY-MM-DDT00:00:00Z)
-func FormatDate(date string) (string, error) {
-	// Define possible date formats
+// ParseDate parses a date in one of the formats MM-DD-YYYY, YYYY-MM-DD,
+// MM/DD/YYYY, or YYYY/MM/DD, returning midnight UTC of that day.
+func ParseDate(date string) (time.Time, error) {
 	formats := []string{
 		"01-02-2006", // MM-DD-YYYY
 		"2006-01-02", // YYYY-MM-DD
 		"01/02/2006", // MM/DD/YYYY
 		"2006/01/02", // YYYY/MM/DD
 	}
-
-	var parsedTime time.Time
-	var err error
-
-	// Try parsing using each format
 	for _, layout := range formats {
-		parsedTime, err = time.Parse(layout, date)
-		if err == nil {
-			return parsedTime.Format(time.RFC3339), nil // Return in RFC3339 format
+		if parsedTime, err := time.Parse(layout, date); err == nil {
+			return parsedTime, nil
 		}
 	}
+	return time.Time{}, fmt.Errorf("invalid date format: %s", date)
+}
 
-	return "", fmt.Errorf("invalid date format: %s", date)
+// FormatDate Accepts multiple input formats: MM-DD-YYYY, YYYY-MM-DD, MM/DD/YYYY, YYYY/MM/DD
+// Always returns the date in time.RFC3339 (YYYY-MM-DDT00:00:00Z)
+func FormatDate(date string) (string, error) {
+	parsedTime, err := ParseDate(date)
+	if err != nil {
+		return "", err
+	}
+	return parsedTime.Format(time.RFC3339), nil
 }
 
 // EpochOrDateToTime converts an interface{} epoch timestamp (seconds since Unix epoch) to time.Time in UTC

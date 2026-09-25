@@ -1,0 +1,12 @@
+overlay: 1.0.0
+info:
+  title: gophlare code generation fixes for firework-v2-openapi.json
+  version: 1.0.0
+actions:
+  - target: $.components.schemas.TenantWithCounts.properties.items
+    description: >-
+      Upstream spec bug: items refers to TenantWithCounts itself instead of a
+      list of tenants. Keep the field a pointer so the recursive Go type has a
+      finite size.
+    update:
+      x-go-type-skip-optional-pointer: false

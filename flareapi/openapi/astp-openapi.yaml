@@ -1,0 +1,780 @@
+openapi: 3.0.3
+info:
+  title: Flare Account & Session Takeover Prevention (ASTP) API
+  version: "2"
+  description: >-
+    Hand-authored for gophlare. Flare documents the ASTP endpoints only as
+    prose pages under https://api.docs.flare.io/api-reference/astp/ and
+    https://api.docs.flare.io/api-reference/leaksdb/, not in its published
+    OpenAPI specs. Field nullability follows the Credential and SourceV2
+    schemas of the published Firework v4 spec, which models the same
+    credential records. Keep this file in sync with those pages.
+
+
+    The /leaksdb/ prefix was renamed to /astp/ in August 2025; Flare keeps
+    /leaksdb/ as an alias with no plans to remove it.
+servers:
+  - url: https://api.flare.io
+tags:
+  - name: credentials
+  - name: cookies
+  - name: identities
+  - name: sources
+  - name: deprecated
+paths:
+  /astp/v2/credentials/_search:
+    post:
+      operationId: searchCredentials
+      summary: Search Credentials
+      description: >-
+        Returns credentials matching the query. Does not count towards the
+        Global Search quota. Supports the Flare standard paging pattern.
+      tags: [credentials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsSearchRequest"
+      responses:
+        "200":
+          description: A page of credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsSearchResponse"
+  /astp/urls/by_credential_hash:
+    post:
+      operationId: listURLsByCredentialHash
+      summary: List URLs by Credential Hash
+      description: >-
+        Returns the URLs where a leaked credential was seen being used.
+        Supports the Flare standard paging pattern.
+      tags: [credentials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/URLsByCredentialHashRequest"
+      responses:
+        "200":
+          description: A page of URLs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/URLsByCredentialHashResponse"
+  /astp/identities/by_accounts:
+    post:
+      operationId: listByBulkAccounts
+      summary: List by Bulk Accounts
+      description: >-
+        Returns the identities with leaked passwords for up to 100 exact
+        account names. Each identity includes up to 100 passwords; its links
+        object may hold a next URL for further passwords.
+      tags: [identities]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ByAccountsRequest"
+      responses:
+        "200":
+          description: The identity for each requested account, keyed by account name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ByAccountsResponse"
+  /astp/v2/sources:
+    get:
+      operationId: listSources
+      summary: List All Sources
+      description: >-
+        Returns all sources in ascending order from least to most recently
+        added. Supports the Flare standard paging pattern.
+      tags: [sources]
+      parameters:
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/From"
+      responses:
+        "200":
+          description: A page of sources.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourcesResponse"
+  /astp/sources/{source_id}:
+    get:
+      operationId: getSource
+      summary: Retrieve Source
+      tags: [sources]
+      parameters:
+        - in: path
+          name: source_id
+          required: true
+          description: The ID of the source, for example collection-1.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The source.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeakSource"
+  /astp/v2/cookies/_search:
+    post:
+      operationId: searchCookies
+      summary: Search Cookies
+      description: >-
+        Returns leaked cookies matching the query. Supports the Flare standard
+        paging pattern.
+      tags: [cookies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CookiesSearchRequest"
+      responses:
+        "200":
+          description: A page of cookies.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CookiesSearchResponse"
+  /leaksdb/identities/by_domain/{domain}:
+    get:
+      operationId: listByDomain
+      summary: List by Domain
+      description: >-
+        Deprecated in favour of /astp/v2/credentials/_search. Pages by passing
+        the id of the last item as from; an empty list means all results were
+        received.
+      deprecated: true
+      tags: [deprecated]
+      parameters:
+        - in: path
+          name: domain
+          required: true
+          description: Everything after the @ of the accounts to look up.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/FromID"
+      responses:
+        "200":
+          description: The matching identities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityList"
+  /leaksdb/identities/by_keyword/{keyword}:
+    get:
+      operationId: listByKeyword
+      summary: List by Keyword
+      description: >-
+        Deprecated in favour of /astp/v2/credentials/_search. The keyword may
+        start or end with a * wildcard.
+      deprecated: true
+      tags: [deprecated]
+      parameters:
+        - in: path
+          name: keyword
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/FromID"
+      responses:
+        "200":
+          description: The matching identities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityList"
+  /leaksdb/identities/by_password/{password}:
+    get:
+      operationId: listByPassword
+      summary: List by Password
+      description: Deprecated in favour of /astp/v2/credentials/_search.
+      deprecated: true
+      tags: [deprecated]
+      parameters:
+        - in: path
+          name: password
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/FromID"
+      responses:
+        "200":
+          description: The identities seen using this password.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityList"
+  /leaksdb/credentials:
+    get:
+      operationId: listCredentialsV1
+      summary: List All Credentials (v1)
+      description: Deprecated in favour of /astp/v2/credentials/_search.
+      deprecated: true
+      tags: [deprecated]
+      parameters:
+        - $ref: "#/components/parameters/CredentialsFeedSize"
+        - $ref: "#/components/parameters/FromID"
+        - $ref: "#/components/parameters/FeedOrder"
+        - $ref: "#/components/parameters/SourceID"
+      responses:
+        "200":
+          description: The credentials.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeakedCredential"
+  /leaksdb/v2/credentials:
+    get:
+      operationId: listCredentialsV2
+      summary: List All Credentials (v2)
+      description: Deprecated in favour of /astp/v2/credentials/_search.
+      deprecated: true
+      tags: [deprecated]
+      parameters:
+        - $ref: "#/components/parameters/CredentialsFeedSize"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/FeedOrder"
+        - $ref: "#/components/parameters/SourceID"
+      responses:
+        "200":
+          description: A page of credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialsV2Response"
+components:
+  parameters:
+    Size:
+      in: query
+      name: size
+      description: Maximum number of results to return (maximum 10 000).
+      schema:
+        type: integer
+        maximum: 10000
+    CredentialsFeedSize:
+      in: query
+      name: size
+      description: Maximum number of results to return (maximum 5 000).
+      schema:
+        type: integer
+        maximum: 5000
+    From:
+      in: query
+      name: from
+      description: The next value from the last response.
+      schema:
+        type: string
+    FromID:
+      in: query
+      name: from
+      description: ID of the entry to start after (exclusive).
+      schema:
+        type: integer
+        format: int64
+    FeedOrder:
+      in: query
+      name: order
+      description: Browse order. Defaults to asc, which is recommended for fetching newly imported passwords.
+      schema:
+        $ref: "#/components/schemas/Order"
+    SourceID:
+      in: query
+      name: source_id
+      description: Return only credentials that belong to this source.
+      schema:
+        type: string
+  schemas:
+    Order:
+      type: string
+      enum: [asc, desc]
+    CredentialsSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          $ref: "#/components/schemas/CredentialsQuery"
+        filters:
+          $ref: "#/components/schemas/CredentialsFilters"
+        from:
+          type: string
+          description: The next value from the last response.
+        size:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Maximum number of credentials to return (maximum 10 000).
+        include:
+          type: array
+          description: Additional fields to return.
+          items:
+            $ref: "#/components/schemas/CredentialsInclude"
+        order:
+          $ref: "#/components/schemas/Order"
+    CredentialsInclude:
+      type: string
+      description: >-
+        known_password_id returns the ID of the credential's password.
+        auth_domains returns up to 100 hosts where the credential was seen
+        being used. urls returns up to 100 full URLs where the credential was
+        seen being used.
+      enum: [known_password_id, auth_domains, urls]
+    CredentialsQuery:
+      oneOf:
+        - $ref: "#/components/schemas/DomainQuery"
+        - $ref: "#/components/schemas/AuthDomainQuery"
+        - $ref: "#/components/schemas/SecretQuery"
+        - $ref: "#/components/schemas/EmailQuery"
+        - $ref: "#/components/schemas/KeywordQuery"
+      discriminator:
+        propertyName: type
+        mapping:
+          domain: "#/components/schemas/DomainQuery"
+          auth_domain: "#/components/schemas/AuthDomainQuery"
+          secret: "#/components/schemas/SecretQuery"
+          email: "#/components/schemas/EmailQuery"
+          keyword: "#/components/schemas/KeywordQuery"
+    DomainQuery:
+      type: object
+      description: Matches credentials whose email address contains the domain.
+      required: [type, fqdn]
+      properties:
+        type:
+          type: string
+          enum: [domain]
+        fqdn:
+          type: string
+    AuthDomainQuery:
+      type: object
+      description: Matches the domain of the service the credential might have been used to log in to.
+      required: [type, fqdn]
+      properties:
+        type:
+          type: string
+          enum: [auth_domain]
+        fqdn:
+          type: string
+    SecretQuery:
+      type: object
+      description: Matches credentials that contain the password.
+      required: [type, secret]
+      properties:
+        type:
+          type: string
+          enum: [secret]
+        secret:
+          type: string
+    EmailQuery:
+      type: object
+      description: Matches credentials for the exact email address.
+      required: [type, email]
+      properties:
+        type:
+          type: string
+          enum: [email]
+        email:
+          type: string
+    KeywordQuery:
+      type: object
+      description: Matches the part of the identity name before the @.
+      required: [type, keyword]
+      properties:
+        type:
+          type: string
+          enum: [keyword]
+        keyword:
+          type: string
+    CredentialsFilters:
+      type: object
+      properties:
+        imported_at:
+          $ref: "#/components/schemas/DateRangeFilter"
+    DateRangeFilter:
+      type: object
+      properties:
+        gte:
+          type: string
+          format: date-time
+          description: Matches values greater than or equal to the timestamp.
+        lte:
+          type: string
+          format: date-time
+          description: Matches values lesser than or equal to the timestamp.
+    CredentialsSearchResponse:
+      type: object
+      required: [items, next]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Credential"
+        next:
+          type: string
+          nullable: true
+          description: The from value for the next page; null once every page was viewed.
+    Credential:
+      type: object
+      required: [id, identity_name, domain, source_id, imported_at, hash, hash_type, source, known_password_id, credential_hash, event_uid]
+      properties:
+        id:
+          type: integer
+          format: int64
+        identity_name:
+          type: string
+        domain:
+          type: string
+          nullable: true
+        source_id:
+          type: string
+        imported_at:
+          type: string
+          format: date-time
+        hash:
+          type: string
+          nullable: true
+          description: The leaked secret. Flare does not distinguish plaintext passwords from hashes.
+        hash_type:
+          type: string
+          nullable: true
+        source:
+          $ref: "#/components/schemas/CredentialSource"
+        known_password_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: Only returned when include contains known_password_id.
+        credential_hash:
+          type: string
+          nullable: true
+        event_uid:
+          type: string
+          nullable: true
+        auth_domains:
+          type: array
+          description: Only returned when include contains auth_domains.
+          items:
+            type: string
+        urls:
+          type: array
+          description: Only returned when include contains urls.
+          items:
+            type: string
+    CredentialSource:
+      type: object
+      nullable: true
+      required: [id, name, description_en, description_fr, breached_at, leaked_at, is_alert_enabled]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        description_en:
+          type: string
+          nullable: true
+        description_fr:
+          type: string
+          nullable: true
+        breached_at:
+          type: string
+          format: date-time
+          nullable: true
+        leaked_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_alert_enabled:
+          type: boolean
+        pii_tags:
+          type: array
+          nullable: true
+          items:
+            type: string
+        url:
+          type: string
+          nullable: true
+    URLsByCredentialHashRequest:
+      type: object
+      required: [credential_hash]
+      properties:
+        credential_hash:
+          type: string
+          description: A credential_hash returned by the credentials search.
+        size:
+          type: integer
+          maximum: 5000
+          description: Maximum number of URLs to return (default 100, maximum 5000).
+        from:
+          type: string
+          description: The next value from the last response.
+    URLsByCredentialHashResponse:
+      type: object
+      required: [items, next]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CredentialURL"
+        next:
+          type: string
+          nullable: true
+    CredentialURL:
+      type: object
+      properties:
+        url:
+          type: string
+          description: The full URL, including scheme and path.
+        domain:
+          type: string
+          description: The URL's host.
+        credential_hash:
+          type: string
+    ByAccountsRequest:
+      type: object
+      required: [accounts]
+      properties:
+        accounts:
+          type: array
+          maxItems: 100
+          description: The exact account names to look up. Wildcard and domain searches are not supported.
+          items:
+            type: string
+    ByAccountsResponse:
+      type: object
+      description: The identity for each requested account, keyed by account name.
+      additionalProperties:
+        $ref: "#/components/schemas/Identity"
+    IdentityList:
+      type: array
+      items:
+        $ref: "#/components/schemas/Identity"
+    Identity:
+      type: object
+      properties:
+        links:
+          $ref: "#/components/schemas/IdentityLinks"
+        name:
+          type: string
+        passwords:
+          type: array
+          description: Up to 100 passwords, in the order they were inserted into the database.
+          items:
+            $ref: "#/components/schemas/IdentityPassword"
+    IdentityLinks:
+      type: object
+      properties:
+        next:
+          type: string
+          description: >-
+            URL of the identity's next page of passwords, present when it has
+            more than the ones included. Follow it with a valid Authorization
+            token. Flare does not document the URL's form or its response;
+            gophlare accepts an identity object or a list of identities.
+      additionalProperties: true
+    IdentityPassword:
+      type: object
+      properties:
+        credential_hash:
+          type: string
+        domain:
+          type: string
+          nullable: true
+        extra:
+          type: object
+          additionalProperties: true
+        hash:
+          type: string
+          description: The leaked secret. Flare does not distinguish plaintext passwords from hashes.
+        hash_type:
+          type: string
+        id:
+          type: integer
+          format: int64
+        imported_at:
+          type: string
+          format: date-time
+        source:
+          $ref: "#/components/schemas/LeakSource"
+        source_id:
+          type: string
+        source_params:
+          description: Undocumented; always null in Flare's examples.
+    LeakedCredential:
+      type: object
+      properties:
+        credential_hash:
+          type: string
+        domain:
+          type: string
+          nullable: true
+        extra:
+          type: object
+          additionalProperties: true
+        hash:
+          type: string
+        hash_type:
+          type: string
+        id:
+          type: integer
+          format: int64
+        identity_name:
+          type: string
+        imported_at:
+          type: string
+          format: date-time
+        source:
+          $ref: "#/components/schemas/LeakSource"
+        source_id:
+          type: string
+        source_params:
+          description: Undocumented; always null in Flare's examples.
+    CredentialsV2Response:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeakedCredential"
+        next:
+          type: string
+          nullable: true
+    LeakSource:
+      type: object
+      nullable: true
+      properties:
+        breached_at:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+        description_fr:
+          type: string
+        hash_description:
+          type: string
+        hash_type:
+          type: string
+          nullable: true
+        id:
+          type: string
+        is_alerts_enabled:
+          type: boolean
+        leaked_at:
+          type: string
+          format: date-time
+          nullable: true
+        name:
+          type: string
+        related_urls:
+          type: array
+          items:
+            type: string
+        url:
+          type: string
+          nullable: true
+    SourcesResponse:
+      type: object
+      properties:
+        cursors:
+          type: array
+          description: Undocumented; always empty in Flare's examples.
+          items: {}
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeakSource"
+        next:
+          type: string
+          nullable: true
+        total_count:
+          type: integer
+          nullable: true
+    CookiesSearchRequest:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: The exact domain to search cookies for. Subdomains are not included.
+        values:
+          type: array
+          maxItems: 1
+          description: Exact cookie values to search for. Currently limited to a single value.
+          items:
+            type: string
+        size:
+          type: integer
+          maximum: 2000
+          description: The number of results to fetch (default 100, maximum 2000).
+        from:
+          type: string
+          description: The next value from the last response.
+        names:
+          type: array
+          maxItems: 10
+          description: Cookie names to filter for, for example session or PHPSESSID.
+          items:
+            type: string
+        paths:
+          type: array
+          maxItems: 10
+          description: Cookie paths to filter for, for example / or /login.
+          items:
+            type: string
+        imported_after:
+          type: string
+          format: date-time
+          description: Only return cookies added to Flare's database after this time.
+        expires_after:
+          type: string
+          format: date-time
+          description: Only return cookies that expire after this time.
+        order:
+          $ref: "#/components/schemas/Order"
+    CookiesSearchResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Cookie"
+        next:
+          type: string
+          nullable: true
+    Cookie:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: Uniquely identifies the cookie.
+        domain:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        imported_at:
+          type: string
+          format: date-time
+          description: When the cookie was imported to Flare's database.
+        name:
+          type: string
+        path:
+          type: string
+        event_uid:
+          type: string
+          description: UID of the stealer log event the cookie was leaked in.
+        value:
+          type: string

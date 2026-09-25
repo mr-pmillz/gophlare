@@ -4,8 +4,8 @@ Send feature, fix, dependency, and documentation PRs to `develop`. Use `feat/*`,
 `feature/*`, or `fix/*` branches. Keep API keys, leaked credentials, cookies,
 private target data, and tenant identifiers out of issues and test fixtures.
 
-Run `make fmt`, `make lint`, `make test`, and `make build`. Go 1.26.6 comes from
-`go.mod`; CI uses golangci-lint v2.12.2. Tests use local fixtures and mock servers,
+Run `make fmt`, `make lint`, `make test`, and `make build`. Go 1.27.1 comes from
+`go.mod`; CI uses golangci-lint v2.14.0. Tests use local fixtures and mock servers,
 without a Flare subscription. `make test` creates coverage output and runs the
 race detector. Builds do not rewrite module files or global Go configuration.
 
