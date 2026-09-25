@@ -37,7 +37,7 @@ type FlareAuthResponse struct {
 
 // FlareSearchCredentialsBodyParams ...
 type FlareSearchCredentialsBodyParams struct {
-	Size  string           `json:"size,omitempty"`
+	Size  int              `json:"size,omitempty"`
 	From  string           `json:"from,omitempty"`
 	Query FlareDomainQuery `json:"query"`
 }

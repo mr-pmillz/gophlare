@@ -757,7 +757,7 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 	//   size=100 → ~8s    size=200 → ~13s    size=300 → ~24s    size=500 → 504
 	// 100 leaves >20s of headroom even on slow days; pagination handles
 	// arbitrarily-large result sets via the existing Next cursor loop.
-	size := "100"
+	size := 100
 	postBody := &FlareSearchCredentialsBodyParams{
 		Size: size,
 		Query: FlareDomainQuery{
