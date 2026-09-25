@@ -268,19 +268,41 @@ func TestOptions_LoadFromCommand(t *testing.T) {
 			},
 			wantErr: false,
 			checkOpts: func(t *testing.T, opts *Options) {
-				// The dates should be formatted to RFC3339 format
-				if opts.From == "" {
-					t.Error("From should not be empty")
+				// Dates stay date-only so the search covers the whole --to day.
+				if opts.From != "2023-01-01" {
+					t.Errorf("From = %q, want 2023-01-01", opts.From)
 				}
-				if opts.To == "" {
-					t.Error("To should not be empty")
+				if opts.To != "2025-12-31" {
+					t.Errorf("To = %q, want 2025-12-31", opts.To)
 				}
-				// Check that dates contain the expected year
-				if len(opts.From) < 10 {
-					t.Errorf("From date format seems incorrect: %v", opts.From)
+			},
+		},
+		{
+			name: "date flags - alternate formats normalize to YYYY-MM-DD",
+			setupCmd: func() *cobra.Command {
+				cmd := createTestCommand()
+				_ = cmd.Flags().Set("from", "01/02/2023")
+				_ = cmd.Flags().Set("to", "2025/02/19")
+				return cmd
+			},
+			wantErr: false,
+			checkOpts: func(t *testing.T, opts *Options) {
+				if opts.From != "2023-01-02" || opts.To != "2025-02-19" {
+					t.Errorf("From, To = %q, %q, want 2023-01-02, 2025-02-19", opts.From, opts.To)
 				}
-				if len(opts.To) < 10 {
-					t.Errorf("To date format seems incorrect: %v", opts.To)
+			},
+		},
+		{
+			name: "date flags - empty to means today",
+			setupCmd: func() *cobra.Command {
+				cmd := createTestCommand()
+				_ = cmd.Flags().Set("to", "")
+				return cmd
+			},
+			wantErr: false,
+			checkOpts: func(t *testing.T, opts *Options) {
+				if opts.To != todaysDate() {
+					t.Errorf("To = %q, want today %q", opts.To, todaysDate())
 				}
 			},
 		},

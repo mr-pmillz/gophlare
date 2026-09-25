@@ -38,5 +38,9 @@ coverage.xml
 !.goreleaser.yml
 !.golangci-lint.yml
 
+# Flare OpenAPI specs and oapi-codegen configuration
+!flareapi/**/*.json
+!flareapi/**/*.yaml
+
 __pycache__/
 .github/scripts/__pycache__/

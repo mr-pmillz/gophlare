@@ -18,6 +18,7 @@ func TestLookupQuotaClass(t *testing.T) {
 		{"token generation does not bill", EndpointTokenGenerate, QuotaNo, "no"},
 		{"activity retrieval does not bill", EndpointActivityByID, QuotaNo, "no"},
 		{"bulk accounts billing is undocumented", EndpointBulkAccounts, QuotaUnknown, "?"},
+		{"identity next page billing is undocumented", EndpointIdentityNext, QuotaUnknown, "?"},
 		{"unregistered endpoint is unknown", Endpoint("/some/new/endpoint"), QuotaUnknown, "?"},
 	}
 	for _, tt := range tests {
@@ -63,14 +64,16 @@ func TestLookupRateLimitTier(t *testing.T) {
 func TestKnownEndpointsIsSortedAndComplete(t *testing.T) {
 	got := KnownEndpoints()
 
-	if len(got) != 8 {
-		t.Errorf("KnownEndpoints() returned %d endpoints, want 8", len(got))
+	if len(got) != 9 {
+		t.Errorf("KnownEndpoints() returned %d endpoints, want 9", len(got))
 	}
 	if !slices.IsSorted(got) {
 		t.Errorf("KnownEndpoints() is not sorted: %v", got)
 	}
-	if !slices.Contains(got, EndpointGlobalEventsSearch) {
-		t.Errorf("KnownEndpoints() missing %q", EndpointGlobalEventsSearch)
+	for _, want := range []Endpoint{EndpointGlobalEventsSearch, EndpointIdentityNext} {
+		if !slices.Contains(got, want) {
+			t.Errorf("KnownEndpoints() missing %q", want)
+		}
 	}
 }
 

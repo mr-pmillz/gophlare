@@ -3,6 +3,7 @@ package utils
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestRemoveDuplicateStr(t *testing.T) {
@@ -226,3 +227,19 @@ func Test_hasBaseDomainWithoutTLDPrefix(t *testing.T) {
 //		})
 //	}
 // }
+
+func TestParseDate(t *testing.T) {
+	want := time.Date(2025, 2, 19, 0, 0, 0, 0, time.UTC)
+	for _, in := range []string{"02-19-2025", "2025-02-19", "02/19/2025", "2025/02/19"} {
+		got, err := ParseDate(in)
+		if err != nil || !got.Equal(want) {
+			t.Errorf("ParseDate(%q) = %s, %v, want %s", in, got, err, want)
+		}
+	}
+	if _, err := ParseDate("19.02.2025"); err == nil {
+		t.Error("expected an error for an unsupported format")
+	}
+	if got, err := FormatDate("2025-02-19"); err != nil || got != "2025-02-19T00:00:00Z" {
+		t.Errorf("FormatDate = %q, %v", got, err)
+	}
+}

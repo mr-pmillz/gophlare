@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	valid "github.com/asaskevich/govalidator"
 	"github.com/mr-pmillz/gophlare/phlare"
@@ -102,25 +101,11 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		flareData.Domain = v.Domain
 		flareData.SourceID = v.SourceID
 		flareData.ImportedAt = v.ImportedAt
-		if leakedAt, ok := v.Source.LeakedAt.(time.Time); ok {
-			flareData.LeakedAt = leakedAt
+		if !v.Source.LeakedAt.IsZero() {
+			flareData.LeakedAt = v.Source.LeakedAt.Time
 		}
-		if leakedAt, ok := v.Source.LeakedAt.(string); ok {
-			parsedTime, err := time.Parse(time.RFC3339, leakedAt)
-			if err != nil {
-				flareData.LeakedAt = leakedAt
-			}
-			flareData.LeakedAt = parsedTime
-		}
-		if breachedAt, ok := v.Source.BreachedAt.(time.Time); ok {
-			flareData.BreachedAt = breachedAt
-		}
-		if breachedAt, ok := v.Source.LeakedAt.(string); ok {
-			parsedTime, err := time.Parse(time.RFC3339, breachedAt)
-			if err != nil {
-				flareData.BreachedAt = breachedAt
-			}
-			flareData.BreachedAt = parsedTime
+		if !v.Source.BreachedAt.IsZero() {
+			flareData.BreachedAt = v.Source.BreachedAt.Time
 		}
 		// append data here in case there are multiple passwords for the same Name
 		flareCreds.Data = append(flareCreds.Data, flareData)

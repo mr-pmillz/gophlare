@@ -10,7 +10,6 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -64,11 +63,15 @@ func (c Client) DoReqWithHeaders(u, method string, target any, headers map[strin
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	p := url.Values{}
-	for k, v := range params {
-		p.Add(k, v)
+	// Merge params into any query already in u, such as the cursor of a URL
+	// returned by the API. Without params the query is left byte-for-byte.
+	if len(params) > 0 {
+		q := req.URL.Query()
+		for k, v := range params {
+			q.Set(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
 	}
-	req.URL.RawQuery = p.Encode()
 
 	// req.Close = true
 	resp, err := c.HTTP.Do(req)
