@@ -6,6 +6,7 @@ package astp
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/mr-pmillz/gophlare/flareapi/flaretime"
 	"github.com/oapi-codegen/runtime"
@@ -315,12 +316,18 @@ type EmailQueryType string
 
 // Identity defines model for Identity.
 type Identity struct {
-	// Links May contain a next URL that returns further passwords for this identity.
-	Links map[string]interface{} `json:"links,omitempty,omitzero"`
-	Name  string                 `json:"name,omitempty,omitzero"`
+	Links IdentityLinks `json:"links,omitempty,omitzero"`
+	Name  string        `json:"name,omitempty,omitzero"`
 
 	// Passwords Up to 100 passwords, in the order they were inserted into the database.
 	Passwords []IdentityPassword `json:"passwords,omitempty,omitzero"`
+}
+
+// IdentityLinks defines model for IdentityLinks.
+type IdentityLinks struct {
+	// Next URL of the identity's next page of passwords, present when it has more than the ones included. Follow it with a valid Authorization token. Flare does not document the URL's form or its response; gophlare accepts an identity object or a list of identities.
+	Next                 string                 `json:"next,omitempty,omitzero"`
+	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
 // IdentityList defines model for IdentityList.
@@ -519,6 +526,72 @@ type SearchCookiesJSONRequestBody = CookiesSearchRequest
 
 // SearchCredentialsJSONRequestBody defines body for SearchCredentials for application/json ContentType.
 type SearchCredentialsJSONRequestBody = CredentialsSearchRequest
+
+// Getter for additional properties for IdentityLinks. Returns the specified
+// element and whether it was found
+func (a IdentityLinks) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for IdentityLinks
+func (a *IdentityLinks) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for IdentityLinks to handle AdditionalProperties
+func (a *IdentityLinks) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["next"]; found {
+		err = json.Unmarshal(raw, &a.Next)
+		if err != nil {
+			return fmt.Errorf("error reading 'next': %w", err)
+		}
+		delete(object, "next")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for IdentityLinks to handle AdditionalProperties
+func (a IdentityLinks) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	object["next"], err = json.Marshal(a.Next)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'next': %w", err)
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
 
 // AsDomainQuery returns the union data inside the CredentialsQuery as a DomainQuery
 func (t CredentialsQuery) AsDomainQuery() (DomainQuery, error) {

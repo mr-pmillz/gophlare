@@ -55,6 +55,10 @@ const (
 	EndpointASTPCredentialsSearch Endpoint = "/astp/v2/credentials/_search" //nolint:gosec
 	EndpointASTPCookiesSearch     Endpoint = "/astp/v2/cookies/_search"
 	EndpointBulkAccounts          Endpoint = "/astp/identities/by_accounts"
+	// EndpointIdentityNext covers the links.next URLs that bulk accounts
+	// returns for identities with more than 100 passwords. Flare does not
+	// document their path, so one template stands for all of them.
+	EndpointIdentityNext Endpoint = "/astp/identities/{links.next}"
 )
 
 // QuotaClass describes whether an endpoint draws down the monthly Global Search
@@ -110,7 +114,8 @@ type EndpointInfo struct {
 // Sources: api.docs.flare.io/concepts/rate-limits-and-quotas and the v4
 // global-search and ASTP credentials-search endpoint references. The ASTP
 // credentials search is explicitly documented as not counting toward the search
-// quota; billing for /astp/identities/by_accounts is not documented at all.
+// quota; billing for /astp/identities/by_accounts and the links.next pages it
+// returns is not documented at all.
 var endpointCatalog = map[Endpoint]EndpointInfo{
 	EndpointTokenGenerate:         {EndpointTokenGenerate, QuotaNo, TierBasic},
 	EndpointGlobalEventsSearch:    {EndpointGlobalEventsSearch, QuotaYes, TierSearch},
@@ -120,6 +125,7 @@ var endpointCatalog = map[Endpoint]EndpointInfo{
 	EndpointASTPCredentialsSearch: {EndpointASTPCredentialsSearch, QuotaNo, TierSearch},
 	EndpointASTPCookiesSearch:     {EndpointASTPCookiesSearch, QuotaNo, TierSearch},
 	EndpointBulkAccounts:          {EndpointBulkAccounts, QuotaUnknown, TierBasic},
+	EndpointIdentityNext:          {EndpointIdentityNext, QuotaUnknown, TierBasic},
 }
 
 // Lookup returns the accounting metadata for an endpoint. An endpoint missing

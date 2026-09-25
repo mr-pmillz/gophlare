@@ -53,7 +53,7 @@ Gophlare currently supports the following API endpoints:
 * [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search)
 * [/astp/v2/credentials/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-credentials-search)
 * [/astp/v2/cookies/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-cookies-search)
-* [/astp/identities/by_accounts](https://api.docs.flare.io/api-reference/astp/endpoints/post-by-accounts)
+* [/astp/identities/by_accounts](https://api.docs.flare.io/api-reference/astp/endpoints/post-by-accounts), following each identity's `links.next` for passwords beyond the first 100
 
 Request and response models for these and every other endpoint in Flare's
 published Firework v2 and v4 specs are generated with oapi-codegen into the
@@ -191,8 +191,9 @@ machine-readable `flare-api-metrics.json` in the output dir:
 Flare's docs the ASTP credentials search "does not count towards your search
 quota", and the same holds for the ASTP cookies search; activity retrieval and
 the stealer-log downloads are on the basic rate-limit tier, not the search
-quota. Billing for `/astp/identities/by_accounts` is **not documented**, so
-it is reported as `?` and excluded from quota totals rather than guessed at.
+quota. Billing for `/astp/identities/by_accounts` and the `links.next` pages it
+returns is **not documented**, so they are reported as `?` and excluded from
+quota totals rather than guessed at.
 
 **Observed vs. counted.** `Observed quota decrease` is the difference between
 the first and last `X-Flare-Global-Searches-Remaining` headers. These describe

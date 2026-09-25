@@ -565,9 +565,7 @@ components:
       type: object
       properties:
         links:
-          type: object
-          description: May contain a next URL that returns further passwords for this identity.
-          additionalProperties: true
+          $ref: "#/components/schemas/IdentityLinks"
         name:
           type: string
         passwords:
@@ -575,6 +573,17 @@ components:
           description: Up to 100 passwords, in the order they were inserted into the database.
           items:
             $ref: "#/components/schemas/IdentityPassword"
+    IdentityLinks:
+      type: object
+      properties:
+        next:
+          type: string
+          description: >-
+            URL of the identity's next page of passwords, present when it has
+            more than the ones included. Follow it with a valid Authorization
+            token. Flare does not document the URL's form or its response;
+            gophlare accepts an identity object or a list of identities.
+      additionalProperties: true
     IdentityPassword:
       type: object
       properties:

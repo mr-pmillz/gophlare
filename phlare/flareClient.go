@@ -1,9 +1,11 @@
 package phlare
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -620,6 +622,12 @@ func (fc *FlareClient) FlareBulkCredentialLookup(emails []string, outputDir stri
 		if err != nil {
 			return nil, err
 		}
+		// Each identity holds at most 100 passwords; links.next leads to the rest.
+		for account, identity := range batchData {
+			if identity.Links.Next != "" {
+				batchData[account] = fc.followIdentityPasswords(account, identity)
+			}
+		}
 
 		// Merge batch result into the accumulated result
 		accumulatedResult = mergeResults(accumulatedResult, batchData)
@@ -670,6 +678,121 @@ func (fc *FlareClient) fetchBatchData(url string, accounts []string) (FlareListB
 	}
 
 	return batchData, nil
+}
+
+// maxIdentityPages bounds how many links.next pages are followed for one
+// identity, so a cursor that never ends cannot loop forever.
+const maxIdentityPages = 1000
+
+// followIdentityPasswords follows an identity's links.next pages and appends
+// the passwords beyond the first 100 to identity. Paging stops when a page has
+// no next link, repeats a URL, or reaches maxIdentityPages. A page that fails
+// is logged and ends paging for that identity, keeping the passwords already
+// fetched; identity.Links.Next is then left pointing at the unfetched page.
+func (fc *FlareClient) followIdentityPasswords(account string, identity Entry) Entry {
+	seenURLs := make(map[string]struct{})
+	for pages := 0; identity.Links.Next != "" && pages < maxIdentityPages; pages++ {
+		pageURL, err := fc.resolveAPIURL(identity.Links.Next)
+		if err != nil {
+			utils.LogWarningf("Not following further passwords for %s: %s", account, err.Error())
+			return identity
+		}
+		if _, seen := seenURLs[pageURL]; seen {
+			utils.LogWarningf("Stopped paging passwords for %s: next link repeats %s", account, pageURL)
+			return identity
+		}
+		seenURLs[pageURL] = struct{}{}
+
+		passwords, next, err := fc.fetchIdentityPage(pageURL)
+		if err != nil {
+			utils.LogWarningf("Failed to fetch further passwords for %s, keeping %d: %s", account, len(identity.Passwords), err.Error())
+			return identity
+		}
+		identity.Passwords = append(identity.Passwords, passwords...)
+		identity.Links.Next = next
+		if next != "" {
+			time.Sleep(250 * time.Millisecond) // the basic rate-limit tier allows 4 requests per second
+		}
+	}
+	if identity.Links.Next != "" {
+		utils.LogWarningf("Stopped paging passwords for %s after %d pages", account, maxIdentityPages)
+	}
+	return identity
+}
+
+// fetchIdentityPage fetches one links.next page, retrying rate limits and
+// server errors like the paginated searches do. It returns the page's
+// passwords and its own next link.
+func (fc *FlareClient) fetchIdentityPage(pageURL string) ([]Password, string, error) {
+	for retries := 0; ; retries++ {
+		if err := fc.ensureToken(); err != nil {
+			return nil, "", err
+		}
+		var raw json.RawMessage
+		started := time.Now()
+		status, respHeader, err := fc.Client.DoReqWithHeaders(pageURL, "GET", &raw, fc.defaultHeaders(), nil, nil)
+		fc.record(metrics.EndpointIdentityNext, metrics.EntityBulkEmails, status, respHeader, started, retries > 0)
+		if err != nil {
+			return nil, "", err
+		}
+		delay, err := searchRetryDelay(status, retries)
+		if err != nil {
+			return nil, "", err
+		}
+		if delay > 0 {
+			utils.LogWarningf("Flare API returned %d, retry %d/%d in %s", status, retries+1, maxSearchRetries, delay)
+			time.Sleep(delay)
+			continue
+		}
+		if status != http.StatusOK {
+			return nil, "", fmt.Errorf("received HTTP %d", status)
+		}
+		return decodeIdentityPage(raw)
+	}
+}
+
+// decodeIdentityPage decodes a links.next response. Flare does not document
+// it, so both an identity object and a list of identities are accepted.
+func decodeIdentityPage(raw json.RawMessage) ([]Password, string, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		var identities []Entry
+		if err := json.Unmarshal(trimmed, &identities); err != nil {
+			return nil, "", fmt.Errorf("decode identity list: %w", err)
+		}
+		var passwords []Password
+		next := ""
+		for _, identity := range identities {
+			passwords = append(passwords, identity.Passwords...)
+			if identity.Links.Next != "" {
+				next = identity.Links.Next
+			}
+		}
+		return passwords, next, nil
+	}
+	var identity Entry
+	if err := json.Unmarshal(trimmed, &identity); err != nil {
+		return nil, "", fmt.Errorf("decode identity: %w", err)
+	}
+	return identity.Passwords, identity.Links.Next, nil
+}
+
+// resolveAPIURL resolves a URL returned by the API, which may be relative,
+// against the client's base URL. It refuses any other scheme or host so the
+// bearer token is only ever sent to the Flare API.
+func (fc *FlareClient) resolveAPIURL(ref string) (string, error) {
+	base, err := url.Parse(fc.baseURL() + "/")
+	if err != nil {
+		return "", err
+	}
+	target, err := base.Parse(ref)
+	if err != nil {
+		return "", fmt.Errorf("invalid link %q: %w", ref, err)
+	}
+	if target.Scheme != base.Scheme || target.Host != base.Host {
+		return "", fmt.Errorf("link %q is not on %s", ref, base.Host)
+	}
+	return target.String(), nil
 }
 
 // mergeResults merges batch results into the total result

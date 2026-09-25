@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -362,5 +363,125 @@ func TestSearchDateFilter(t *testing.T) {
 		if _, err := searchDateFilter(bad[0], bad[1], now); err == nil {
 			t.Errorf("searchDateFilter(%q, %q) should fail", bad[0], bad[1])
 		}
+	}
+}
+
+// identityJSON renders a by_accounts identity with the given password IDs and
+// next link.
+func identityJSON(name, next string, ids ...int) string {
+	passwords := make([]string, 0, len(ids))
+	for _, id := range ids {
+		passwords = append(passwords, fmt.Sprintf(`{"id":%d,"hash":"pw-%d","imported_at":"2019-06-03T14:20:25+00:00"}`, id, id))
+	}
+	links := `{}`
+	if next != "" {
+		links = fmt.Sprintf(`{"next":%q}`, next)
+	}
+	return fmt.Sprintf(`{"links":%s,"name":%q,"passwords":[%s]}`, links, name, strings.Join(passwords, ","))
+}
+
+func passwordIDs(e Entry) []int64 {
+	ids := make([]int64, 0, len(e.Passwords))
+	for _, p := range e.Passwords {
+		ids = append(ids, p.ID)
+	}
+	return ids
+}
+
+func TestBulkCredentialLookupFollowsIdentityNextLinks(t *testing.T) {
+	var f *fakeFlare
+	f = newFakeFlare(t, func(w http.ResponseWriter, r *http.Request, _ string) {
+		switch r.URL.Path {
+		case "/astp/identities/by_accounts":
+			// A relative link whose cursor lives in the query string.
+			_, _ = fmt.Fprintf(w, `{"a@example.com":%s,"b@example.com":%s}`,
+				identityJSON("a@example.com", "/leaksdb/identities/a@example.com/passwords?from=2", 1, 2),
+				identityJSON("b@example.com", "", 9))
+		case "/leaksdb/identities/a@example.com/passwords":
+			if r.URL.Query().Get("from") == "2" {
+				// An identity object whose next link is absolute.
+				_, _ = w.Write([]byte(identityJSON("a@example.com", f.URL+"/leaksdb/identities/a@example.com/passwords?from=3", 3)))
+				return
+			}
+			// A list of identities, the shape of the other /identities/ endpoints.
+			_, _ = fmt.Fprintf(w, `[%s]`, identityJSON("a@example.com", "", 4))
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	fc, err := NewFlareClient("test-key", "", 1, 10, WithBaseURL(f.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := fc.FlareBulkCredentialLookup([]string{"a@example.com", "b@example.com"}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := (*result)["a@example.com"]
+	if got := passwordIDs(a); !slices.Equal(got, []int64{1, 2, 3, 4}) {
+		t.Errorf("a@example.com passwords = %v, want all 4 pages", got)
+	}
+	if a.Links.Next != "" {
+		t.Errorf("links.next = %q, want it cleared once every page was fetched", a.Links.Next)
+	}
+	if got := passwordIDs((*result)["b@example.com"]); !slices.Equal(got, []int64{9}) {
+		t.Errorf("b@example.com passwords = %v", got)
+	}
+	reqs := f.apiRequests()
+	if len(reqs) != 3 {
+		t.Fatalf("requests = %+v, want by_accounts plus 2 next pages", reqs)
+	}
+	for _, r := range reqs[1:] {
+		if r.Authorization != "Bearer token-1" {
+			t.Errorf("next page sent Authorization %q", r.Authorization)
+		}
+	}
+	if reqs[1].Query != "from=2" || reqs[2].Query != "from=3" {
+		t.Errorf("next page queries = %q, %q", reqs[1].Query, reqs[2].Query)
+	}
+}
+
+func TestBulkCredentialLookupStopsOnUnsafeOrFailingNextLinks(t *testing.T) {
+	tests := []struct {
+		name      string
+		next      string
+		wantIDs   []int64
+		wantPages int
+	}{
+		{"link to another host is never requested", "https://evil.example/steal", []int64{1}, 0},
+		{"repeated link is fetched once", "/loop", []int64{1, 2}, 1},
+		{"failed page keeps the passwords already fetched", "/missing", []int64{1}, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFakeFlare(t, func(w http.ResponseWriter, r *http.Request, _ string) {
+				switch r.URL.Path {
+				case "/astp/identities/by_accounts":
+					_, _ = fmt.Fprintf(w, `{"a@example.com":%s}`, identityJSON("a@example.com", tt.next, 1))
+				case "/loop":
+					_, _ = w.Write([]byte(identityJSON("a@example.com", "/loop", 2)))
+				default:
+					http.NotFound(w, r)
+				}
+			})
+			fc, err := NewFlareClient("test-key", "", 1, 10, WithBaseURL(f.URL))
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := fc.FlareBulkCredentialLookup([]string{"a@example.com"}, t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := (*result)["a@example.com"]
+			if got := passwordIDs(a); !slices.Equal(got, tt.wantIDs) {
+				t.Errorf("passwords = %v, want %v", got, tt.wantIDs)
+			}
+			if pages := len(f.apiRequests()) - 1; pages != tt.wantPages {
+				t.Errorf("next pages requested = %d, want %d", pages, tt.wantPages)
+			}
+			if a.Links.Next == "" {
+				t.Error("links.next should still point at the pages that were not fetched")
+			}
+		})
 	}
 }
