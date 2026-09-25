@@ -50,10 +50,9 @@ type Options struct {
 	SearchStealerLogsByWildcardHost bool
 }
 
-// todaysDate gets today's date as a string in RFC3339 format
+// todaysDate gets today's UTC date as YYYY-MM-DD.
 func todaysDate() string {
-	const layout = "2006-01-02"
-	return time.Now().UTC().Format(layout)
+	return time.Now().UTC().Format(time.DateOnly)
 }
 
 func ConfigureCommand(cmd *cobra.Command) error {
@@ -63,7 +62,7 @@ func ConfigureCommand(cmd *cobra.Command) error {
 	cmd.PersistentFlags().StringP("output", "o", "", "report output dir")
 	cmd.PersistentFlags().StringP("user-agent", "", "", "custom user-agent to use for requests")
 	cmd.PersistentFlags().StringP("from", "f", "", "from date used for a filter for stealer log searches. ex. 2021-01-01 ")
-	cmd.PersistentFlags().StringP("to", "", todaysDate(), "to date used for a filter for stealer log searches. ex. 2025-01-01. Defaults to today.")
+	cmd.PersistentFlags().StringP("to", "", todaysDate(), "to date used for a filter for stealer log searches, including that whole day. ex. 2025-01-01. Defaults to today.")
 	// strings of interface type that can be a file, a slice, or a singular string
 	cmd.PersistentFlags().StringP("domains", "d", "", "domain string, can be a file file containing domains ex. domains.txt, or comma-separated list of strings")
 	cmd.PersistentFlags().StringP("out-of-scope", "", "", "out of scope domains, IPs, or CIDRs")
@@ -362,12 +361,14 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
+	// Dates are kept as YYYY-MM-DD so the search can tell a whole-day --to
+	// from a timestamp.
 	if fromStr, ok := from.(string); ok && fromStr != "" {
-		fromTimeStamp, err := utils.FormatDate(fromStr)
+		fromDate, err := utils.ParseDate(fromStr)
 		if err != nil {
 			return err
 		}
-		opts.From = fromTimeStamp
+		opts.From = fromDate.Format(time.DateOnly)
 	}
 
 	to, err := utils.ConfigureFlagOpts(cmd, &utils.LoadFromCommandOpts{
@@ -379,13 +380,13 @@ func (opts *Options) LoadFromCommand(cmd *cobra.Command) error {
 		return err
 	}
 	if toStr, ok := to.(string); ok && toStr != "" {
-		toTimeStamp, err := utils.FormatDate(toStr)
+		toDate, err := utils.ParseDate(toStr)
 		if err != nil {
 			return err
 		}
-		opts.To = toTimeStamp
+		opts.To = toDate.Format(time.DateOnly)
 	} else {
-		opts.To = time.Now().UTC().Format(time.RFC3339)
+		opts.To = todaysDate()
 	}
 
 	// integers

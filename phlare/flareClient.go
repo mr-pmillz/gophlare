@@ -430,17 +430,36 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 	return downloadedFilePaths, nil
 }
 
-// parseSearchDate parses a --from/--to style date filter, which may be a date
-// or a full timestamp, falling back to def when value is empty.
-func parseSearchDate(value string, def time.Time) (flaretime.Time, error) {
-	if value == "" {
-		return flaretime.Time{Time: def}, nil
+// searchDateFilter builds the estimated_created_at filter from --from/--to
+// style values, which may be dates (YYYY-MM-DD) or full timestamps. An empty
+// from searches the 2 years before now. A date-only to, including an empty to
+// (today), covers that whole day, so it becomes an exclusive bound at the next
+// midnight UTC; a full timestamp is an inclusive bound.
+func searchDateFilter(from, to string, now time.Time) (EstimatedCreatedAt, error) {
+	var filter EstimatedCreatedAt
+	if from == "" {
+		filter.Gte = flaretime.Time{Time: now.UTC().AddDate(-2, 0, 0)}
+	} else {
+		gte, err := flaretime.Parse(from)
+		if err != nil {
+			return filter, fmt.Errorf("invalid from date %q: %w", from, err)
+		}
+		filter.Gte = gte
 	}
-	parsed, err := flaretime.Parse(value)
+
+	if to == "" {
+		to = now.UTC().Format(time.DateOnly)
+	}
+	if day, err := time.Parse(time.DateOnly, to); err == nil {
+		filter.Lt = flaretime.Time{Time: day.AddDate(0, 0, 1)}
+		return filter, nil
+	}
+	lte, err := flaretime.Parse(to)
 	if err != nil {
-		return flaretime.Time{}, fmt.Errorf("invalid date filter %q: %w", value, err)
+		return filter, fmt.Errorf("invalid to date %q: %w", to, err)
 	}
-	return parsed, nil
+	filter.Lte = lte
+	return filter, nil
 }
 
 // isLastPage reports whether a `next` cursor marks the end of Flare's standard
@@ -471,25 +490,15 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 	default:
 		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.emails:*@%s", domain)
 	}
-	// Without a `from` date, search the last 2 years.
-	fromDate, err := parseSearchDate(from, time.Now().UTC().AddDate(-2, 0, 0))
-	if err != nil {
-		return nil, err
-	}
-	// Without a `to` date, search up to the start of today, matching the --to
-	// flag's default.
-	toDate, err := parseSearchDate(to, time.Now().UTC().Truncate(24*time.Hour))
+	dateFilter, err := searchDateFilter(from, to, time.Now())
 	if err != nil {
 		return nil, err
 	}
 	postBody := &FlareEventsGlobalSearchBodyParams{
 		Size: size,
 		Filters: Filters{
-			Type: eventFilterTypes, // https://api.docs.flare.io/api-reference/v4/endpoints/global-search#param-type
-			EstimatedCreatedAt: EstimatedCreatedAt{
-				Gte: fromDate,
-				Lte: toDate,
-			},
+			Type:               eventFilterTypes, // https://api.docs.flare.io/api-reference/v4/endpoints/global-search#param-type
+			EstimatedCreatedAt: dateFilter,
 		},
 	}
 	if err := postBody.Query.FromQueryStringQuery(Query{QueryString: queryString}); err != nil {

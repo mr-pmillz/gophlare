@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -285,8 +286,8 @@ func TestGlobalSearchRequestBody(t *testing.T) {
 	if body.Size != DefaultGlobalSearchPageSize || strings.Join(body.Filters.Severity, ",") != "high,critical" || body.Filters.Type[0] != "stealer_log" {
 		t.Errorf("body = %+v", body)
 	}
-	if body.Filters.EstimatedCreatedAt["gte"] != "2025-01-01T00:00:00Z" || body.Filters.EstimatedCreatedAt["lte"] != "2025-02-01T12:00:00Z" {
-		t.Errorf("date filter = %#v", body.Filters.EstimatedCreatedAt)
+	if want := map[string]string{"gte": "2025-01-01T00:00:00Z", "lte": "2025-02-01T12:00:00Z"}; !maps.Equal(body.Filters.EstimatedCreatedAt, want) {
+		t.Errorf("date filter = %#v, want %#v", body.Filters.EstimatedCreatedAt, want)
 	}
 	item := results.Items[0]
 	if string(item.Metadata.Type) != "stealer_log" || item.Metadata.UID != "stealer_log/x/1" || item.Highlights["description"][0] != "a" {
@@ -323,5 +324,43 @@ func TestSearchCookiesRequestBody(t *testing.T) {
 	}
 	if c := results.Items[0]; c.UUID != "44672461" || c.ExpiresAt.Year() != 2024 || c.EventUID != "stealer_log/x/1" {
 		t.Errorf("cookie = %+v", c)
+	}
+}
+
+func TestSearchDateFilter(t *testing.T) {
+	now := time.Date(2026, 9, 24, 15, 30, 0, 0, time.UTC)
+	tests := []struct {
+		name     string
+		from, to string
+		want     string
+	}{
+		{"date-only to covers that whole day", "2025-01-01", "2025-02-19",
+			`{"gte":"2025-01-01T00:00:00Z","lt":"2025-02-20T00:00:00Z"}`},
+		{"empty to covers all of today", "2025-01-01", "",
+			`{"gte":"2025-01-01T00:00:00Z","lt":"2026-09-25T00:00:00Z"}`},
+		{"timestamp to is inclusive", "2025-01-01T08:00:00Z", "2025-02-19T12:00:00Z",
+			`{"gte":"2025-01-01T08:00:00Z","lte":"2025-02-19T12:00:00Z"}`},
+		{"empty from searches the last 2 years", "", "2026-09-24",
+			`{"gte":"2024-09-24T15:30:00Z","lt":"2026-09-25T00:00:00Z"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filter, err := searchDateFilter(tt.from, tt.to, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := json.Marshal(filter)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("filter = %s, want %s", got, tt.want)
+			}
+		})
+	}
+	for _, bad := range [][2]string{{"not-a-date", ""}, {"", "tomorrow"}} {
+		if _, err := searchDateFilter(bad[0], bad[1], now); err == nil {
+			t.Errorf("searchDateFilter(%q, %q) should fail", bad[0], bad[1])
+		}
 	}
 }
