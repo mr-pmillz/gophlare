@@ -10,8 +10,8 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
 	github.com/neo4j/neo4j-go-driver/v4 v4.4.8
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
-	github.com/oapi-codegen/runtime v1.1.2
-	github.com/projectdiscovery/gologger v1.1.72
+	github.com/oapi-codegen/runtime v1.7.0
+	github.com/projectdiscovery/gologger v1.1.73
 	github.com/schollz/progressbar/v3 v3.19.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
