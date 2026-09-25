@@ -1,7 +1,6 @@
 package phlare
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/mr-pmillz/gophlare/flareapi/astp"
+	"github.com/mr-pmillz/gophlare/flareapi/fireworkv4"
+	"github.com/mr-pmillz/gophlare/flareapi/flaretime"
+	"github.com/mr-pmillz/gophlare/flareapi/tokens"
 	"github.com/mr-pmillz/gophlare/internal/version"
 	"github.com/mr-pmillz/gophlare/metrics"
 	"github.com/mr-pmillz/gophlare/utils"
@@ -30,6 +33,12 @@ const DefaultGlobalSearchPageSize = 5
 
 // MaxGlobalSearchPageSize is the documented limit for the global events API.
 const MaxGlobalSearchPageSize = 10
+
+// apiTokenLifetime is how long a generated API token is reused. Flare documents
+// a one-hour lifetime; refreshing after 45 minutes, as Flare's own Go SDK does,
+// keeps requests from racing the expiry. The refresh_token_exp in the
+// /tokens/generate response describes the refresh token, not the API token.
+const apiTokenLifetime = 45 * time.Minute
 
 // ClientOption customizes a FlareClient at construction. Options are applied
 // before the token request, so BaseURL and the metrics recorder also cover
@@ -99,19 +108,15 @@ func NewFlareClient(apiKey, userAgent string, tenantID, timeout int, opts ...Cli
 
 	flareGetTokenURL := fmt.Sprintf("%s/tokens/generate", fc.baseURL())
 
-	// Create the Authorization Basic header
-	authString := fmt.Sprintf(":%s", apiKey) // ":" for empty username
-	encodedAuth := base64.StdEncoding.EncodeToString([]byte(authString))
-
+	// Flare documents the API key being sent verbatim in the Authorization
+	// header. Content-Type must be JSON or the tenant_id scoping is ignored.
 	headers := map[string]string{
-		"Authorization": fmt.Sprintf("Basic %s", encodedAuth),
+		"Authorization": apiKey,
 		"Content-Type":  "application/json",
 	}
 
-	// Create the request body
-	requestBody, err := json.Marshal(map[string]int{
-		"tenant_id": tenantID,
-	})
+	// A zero tenant ID is omitted, which selects the user's default tenant.
+	requestBody, err := json.Marshal(tokens.TokenGenerateRequest{TenantID: tenantID})
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -135,7 +140,8 @@ func NewFlareClient(apiKey, userAgent string, tenantID, timeout int, opts ...Cli
 	}
 
 	fc.Token = &tokenResp.Token
-	fc.TokenExp = EpochToTime(tokenResp.RefreshTokenExp)
+	tokenExp := started.Add(apiTokenLifetime)
+	fc.TokenExp = &tokenExp
 	return fc, nil
 }
 
@@ -217,6 +223,20 @@ func (fc *FlareClient) RefreshAPIToken() (*FlareClient, error) {
 	return updatedFC, nil
 }
 
+// ensureToken refreshes fc's API token in place once it has expired, so later
+// requests made with fc, including the rest of a pagination loop, reuse it.
+func (fc *FlareClient) ensureToken() error {
+	if !fc.IsAPITokenExpired() {
+		return nil
+	}
+	refreshed, err := fc.RefreshAPIToken()
+	if err != nil {
+		return err
+	}
+	fc.Token, fc.TokenExp = refreshed.Token, refreshed.TokenExp
+	return nil
+}
+
 // QueryGlobalEvents performs a search for global events by domain and returns the results *FlareEventsGlobalSearchResults
 func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
 	results, err := fc.FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to, severity, eventFilterTypes, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost)
@@ -228,26 +248,21 @@ func QueryGlobalEvents(fc *FlareClient, domain, outputDir, query, from, to strin
 
 // FlareRetrieveEventActivitiesByID retrieves event activities by their unique ID from the Flare API and returns the response or an error.
 func (fc *FlareClient) FlareRetrieveEventActivitiesByID(uid string) (*FlareFireworkActivitiesIndexSourceIDv2Response, error) {
-	// initialize new FlareClient in case token has expired
-	refreshedFC := &FlareClient{}
-	// Check token expiry before making the request
-	if fc.IsAPITokenExpired() {
-		var err error
-		refreshedFC, err = fc.RefreshAPIToken()
-		if err != nil {
-			return nil, fmt.Errorf("failed to refresh token: %w", err)
-		}
-	} else {
-		refreshedFC = fc
+	if err := fc.ensureToken(); err != nil {
+		return nil, err
 	}
-	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s", fc.baseURL(), uid)
-	headers := refreshedFC.defaultHeaders()
+	// The UID goes in the query string: UIDs contain slashes, and Flare keeps the
+	// /firework/v2/activities/{index}/{source}/{id} path form only for
+	// backwards compatibility.
+	flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/", fc.baseURL())
+	headers := fc.defaultHeaders()
+	params := map[string]string{"uid": uid}
 	data := &FlareFireworkActivitiesIndexSourceIDv2Response{}
 
 	started := time.Now()
-	statusCode, respHeader, err := refreshedFC.Client.DoReqWithHeaders(flareGetEventActivitiesByIDURL, "GET", data, headers, nil, nil)
+	statusCode, respHeader, err := fc.Client.DoReqWithHeaders(flareGetEventActivitiesByIDURL, "GET", data, headers, params, nil)
 	// No domain parameter here, so attribution comes from the client's Entity.
-	refreshedFC.record(metrics.EndpointActivityByID, "", statusCode, respHeader, started, false)
+	fc.record(metrics.EndpointActivityByID, "", statusCode, respHeader, started, false)
 	if err != nil {
 		return nil, utils.LogError(err)
 	}
@@ -277,6 +292,9 @@ func (fc *FlareClient) FlareDownloadStealerLogZipFilesThatContainPasswords(data 
 	downloadedFilePaths := make([]string, 0)
 	for _, stealerLogsFile := range data.Activity.Data.Files {
 		if _, exists := filesToDownload[stealerLogsFile]; exists {
+			if err := fc.ensureToken(); err != nil {
+				return nil, err
+			}
 			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download", fc.baseURL(), data.Activity.Data.UID)
 			headers := fc.defaultHeaders()
 			headers["Accept"] = acceptHeaderTextPlain
@@ -337,6 +355,9 @@ func (fc *FlareClient) FlareDownloadStealerLogPasswordFiles(data *FlareFireworkA
 			// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
 			flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.baseURL(), data.Activity.Data.UID)
 			utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
+			if err := fc.ensureToken(); err != nil {
+				return nil, err
+			}
 			headers := fc.defaultHeaders()
 			headers["Accept"] = acceptHeaderTextPlain
 			params := map[string]string{
@@ -382,6 +403,9 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 		// flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file?file=%s", flareAPIBaseURL, data.Activity.Data.UID, stealerLogsFile)
 		flareGetEventActivitiesByIDURL := fmt.Sprintf("%s/firework/v2/activities/%s/download_file", fc.baseURL(), data.Activity.Data.UID)
 		utils.InfoLabelWithColorf("FLARE STEALER LOGS", "green", "Downloading %s", flareGetEventActivitiesByIDURL)
+		if err := fc.ensureToken(); err != nil {
+			return nil, err
+		}
 		headers := fc.defaultHeaders()
 		headers["Accept"] = acceptHeaderTextPlain
 		params := map[string]string{
@@ -406,14 +430,23 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 	return downloadedFilePaths, nil
 }
 
-// getPastISO8601Date returns the ISO-8601 (RFC3339) timestamp X years prior to now
-func getPastISO8601Date(yearsAgo int) string {
-	// Get the current UTC time
-	now := time.Now().UTC()
-	// Subtract 4 years from the current date
-	pastTime := now.AddDate(-yearsAgo, 0, 0)
-	// Format the past date in ISO-8601 (RFC3339 format)
-	return pastTime.Format(time.RFC3339)
+// parseSearchDate parses a --from/--to style date filter, which may be a date
+// or a full timestamp, falling back to def when value is empty.
+func parseSearchDate(value string, def time.Time) (flaretime.Time, error) {
+	if value == "" {
+		return flaretime.Time{Time: def}, nil
+	}
+	parsed, err := flaretime.Parse(value)
+	if err != nil {
+		return flaretime.Time{}, fmt.Errorf("invalid date filter %q: %w", value, err)
+	}
+	return parsed, nil
+}
+
+// isLastPage reports whether a `next` cursor marks the end of Flare's standard
+// paging pattern. JSON null decodes to "".
+func isLastPage(next string) bool {
+	return next == "" || next == nullString
 }
 
 // FlareEventsGlobalSearchByDomain performs a global search in Flare's database for events related to a specified domain.
@@ -425,7 +458,6 @@ func getPastISO8601Date(yearsAgo int) string {
 //nolint:dupl
 func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query, from, to string, severity, eventFilterTypes []string, searchStealerLogsByHostDomain, searchStealerLogsByWildcardHost bool) (*FlareEventsGlobalSearchResults, error) {
 	flareGlobalEventsSearchURL := fmt.Sprintf("%s/firework/v4/events/global/_search", fc.baseURL())
-	headers := fc.defaultHeaders()
 	allData := &FlareEventsGlobalSearchResults{}
 	size := fc.pageSize()
 	var queryString string
@@ -439,32 +471,39 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 	default:
 		queryString = fmt.Sprintf("metadata.source:stealer_logs* AND features.emails:*@%s", domain)
 	}
-	var fromDate string
-	if from != "" {
-		fromDate = from
-	} else {
-		fromDate = getPastISO8601Date(2) // if no `from` date is provided, default to 2 years ago
+	// Without a `from` date, search the last 2 years.
+	fromDate, err := parseSearchDate(from, time.Now().UTC().AddDate(-2, 0, 0))
+	if err != nil {
+		return nil, err
 	}
-	var toDate string
-	if to != "" {
-		toDate = to
-	} else {
-		toDate = todaysDate() // if not `to` date is provided, default to today's date
+	// Without a `to` date, search up to the start of today, matching the --to
+	// flag's default.
+	toDate, err := parseSearchDate(to, time.Now().UTC().Truncate(24*time.Hour))
+	if err != nil {
+		return nil, err
 	}
 	postBody := &FlareEventsGlobalSearchBodyParams{
-		Query: Query{
-			Type:        "query_string",
-			QueryString: queryString,
-		},
 		Size: size,
 		Filters: Filters{
-			Severity: severity,
-			Type:     eventFilterTypes, // https://api.docs.flare.io/api-reference/v4/endpoints/global-search#param-type
+			Type: eventFilterTypes, // https://api.docs.flare.io/api-reference/v4/endpoints/global-search#param-type
 			EstimatedCreatedAt: EstimatedCreatedAt{
 				Gte: fromDate,
 				Lte: toDate,
 			},
 		},
+	}
+	if err := postBody.Query.FromQueryStringQuery(Query{QueryString: queryString}); err != nil {
+		return nil, utils.LogError(err)
+	}
+	if len(severity) > 0 {
+		// An array matches the listed severities exactly.
+		severities := make(fireworkv4.FeedFiltersSeverity1, 0, len(severity))
+		for _, sev := range severity {
+			severities = append(severities, fireworkv4.Severity(sev))
+		}
+		if err := postBody.Filters.Severity.FromFeedFiltersSeverity1(severities); err != nil {
+			return nil, utils.LogError(err)
+		}
 	}
 
 	// progress reporter: emits a status line every 30s with the running count
@@ -492,7 +531,12 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 
 flarePaginate: //nolint:dupl
 	for {
-		// marshal each time for 'from' parameter pagination via *data.Next
+		// Long paginations outlive the API token, so check it for every page.
+		if err := fc.ensureToken(); err != nil {
+			return nil, err
+		}
+		headers := fc.defaultHeaders()
+		// marshal each time for 'from' parameter pagination via data.Next
 		postBodyJSON, err := json.Marshal(postBody)
 		if err != nil {
 			return nil, utils.LogError(err)
@@ -526,19 +570,12 @@ flarePaginate: //nolint:dupl
 		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
-		switch {
-		case data.Next == nil:
+		if isLastPage(data.Next) {
 			break flarePaginate
-		case *data.Next == "":
-			break flarePaginate
-		case *data.Next == nullString:
-			break flarePaginate
-		default:
-			// Update the 'from' parameter for the next request
-			postBody.From = *data.Next
-			// utils.InfoLabelWithColorf("Flare Search Credentials", "blue", "found %d hits for %s", len(data.Items), domain)
-			time.Sleep(1 * time.Second)
 		}
+		// Update the 'from' parameter for the next request
+		postBody.From = data.Next
+		time.Sleep(1 * time.Second)
 	}
 
 	utils.InfoLabelWithColorf("FlareEventsGlobalSearch", "blue", "found %d hits for query: %s", len(allData.Items), queryString)
@@ -557,9 +594,8 @@ flarePaginate: //nolint:dupl
 
 // FlareBulkCredentialLookup queries the Flare API in batches of 100 emails and aggregates results
 func (fc *FlareClient) FlareBulkCredentialLookup(emails []string, outputDir string) (*FlareListByBulkAccountResponse, error) {
-	const batchSize = 100
-	flareListByBulkAccountsURL := fmt.Sprintf("%s/leaksdb/identities/by_accounts", fc.baseURL())
-	headers := fc.defaultHeaders()
+	const batchSize = 100 // the documented maximum accounts per request
+	flareListByBulkAccountsURL := fmt.Sprintf("%s/astp/identities/by_accounts", fc.baseURL())
 
 	// Result accumulator
 	accumulatedResult := make(FlareListByBulkAccountResponse)
@@ -571,7 +607,7 @@ func (fc *FlareClient) FlareBulkCredentialLookup(emails []string, outputDir stri
 		emailBatch := emails[start:end]
 
 		// Make the batch request and accumulate results
-		batchData, err := fc.fetchBatchData(flareListByBulkAccountsURL, headers, emailBatch)
+		batchData, err := fc.fetchBatchData(flareListByBulkAccountsURL, emailBatch)
 		if err != nil {
 			return nil, err
 		}
@@ -602,12 +638,12 @@ func (fc *FlareClient) defaultHeaders() map[string]string {
 }
 
 // fetchBatchData handles making a single batched API request and parsing the response
-func (fc *FlareClient) fetchBatchData(url string, headers map[string]string, accounts []string) (FlareListByBulkAccountResponse, error) {
-	payload := map[string]any{
-		"accounts": accounts,
+func (fc *FlareClient) fetchBatchData(url string, accounts []string) (FlareListByBulkAccountResponse, error) {
+	if err := fc.ensureToken(); err != nil {
+		return nil, err
 	}
-
-	postBody, err := json.Marshal(payload)
+	headers := fc.defaultHeaders()
+	postBody, err := json.Marshal(astp.ByAccountsRequest{Accounts: accounts})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -648,18 +684,15 @@ func mergeResults(main, batch FlareListByBulkAccountResponse) FlareListByBulkAcc
 //nolint:dupl
 func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cookieNames, paths []string) (*FlareSearchCookiesResponse, error) {
 	flareSearchCookiesURL := fmt.Sprintf("%s/astp/v2/cookies/_search", fc.baseURL())
-	headers := fc.defaultHeaders()
 	allData := &FlareSearchCookiesResponse{}
-	size := 500
-	// current date for ExpiresAfter param
-	expiresAfter := time.Now().Format(time.RFC3339)
+	size := 500 // documented default 100, maximum 2000
 	postBody := &FlareSearchCookiesBodyParams{
 		Domain: domain,
 		Size:   size,
 		Names:  cookieNames,
 		Paths:  paths,
-		// ImportedAfter: "",
-		ExpiresAfter: expiresAfter,
+		// Only return cookies that have not expired yet.
+		ExpiresAfter: flaretime.Time{Time: time.Now()},
 	}
 
 	// progress reporter: emits a status line every 30s with the running count
@@ -687,7 +720,12 @@ func (fc *FlareClient) FlareSearchCookiesByDomain(domain, outputDir string, cook
 
 flarePaginate:
 	for {
-		// marshal each time for 'from' parameter pagination via *data.Next
+		// Long paginations outlive the API token, so check it for every page.
+		if err := fc.ensureToken(); err != nil {
+			return nil, err
+		}
+		headers := fc.defaultHeaders()
+		// marshal each time for 'from' parameter pagination via data.Next
 		postBodyJSON, err := json.Marshal(postBody)
 		if err != nil {
 			return nil, utils.LogError(err)
@@ -721,19 +759,12 @@ flarePaginate:
 		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
-		switch {
-		case data.Next == nil:
+		if isLastPage(data.Next) {
 			break flarePaginate
-		case *data.Next == "":
-			break flarePaginate
-		case *data.Next == nullString:
-			break flarePaginate
-		default:
-			// Update the 'from' parameter for the next request
-			postBody.From = *data.Next
-			// utils.InfoLabelWithColorf("Flare Search Credentials", "blue", "found %d hits for %s", len(data.Items), domain)
-			time.Sleep(1 * time.Second)
 		}
+		// Update the 'from' parameter for the next request
+		postBody.From = data.Next
+		time.Sleep(1 * time.Second)
 	}
 
 	if err := utils.WriteStructToJSONFile(allData, fmt.Sprintf("%s/flare-cookies-search-%s.json", outputDir, domain)); err != nil {
@@ -750,20 +781,17 @@ flarePaginate:
 //nolint:dupl
 func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*FlareSearchCredentialsASTP, error) {
 	flareLeaksByDomainURL := fmt.Sprintf("%s/astp/v2/credentials/_search", fc.baseURL())
-	headers := fc.defaultHeaders()
 	allData := &FlareSearchCredentialsASTP{}
 	// Flare's gateway times out at ~30s; latency on this endpoint scales
 	// roughly linearly with page size. Empirically (worst-case slow day):
 	//   size=100 → ~8s    size=200 → ~13s    size=300 → ~24s    size=500 → 504
 	// 100 leaves >20s of headroom even on slow days; pagination handles
 	// arbitrarily-large result sets via the existing Next cursor loop.
-	size := "100"
 	postBody := &FlareSearchCredentialsBodyParams{
-		Size: size,
-		Query: FlareDomainQuery{
-			Type: "domain",
-			Fqdn: domain,
-		},
+		Size: 100,
+	}
+	if err := postBody.Query.FromDomainQuery(FlareDomainQuery{Fqdn: domain}); err != nil {
+		return nil, utils.LogError(err)
 	}
 
 	// progress reporter: emits a status line every 30s with the running count
@@ -791,7 +819,12 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 
 flarePaginate:
 	for {
-		// marshal each time for 'from' parameter pagination via *data.Next
+		// Long paginations outlive the API token, so check it for every page.
+		if err := fc.ensureToken(); err != nil {
+			return nil, err
+		}
+		headers := fc.defaultHeaders()
+		// marshal each time for 'from' parameter pagination via data.Next
 		postBodyJSON, err := json.Marshal(postBody)
 		if err != nil {
 			return nil, utils.LogError(err)
@@ -825,19 +858,12 @@ flarePaginate:
 		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
-		switch {
-		case data.Next == nil:
+		if isLastPage(data.Next) {
 			break flarePaginate
-		case *data.Next == "":
-			break flarePaginate
-		case *data.Next == nullString:
-			break flarePaginate
-		default:
-			// Update the 'from' parameter for the next request
-			postBody.From = *data.Next
-			// utils.InfoLabelWithColorf("Flare Search Credentials", "blue", "found %d hits for %s", len(data.Items), domain)
-			time.Sleep(1 * time.Second)
 		}
+		// Update the 'from' parameter for the next request
+		postBody.From = data.Next
+		time.Sleep(1 * time.Second)
 	}
 
 	return allData, nil

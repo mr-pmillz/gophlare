@@ -38,23 +38,23 @@ const (
 )
 
 // Endpoint identifies a Flare API endpoint for usage accounting. Values are
-// path templates rather than concrete URLs: keeping the {uid} placeholder
-// collapses every stealer-log activity request onto a single report row instead
-// of producing one row per log.
+// paths or path templates rather than concrete URLs, so every stealer-log
+// activity request collapses onto a single report row instead of producing one
+// row per log.
 type Endpoint string
 
 // The Flare API endpoints gophlare calls.
 const (
 	EndpointTokenGenerate        Endpoint = "/tokens/generate"
 	EndpointGlobalEventsSearch   Endpoint = "/firework/v4/events/global/_search"
-	EndpointActivityByID         Endpoint = "/firework/v2/activities/{uid}"
+	EndpointActivityByID         Endpoint = "/firework/v2/activities/"
 	EndpointActivityDownload     Endpoint = "/firework/v2/activities/{uid}/download"
 	EndpointActivityDownloadFile Endpoint = "/firework/v2/activities/{uid}/download_file"
 	// EndpointASTPCredentialsSearch is an API path, not a secret; gosec's G101
 	// heuristic fires on the word "credentials".
 	EndpointASTPCredentialsSearch Endpoint = "/astp/v2/credentials/_search" //nolint:gosec
 	EndpointASTPCookiesSearch     Endpoint = "/astp/v2/cookies/_search"
-	EndpointBulkAccounts          Endpoint = "/leaksdb/identities/by_accounts"
+	EndpointBulkAccounts          Endpoint = "/astp/identities/by_accounts"
 )
 
 // QuotaClass describes whether an endpoint draws down the monthly Global Search
@@ -110,7 +110,7 @@ type EndpointInfo struct {
 // Sources: api.docs.flare.io/concepts/rate-limits-and-quotas and the v4
 // global-search and ASTP credentials-search endpoint references. The ASTP
 // credentials search is explicitly documented as not counting toward the search
-// quota; billing for /leaksdb/identities/by_accounts is not documented at all.
+// quota; billing for /astp/identities/by_accounts is not documented at all.
 var endpointCatalog = map[Endpoint]EndpointInfo{
 	EndpointTokenGenerate:         {EndpointTokenGenerate, QuotaNo, TierBasic},
 	EndpointGlobalEventsSearch:    {EndpointGlobalEventsSearch, QuotaYes, TierSearch},

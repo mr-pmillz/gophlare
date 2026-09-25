@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/glebarez/sqlite"
@@ -525,27 +526,14 @@ func (db *Database) InsertFlareCredentialsASTP(data *FlareSearchCredentialsASTP,
 			FlareID:      item.ID,
 			Domain:       item.Domain,
 			Hash:         item.Hash,
+			HashType:     item.HashType,
 			IdentityName: item.IdentityName,
 			SourceID:     item.SourceID,
 		}
 
-		// Handle HashType (interface{} to string)
-		if item.HashType != nil {
-			if hashType, ok := item.HashType.(string); ok {
-				dbCred.HashType = hashType
-			}
-		}
-
-		// Handle KnownPasswordID (interface{} to string)
-		if item.KnownPasswordID != nil {
-			switch v := item.KnownPasswordID.(type) {
-			case string:
-				dbCred.KnownPasswordID = v
-			case int64:
-				dbCred.KnownPasswordID = fmt.Sprintf("%d", v)
-			case float64:
-				dbCred.KnownPasswordID = fmt.Sprintf("%.0f", v)
-			}
+		// known_password_id is null unless requested via include.
+		if item.KnownPasswordID != 0 {
+			dbCred.KnownPasswordID = strconv.FormatInt(item.KnownPasswordID, 10)
 		}
 
 		// Handle ImportedAt
@@ -559,38 +547,8 @@ func (db *Database) InsertFlareCredentialsASTP(data *FlareSearchCredentialsASTP,
 		dbCred.SourceDescriptionEn = item.Source.DescriptionEn
 		dbCred.SourceDescriptionFr = item.Source.DescriptionFr
 		dbCred.IsAlertEnabled = item.Source.IsAlertEnabled
-
-		// Handle SourceBreachedAt (interface{} that can be time.Time or string)
-		if item.Source.BreachedAt != nil {
-			switch v := item.Source.BreachedAt.(type) {
-			case time.Time:
-				if !v.IsZero() {
-					dbCred.SourceBreachedAt = &v
-				}
-			case string:
-				if v != "" {
-					if parsed, err := time.Parse(time.RFC3339, v); err == nil {
-						dbCred.SourceBreachedAt = &parsed
-					}
-				}
-			}
-		}
-
-		// Handle SourceLeakedAt (interface{} that can be time.Time or string)
-		if item.Source.LeakedAt != nil {
-			switch v := item.Source.LeakedAt.(type) {
-			case time.Time:
-				if !v.IsZero() {
-					dbCred.SourceLeakedAt = &v
-				}
-			case string:
-				if v != "" {
-					if parsed, err := time.Parse(time.RFC3339, v); err == nil {
-						dbCred.SourceLeakedAt = &parsed
-					}
-				}
-			}
-		}
+		dbCred.SourceBreachedAt = timeOrNil(item.Source.BreachedAt)
+		dbCred.SourceLeakedAt = timeOrNil(item.Source.LeakedAt)
 
 		credentials = append(credentials, dbCred)
 	}
@@ -604,6 +562,15 @@ func (db *Database) InsertFlareCredentialsASTP(data *FlareSearchCredentialsASTP,
 	}
 
 	return nil
+}
+
+// timeOrNil returns nil for the zero time, which is how the API's null
+// timestamps decode, so they are stored as NULL.
+func timeOrNil(t FlareTime) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t.Time
 }
 
 // CopyBreachDBToOutputDir ...

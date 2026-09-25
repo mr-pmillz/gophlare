@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: Firework API v2 event payloads
+  version: v2
+  description: >-
+    Hand-authored for gophlare to supplement the published
+    firework-v2-openapi.json, whose GET /firework/v2/activities/ response has
+    no schema because it varies by event type. The stealer_log payload follows
+    https://api.docs.flare.io/event-types/stealer-log. Fields that Flare only
+    ever shows as null are left untyped so their JSON is preserved as-is.
+
+
+    The two download endpoints are not documented by Flare at all; their
+    shape is what gophlare has observed. Keep this file in sync with the
+    event type pages.
+servers:
+  - url: https://api.flare.io
+paths:
+  /firework/v2/activities/{uid}/download:
+    get:
+      operationId: downloadStealerLog
+      summary: Download a stealer log archive (undocumented)
+      description: Returns a short-lived external URL for the stealer log's zip archive.
+      parameters:
+        - $ref: "#/components/parameters/UID"
+        - $ref: "#/components/parameters/AgreeToTOS"
+      responses:
+        "200":
+          description: The archive's download location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StealerLogDownloadResponse"
+  /firework/v2/activities/{uid}/download_file:
+    get:
+      operationId: downloadStealerLogFile
+      summary: Download one file from a stealer log (undocumented)
+      description: Returns the raw contents of one file listed in the stealer log's files.
+      parameters:
+        - $ref: "#/components/parameters/UID"
+        - $ref: "#/components/parameters/AgreeToTOS"
+        - in: query
+          name: file
+          required: true
+          description: A path from the stealer log's files list.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The file's contents.
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  parameters:
+    UID:
+      in: path
+      name: uid
+      required: true
+      description: The event UID, for example stealer_log/stealer_logs/12345.
+      schema:
+        type: string
+    AgreeToTOS:
+      in: query
+      name: i_agree_to_tos
+      required: true
+      schema:
+        type: boolean
+  schemas:
+    StealerLogActivityResponse:
+      type: object
+      description: The GET /firework/v2/activities/ response for a stealer_log (also indexed as bot) event.
+      properties:
+        activity:
+          $ref: "#/components/schemas/StealerLogActivity"
+    StealerLogActivity:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/StealerLogData"
+        duplicates:
+          type: array
+          items: {}
+        header:
+          $ref: "#/components/schemas/StealerLogHeader"
+        history_logs: {}
+        metadata:
+          $ref: "#/components/schemas/StealerLogMetadata"
+        similar_items:
+          type: array
+          items: {}
+    StealerLogData:
+      type: object
+      properties:
+        es_id:
+          type: string
+        es_score: {}
+        highlights:
+          type: object
+          additionalProperties: true
+        id:
+          type: string
+        index:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/StealerLogMetadata"
+        uid:
+          type: string
+        url: {}
+        browser_url: {}
+        name: {}
+        installed_at:
+          type: string
+          format: date-time
+        updated_at: {}
+        seller_id: {}
+        isp: {}
+        information: {}
+        credentials:
+          type: array
+          items:
+            $ref: "#/components/schemas/StealerLogCredential"
+        cookies:
+          type: array
+          items:
+            $ref: "#/components/schemas/StealerLogCookie"
+        user_information:
+          $ref: "#/components/schemas/StealerLogUserInformation"
+        malware_information:
+          $ref: "#/components/schemas/StealerLogMalwareInformation"
+        files:
+          type: array
+          description: Paths of the files in the stealer log archive.
+          items:
+            type: string
+        resources:
+          type: array
+          description: >-
+            Sometimes holds credentials formatted as
+            "Host: URL | Username: EMAIL | Password: PASSWORD".
+          items:
+            type: string
+        price: {}
+        currency: {}
+        features:
+          $ref: "#/components/schemas/StealerLogFeatures"
+        sources:
+          type: array
+          items:
+            type: string
+    StealerLogMetadata:
+      type: object
+      properties:
+        estimated_created_at:
+          type: string
+          format: date-time
+        event_id: {}
+        first_crawled_at:
+          type: string
+          format: date-time
+        last_crawled_at:
+          type: string
+          format: date-time
+        payload_digest:
+          type: string
+        scraped_at:
+          type: string
+          format: date-time
+        source:
+          type: string
+        crawled_by: {}
+        flare_url:
+          type: string
+    StealerLogCredential:
+      type: object
+      properties:
+        url:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+          description: Usually partially redacted.
+        application:
+          type: string
+    StealerLogCookie:
+      type: object
+      properties:
+        host_key:
+          type: string
+        path:
+          type: string
+        expires_utc:
+          type: string
+          description: Expiry as a timezone-less UTC timestamp, for example 2026-03-04T02:22:08.
+        name:
+          type: string
+        value:
+          type: string
+    StealerLogUserInformation:
+      type: object
+      properties:
+        ip_address:
+          type: string
+        ip_network: {}
+        username:
+          type: string
+        country_code:
+          type: string
+        zip_code:
+          type: string
+        location:
+          type: string
+        hwid:
+          type: string
+        current_language:
+          type: string
+        screensize_width:
+          type: integer
+        screensize_height:
+          type: integer
+        timezone:
+          type: string
+        os:
+          type: string
+        uac:
+          type: string
+        process_elevation: {}
+        available_keyboards:
+          type: array
+          items:
+            type: string
+        hardware:
+          type: array
+          items:
+            type: string
+        anti_viruses: {}
+    StealerLogMalwareInformation:
+      type: object
+      properties:
+        malware_family:
+          type: string
+        build_id:
+          type: string
+        file_location:
+          type: string
+        infection_date:
+          type: string
+          format: date-time
+    StealerLogFeatures:
+      type: object
+      properties:
+        domains:
+          type: array
+          items:
+            type: string
+        emails:
+          type: array
+          items:
+            type: string
+        ip_addresses:
+          type: array
+          items:
+            type: string
+        ip_addresses_cidr:
+          type: array
+          items:
+            type: string
+        reversed_domains:
+          type: array
+          items:
+            type: string
+        urls:
+          type: array
+          items:
+            type: string
+        usernames:
+          type: array
+          items:
+            type: string
+        vulnerabilities: {}
+    StealerLogHeader:
+      type: object
+      properties:
+        actor: {}
+        actor_id: {}
+        bank: {}
+        bin: {}
+        brand: {}
+        credential_count:
+          type: integer
+        category_name:
+          type: string
+        content_hash:
+          type: string
+        content_preview:
+          type: string
+        country: {}
+        duplicates:
+          type: array
+          items: {}
+        es_score: {}
+        expiration: {}
+        highlights:
+          type: object
+          additionalProperties: true
+        host: {}
+        id:
+          type: string
+        infection_date:
+          type: string
+          format: date-time
+        parent_id: {}
+        parent_title: {}
+        parent_title_en: {}
+        parent_uid: {}
+        parent_uids:
+          type: array
+          items:
+            type: string
+        risk:
+          $ref: "#/components/schemas/StealerLogRisk"
+        similar_items_count:
+          type: integer
+        source:
+          type: string
+        source_name:
+          type: string
+        target_name:
+          type: string
+        tags:
+          type: array
+          items: {}
+        notes: {}
+        state_code: {}
+        timestamp:
+          type: string
+          format: date-time
+        title:
+          type: string
+        type:
+          type: string
+        uid:
+          type: string
+        user_risk_score: {}
+        user_notes: {}
+        ignored_at: {}
+        remediated_at: {}
+        verb:
+          type: string
+        external_url:
+          type: string
+        external_netloc:
+          type: string
+        can_have_duplicates:
+          type: boolean
+        priority_action_uuid_related:
+          type: boolean
+        analyzers_items_uids:
+          type: array
+          items: {}
+        victim_name: {}
+        contains_secrets: {}
+        secrets_metadata: {}
+    StealerLogRisk:
+      type: object
+      properties:
+        score:
+          type: integer
+    StealerLogDownloadResponse:
+      type: object
+      properties:
+        stealer_log:
+          type: object
+          properties:
+            external_url:
+              type: string
+              description: Short-lived URL of the stealer log's zip archive.

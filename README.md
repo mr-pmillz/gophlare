@@ -46,13 +46,18 @@ automatically from release tags or Go build metadata. For local builds, use
 
 Gophlare currently supports the following API endpoints:
 
-* /firework/v2/activities/{UID}
-* /firework/v2/activities/{UID}/download
-* /firework/v2/activities/{UID}/download_file
+* [/tokens/generate](https://api.docs.flare.io/api-reference/tokens/endpoints/generate)
+* [/firework/v2/activities/?uid={UID}](https://api.docs.flare.io/api-reference/v2/endpoints/activities/get-fireworkv2activities-)
+* /firework/v2/activities/{UID}/download (undocumented)
+* /firework/v2/activities/{UID}/download_file (undocumented)
 * [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search)
 * [/astp/v2/credentials/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-credentials-search)
 * [/astp/v2/cookies/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-cookies-search)
-* /leaksdb/identities/by_accounts
+* [/astp/identities/by_accounts](https://api.docs.flare.io/api-reference/astp/endpoints/post-by-accounts)
+
+Request and response models for these and every other endpoint in Flare's
+published Firework v2 and v4 specs are generated with oapi-codegen into the
+`flareapi` packages. See [Flare API Models](#flare-api-models).
 
 Of these, only [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search) draws on your monthly [Global Search quota](https://api.docs.flare.io/concepts/rate-limits-and-quotas). See [Flare API Usage Metrics](#flare-api-usage-metrics).
 
@@ -164,15 +169,15 @@ machine-readable `flare-api-metrics.json` in the output dir:
  BY ENDPOINT
    ENDPOINT                            BILLS  CALLS  2xx  429  5xx  RETRIES  AVG
    /astp/v2/credentials/_search        no     34     34   0    0    0        8.1s
-   /firework/v2/activities/{uid}       no     35     35   0    0    0        310ms
+   /firework/v2/activities/            no     35     35   0    0    0        310ms
    /firework/v4/events/global/_search  yes    92     90   1    1    1        1.9s
-   /leaksdb/identities/by_accounts     ?      3      3    0    0    0        4s
+   /astp/identities/by_accounts        ?      3      3    0    0    0        4s
    TOTAL                                      165    163  1    1    1
 
  BY ENTITY
    ENTITY           ENDPOINT                            CALLS  QUOTA
    example.com      /astp/v2/credentials/_search        34     —
-                    /firework/v2/activities/{uid}       35     —
+                    /firework/v2/activities/            35     —
                     /firework/v4/events/global/_search  61     61
    sub.example.com  /firework/v4/events/global/_search  31     31
    TOTAL                                                165    92
@@ -186,7 +191,7 @@ machine-readable `flare-api-metrics.json` in the output dir:
 Flare's docs the ASTP credentials search "does not count towards your search
 quota", and the same holds for the ASTP cookies search; activity retrieval and
 the stealer-log downloads are on the basic rate-limit tier, not the search
-quota. Billing for `/leaksdb/identities/by_accounts` is **not documented**, so
+quota. Billing for `/astp/identities/by_accounts` is **not documented**, so
 it is reported as `?` and excluded from quota totals rather than guessed at.
 
 **Observed vs. counted.** `Observed quota decrease` is the difference between
@@ -275,6 +280,29 @@ func main() {
 		panic(err)
     }
 }
+```
+
+### Flare API Models
+
+Request and response models for the Flare API are generated with
+[oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) into the
+`flareapi` packages, which can be used on their own:
+
+| Package | Generated from |
+| --- | --- |
+| `flareapi/fireworkv4` | Flare's published [Firework v4 spec](https://api.docs.flare.io/api-reference/spec/firework-v4-openapi.json) |
+| `flareapi/fireworkv2` | Flare's published [Firework v2 spec](https://api.docs.flare.io/api-reference/spec/firework-v2-openapi.json), plus a hand-authored supplement typing the `stealer_log` event payload |
+| `flareapi/astp` | A spec hand-authored from Flare's ASTP pages, which have no published OpenAPI spec |
+| `flareapi/tokens` | A spec hand-authored from Flare's token pages |
+
+Every spec lives in `flareapi/openapi`. Timestamps use `flaretime.Time`, which
+decodes the API's mixed RFC 3339 and timezone-less formats; `phlare.FlareTime`
+is an alias of it. The `phlare` request and response types, such as
+`phlare.FlareSearchCredentialsASTP`, alias these generated models.
+
+```bash
+make openapi-specs  # re-download Flare's published v2 and v4 specs
+make generate       # regenerate every flareapi model
 ```
 
 ## Bloodhound Data Correlation
