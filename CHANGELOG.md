@@ -2,6 +2,173 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.4.4](https://github.com/mr-pmillz/gophlare/compare/v1.4.3...v1.4.4) - 2026-09-25
+
+### ✨: New features
+
+- Feat: generate Flare API models with oapi-codegen and fix API drift
+
+Replace gophlare's hand-written Flare API structs with models generated
+by oapi-codegen, and bring every endpoint gophlare calls back in line
+with Flare's current documentation.
+
+Generated models live under flareapi/:
+- fireworkv2 and fireworkv4 are generated from Flare's published Firework
+  v2 and v4 OpenAPI specs, stored verbatim in flareapi/openapi. All
+  schemas are kept, so every endpoint in both specs has models.
+- astp and tokens are generated from specs hand-authored from Flare's
+  prose docs, because those endpoints have no published schema. The ASTP
+  spec covers every documented ASTP and deprecated /leaksdb/ endpoint.
+- fireworkv2 also gets a hand-authored supplement typing the stealer_log
+  payload of GET /firework/v2/activities/, which the published spec
+  leaves untyped, plus the two undocumented download endpoints.
+- An overlay works around an upstream v2 spec bug where
+  TenantWithCounts.items refers to itself.
+- FlareTime moves to flareapi/flaretime so every OpenAPI date-time maps
+  to it; phlare.FlareTime is now an alias. Optional and nullable fields
+  are values tagged omitzero rather than pointers.
+- oapi-codegen is pinned as a go.mod tool. make generate regenerates the
+  models and make openapi-specs re-downloads the published specs.
+
+The phlare request/response type names remain, as aliases of the
+generated models.
+
+Drift fixed:
+- ASTP credentials search sends size as a number and supports order,
+  include, the imported_at filter, and every documented query type.
+- /tokens/generate receives the API key verbatim in Authorization, as
+  documented, instead of Basic auth, and omits tenant_id when unset.
+- API tokens are reused for 45 minutes against their documented 1-hour
+  lifetime instead of until refresh_token_exp, which is the refresh
+  token's expiry. The token is refreshed in place before every request,
+  including each pagination page.
+- Retrieve Event passes the UID as the uid query parameter.
+- Bulk accounts moves from /leaksdb/ to /astp/identities/by_accounts; a
+  null domain no longer panics.
+- Cookies, global search, and stealer log models gain the fields Flare
+  added since they were written.
+- Credential mapping in cmd/search and bloodhound no longer fills
+  BreachedAt from LeakedAt.
+
+Breaking SDK changes: pagination cursors are string rather than *string,
+timestamps are typed instead of any or string, credential HashType is a
+string, KnownPasswordID is an int64, and search queries are set with the
+generated From*Query methods.
+
+Validation:
+- make test passed with race detection; flaretime reached 100% statement
+  coverage. New httptest coverage for auth, token refresh during
+  pagination, every search request body, and stealer log decoding.
+- make lint passed with zero issues.
+- go mod tidy -diff and make build passed.
+- Regenerating twice produced byte-identical models.
+- govulncheck reported only the known GO-2026-5932 openpgp advisory.
+
+No requests were made against the live Flare API.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> - ([561f937](https://github.com/mr-pmillz/gophlare/commit/561f9371ad0551a4ea56718b6228fcead1bd44b5))
+
+### 🐛 Bug fixes
+
+- Fix: follow links.next for bulk account passwords beyond 100
+
+/astp/identities/by_accounts returns at most 100 passwords per identity
+and documents a links.next URL for the rest, which gophlare ignored, so
+accounts with more passwords were silently truncated.
+
+FlareBulkCredentialLookup now follows each identity's links.next and
+appends the further passwords. Flare does not document the URL's form
+or its response, and neither its SDKs nor its integrations follow it, so
+the follower is defensive:
+- Relative and absolute links are resolved against the API base URL, and
+  links to any other scheme or host are refused so the bearer token is
+  only sent to the Flare API.
+- A page may be an identity object or a list of identities.
+- Paging stops on a repeated URL or after 1000 pages, and waits 250ms
+  between pages for the basic rate-limit tier.
+- 429 and 5xx responses are retried like the paginated searches.
+- A failed page is logged and keeps the passwords already fetched, with
+  links.next left pointing at the unfetched page in the output JSON.
+
+The ASTP spec gains an IdentityLinks schema, so links.next is a typed
+field of the generated model. The follow-up requests are recorded under
+a new metrics endpoint whose billing is reported as unknown, like bulk
+accounts itself.
+
+DoReqWithHeaders replaced a URL's existing query string even when no
+params were passed, which would have dropped the cursor of a links.next
+URL. It now leaves the query untouched without params and merges params
+into it otherwise.
+
+Validation:
+- Tests cover following relative and absolute links across object and
+  list pages with their cursors intact, refusing another host, stopping
+  on a repeated link, keeping results after a failed page, and the query
+  string merge.
+- make test passed with race detection; make lint reported zero issues;
+  go mod tidy -diff and make build passed; regenerating produced
+  byte-identical models.
+
+The links.next handling has not been exercised against the live Flare
+API.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> - ([9695bc6](https://github.com/mr-pmillz/gophlare/commit/9695bc676866343a1627a937f5e409d8082c25d6))
+- Fix: include the whole --to day in stealer log searches
+
+A --to date, including its default of today, was sent to the global
+events search as lte midnight UTC, so every event from that day was left
+out.
+
+LoadFromCommand now keeps --from and --to as YYYY-MM-DD dates instead
+of converting them to midnight RFC 3339 timestamps, so the search can
+tell a date from a timestamp. The global search turns a date-only or
+empty to into an exclusive lt bound at the next midnight UTC, covering
+the whole day. A full timestamp passed by an SDK caller stays an
+inclusive lte bound, and an empty from still searches the last 2 years.
+
+utils.ParseDate exposes the date parsing that FormatDate already did, and
+FormatDate is kept for SDK callers.
+
+Options.From and Options.To now hold YYYY-MM-DD after LoadFromCommand,
+where they previously held YYYY-MM-DDT00:00:00Z. The --to help text says
+it includes that whole day.
+
+Validation:
+- Tests cover whole-day, empty, timestamp, and invalid from/to values,
+  the date formats LoadFromCommand accepts, and ParseDate.
+- This commit was built, vetted, and tested on its own.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> - ([d5bf529](https://github.com/mr-pmillz/gophlare/commit/d5bf5290263da14012554bb43c31227dcfacadc4))
+
+### ⚙️  Miscellaneous
+
+- Merge pull request #22 from mr-pmillz/api/updates
+
+Api/updates - ([6b2e9fd](https://github.com/mr-pmillz/gophlare/commit/6b2e9fd4448c4616b977823ccc3a6eee16e0b87a))
+- Chore: bump Go to 1.27.1
+
+Update the go directive and the Docker builder image to Go 1.27.1. The
+CI and release workflows read the version from go.mod.
+
+Bump CI's golangci-lint from v2.12.2 to v2.14.0. golangci-lint refuses
+to lint a module whose go directive is newer than the Go it was built
+with; v2.12.2 is built with Go 1.26, and v2.14.0 with Go 1.27.
+
+Update the Go and golangci-lint versions quoted in CONTRIBUTING.md and
+the bug report template. docs/dependency-security.md is a dated review
+and keeps the versions it recorded.
+
+Validation:
+- go mod tidy -diff, make build, make lint, and make test passed on
+  Go 1.27.1.
+- The golang:1.27.1-alpine image tag exists on Docker Hub; the image was
+  not built locally.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> - ([2712111](https://github.com/mr-pmillz/gophlare/commit/2712111a29bd2efb182c0ab536b0a26ea2e2c530))
+- Merge pull request #18 from mr-pmillz/main
+
+sync main back to develop - ([65fc85a](https://github.com/mr-pmillz/gophlare/commit/65fc85a86704a4336a9cf1b614ce7a2209dda8f0))
+
 ## [1.4.3](https://github.com/mr-pmillz/gophlare/compare/v1.4.2...v1.4.3) - 2026-09-14
 
 ### ✨: New features
@@ -54,6 +221,10 @@ The Dockerfile was reviewed; a container image was not built locally. - ([7649cf
 
 ### ⚙️  Miscellaneous
 
+- Merge pull request #17 from mr-pmillz/release/v1.4.3
+
+Release/v1.4.3 - ([7c12fd7](https://github.com/mr-pmillz/gophlare/commit/7c12fd78fc0d4817a3fac8f5d79b2cee4e019ff0))
+- Chore: update changelog - ([e6d9467](https://github.com/mr-pmillz/gophlare/commit/e6d9467220535b8b6fe6836d5b9b8590fc1501e8))
 - Merge pull request #16 from mr-pmillz/feat/auto-version
 
 feat: derive gophlare version from Git and Go build metadata - ([aad1855](https://github.com/mr-pmillz/gophlare/commit/aad18556d7eabce338cb89765dc0a2e7097a445e))
