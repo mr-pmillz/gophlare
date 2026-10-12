@@ -2,6 +2,98 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.5.0](https://github.com/mr-pmillz/gophlare/compare/v1.4.4...v1.5.0) - 2026-10-12
+
+### ✨: New features
+
+- Feat(sdk): let library callers enable and emit the Flare API usage report
+
+The search helpers already collected metrics for library callers, but the
+report was only reachable through the CLI: the emitter was unexported and
+only the cobra Run called it, so an SDK consumer such as GoRecon could set
+Options.Metrics and still never see the table or flare-api-metrics.json.
+
+Add Options.EnableMetrics(monthlyQuota), which mirrors --metrics for SDK
+callers by enabling the report, defaulting a non-positive quota, and
+attaching a per-run recorder unless one is already set. Export
+search.ReportMetrics so callers can render once after their last helper
+returns; it falls back to the default quota because library callers never
+pass LoadFromCommand validation. The CLI keeps its logging wrapper.
+
+Document the library flow in the README metrics section and example. - ([7eb1211](https://github.com/mr-pmillz/gophlare/commit/7eb12116a836b34c0b680337682c164e805a0934))
+
+### 🚜 Refactor
+
+- Refactor: apply go fix modernizers and omitzero on struct-typed fields
+
+Run the Go 1.27 fixers with -omitzero=false so the omitempty deletions
+are decided per field instead of applied silently. interface{} becomes
+any, AddUserMetadata copies with maps.Copy, chunkUsers clamps with min,
+splitAndCleanSlice ranges over strings.SplitSeq, IsUserIDFormatMatch
+builds its pattern with strings.Builder, and ContainsExactMatch
+delegates to slices.Contains (kept, since it is exported SDK API).
+
+The four hand-written struct-typed fields tagged omitempty, which never
+omitted anything, now use omitzero so an unset value drops its key:
+BHCELoginResponse.Data, Data.Properties, Data.Meta, and
+HoardClientHostLeaksJSONL.ImportTimestamp. gophlare never marshals these
+types (the login response is decode-only, user data is written through
+the csv-tagged CSV writer, and the JSONL type is input-only), so the
+change only reaches callers that marshal them. flaretime.Time embeds
+time.Time, so omitzero uses its IsZero. A marshal test pins the
+behavior. The generated oapi-codegen models already carry
+omitempty,omitzero and are untouched.
+
+No code was orphaned: deadcode and unused output is identical before
+and after the run. - ([9327df2](https://github.com/mr-pmillz/gophlare/commit/9327df24254389596d17eec73a1c172fc9da5bdc))
+
+### 🧪 Testing
+
+- Test(search): make the valid cookie expiration case time-relative
+
+The case used a fixed epoch of 2026-10-05 as a not-yet-expired cookie, so
+the test started failing once that date passed. Use tomorrow instead. - ([8fe39d7](https://github.com/mr-pmillz/gophlare/commit/8fe39d774c22de35b924541727130f75ecbc7aa2))
+
+### ⚙️  Miscellaneous
+
+- Merge pull request #27 from mr-pmillz/feat/metrics2
+
+Feat/metrics2 add metrics to SDK - ([440b25d](https://github.com/mr-pmillz/gophlare/commit/440b25da959f70cb97aa9535544a5de7370280ed))
+- Ci(deps): bump the github-actions group with 5 updates
+
+Lands Dependabot #26 on the current branch, re-resolved against
+upstream on 2026-10-12. Every SHA is the peeled commit of its upstream
+tag and each target is still the newest release on its major.
+
+- orhun/git-cliff-action from 4.9.0 to 4.9.1 in the changelog and
+  release workflows (bumps the embedded git-cliff to 2.14.2).
+- dorny/test-reporter from 3.0.0 to 3.2.0 (adds a list-files input and
+  package updates; the floating v3 comment still resolves to the pinned
+  commit).
+- actions/upload-code-coverage from 1.4.2 to 1.4.4 (stops associating
+  pushes with fork PRs that share a branch name and prefers the
+  default-branch PR).
+- docker/setup-qemu-action from 4.3.0 to 4.4.0 and
+  docker/setup-buildx-action from 4.3.0 to 4.4.1 (actions-toolkit
+  updates and BuildKit pre-pull changes).
+
+None of the changes touch inputs this repo uses, so these are defensive
+bumps rather than fixes for anything we were affected by. actionlint
+passes.
+
+Rollback: git-cliff-action 3d96a18c, test-reporter a43b3a5f,
+upload-code-coverage d8e32911, setup-qemu-action 1f40c722,
+setup-buildx-action 37fe6310. - ([8f76d6a](https://github.com/mr-pmillz/gophlare/commit/8f76d6a1dad7d1e1c32847a6b12bab5eee1bb678))
+- Chore(pre-commit): run the lint and test hooks once, serially
+
+Both hooks call make targets that ignore filenames, but pre-commit still
+split the staged paths into parallel batches and ran each hook once per
+batch. golangci-lint refuses to start while another instance is running,
+so any commit touching more than a few files failed its lint hook. - ([8b6b50d](https://github.com/mr-pmillz/gophlare/commit/8b6b50d6c9640584aca1a2ba5921b1752fe304f2))
+- Merge pull request #25 from mr-pmillz/main
+
+sync main back to develop - ([02fe7bc](https://github.com/mr-pmillz/gophlare/commit/02fe7bc16999e702542a16ac7f1e2475736dac58))
+
 ## [1.4.4](https://github.com/mr-pmillz/gophlare/compare/v1.4.3...v1.4.4) - 2026-09-25
 
 ### ✨: New features
@@ -142,6 +234,10 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com> - ([d5bf529](https://git
 
 ### ⚙️  Miscellaneous
 
+- Merge pull request #24 from mr-pmillz/release/v1.4.4
+
+Release/v1.4.4 - ([d22b210](https://github.com/mr-pmillz/gophlare/commit/d22b21002c57fb0fc59622c93b5a9526dc511ef5))
+- Chore: update changelog - ([3f0cf9c](https://github.com/mr-pmillz/gophlare/commit/3f0cf9c980e10f8ae4068116250b38097e02f1c3))
 - Merge pull request #22 from mr-pmillz/api/updates
 
 Api/updates - ([6b2e9fd](https://github.com/mr-pmillz/gophlare/commit/6b2e9fd4448c4616b977823ccc3a6eee16e0b87a))
