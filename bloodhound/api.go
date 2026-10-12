@@ -21,7 +21,7 @@ type BHCELoginResponse struct {
 		UserID       string `json:"user_id,omitempty"`
 		AuthExpired  bool   `json:"auth_expired,omitempty"`
 		SessionToken string `json:"session_token,omitempty"`
-	} `json:"data,omitempty"`
+	} `json:"data,omitzero"`
 }
 
 // BHCEAPIOptions ...

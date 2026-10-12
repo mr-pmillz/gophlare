@@ -667,3 +667,46 @@ func TestInvalidMetricsEnvironmentIndirectionReturnsError(t *testing.T) {
 		})
 	}
 }
+
+// TestEnableMetricsSetsLibraryDefaults covers the library path, which never
+// passes through LoadFromCommand: a non-positive quota falls back to the
+// default and a fresh recorder is attached so ReportOnce is scoped to this run
+// rather than to the process-wide metrics.Default() recorder.
+func TestEnableMetricsSetsLibraryDefaults(t *testing.T) {
+	opts := &Options{}
+	opts.EnableMetrics(0)
+
+	if !opts.Metrics {
+		t.Fatal("Metrics = false, want true")
+	}
+	if opts.MonthlyQuota != metrics.DefaultMonthlyQuota {
+		t.Errorf("MonthlyQuota = %d, want default %d", opts.MonthlyQuota, metrics.DefaultMonthlyQuota)
+	}
+	if opts.MetricsRecorder == nil {
+		t.Fatal("MetricsRecorder = nil, want a fresh recorder")
+	}
+	if opts.MetricsRecorder == metrics.Default() {
+		t.Error("MetricsRecorder is the shared default recorder, want one owned by this Options")
+	}
+
+	other := &Options{}
+	other.EnableMetrics(0)
+	if other.MetricsRecorder == opts.MetricsRecorder {
+		t.Error("two Options share one recorder, want a recorder per EnableMetrics call")
+	}
+}
+
+// TestEnableMetricsKeepsCallerSettings confirms an explicit quota and a
+// caller-owned recorder survive EnableMetrics.
+func TestEnableMetricsKeepsCallerSettings(t *testing.T) {
+	recorder := metrics.NewRecorder()
+	opts := &Options{MetricsRecorder: recorder}
+	opts.EnableMetrics(25000)
+
+	if opts.MonthlyQuota != 25000 {
+		t.Errorf("MonthlyQuota = %d, want 25000", opts.MonthlyQuota)
+	}
+	if opts.MetricsRecorder != recorder {
+		t.Error("EnableMetrics replaced the caller's recorder")
+	}
+}

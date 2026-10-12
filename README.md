@@ -219,12 +219,19 @@ can also be supplied in config, using `GLOBAL_SEARCH_PAGE_SIZE` and
 `MONTHLY_QUOTA`; explicit CLI flags take precedence.
 
 Metrics are always collected; `--metrics` controls report emission. Each CLI
-invocation owns a recorder. Library callers of the search helpers can use
-`Options.MetricsRecorder` or the shared `metrics.Default()` recorder. Direct
-`phlare.NewFlareClient` callers opt in with `phlare.WithMetricsRecorder(recorder)`.
-A report is written on normal completion and reported search failures, using
-the resolved output directory. Paginated searches stop after five consecutive
-retries for a page, allowing failures to return and the report to be written.
+invocation owns a recorder. A report is written on normal completion and
+reported search failures, using the resolved output directory. Paginated
+searches stop after five consecutive retries for a page, allowing failures to
+return and the report to be written.
+
+Library callers opt in with `Options.EnableMetrics(monthlyQuota)` before
+running the search helpers (pass `0` for the default quota) and then call
+`search.ReportMetrics(opts)` once, after the last helper has returned. That
+prints the same table and writes `flare-api-metrics.json` to `Options.Output`.
+`EnableMetrics` keeps a recorder already set on `Options.MetricsRecorder` and
+otherwise attaches a fresh one, so each run reports only its own calls. Direct
+`phlare.NewFlareClient` callers opt in with `phlare.WithMetricsRecorder(recorder)`
+and render with `Recorder.ReportOnce`.
 
 ## gophlare as a library
 
@@ -258,6 +265,7 @@ func main() {
 	}
 	apiKeys := config.NewGoPhlareConfig("CHANGETHIS", 123456) // CHANGE-THIS
 	phlareOptions.APIKeys = apiKeys
+	phlareOptions.EnableMetrics(0) // report Flare API usage at the end of the run; 0 selects the default monthly quota
 
 	flareCreds, err := search.FlareLeaksDatabaseSearchByDomain(phlareOptions, domains)
 	if err != nil {
@@ -279,7 +287,11 @@ func main() {
 
 	if err = search.SearchEmailsInBulk(phlareOptions, scope.Emails); err != nil {
 		panic(err)
-    }
+	}
+
+	if err = search.ReportMetrics(phlareOptions); err != nil {
+		panic(err)
+	}
 }
 ```
 

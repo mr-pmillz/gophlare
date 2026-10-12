@@ -89,3 +89,61 @@ func TestSearchReportsToConfiguredOutputForEachInvocation(t *testing.T) {
 		}
 	}
 }
+
+// TestReportMetricsDefaultsQuotaForLibraryCallers covers the exported SDK
+// path. Library callers set Options fields directly and never pass
+// LoadFromCommand's positive-quota validation, so a zero quota must fall back
+// to the default rather than render a zero denominator.
+func TestReportMetricsDefaultsQuotaForLibraryCallers(t *testing.T) {
+	recorder := metrics.NewRecorder()
+	recorder.Record(metrics.Call{
+		Endpoint: metrics.EndpointASTPCredentialsSearch,
+		Entity:   "example.com",
+		Status:   200,
+	})
+
+	dir := t.TempDir()
+	err := ReportMetrics(&phlare.Options{
+		Metrics:         true,
+		MetricsRecorder: recorder,
+		Output:          dir,
+		Version:         "v0.0.0-test",
+	})
+	if err != nil {
+		t.Fatalf("ReportMetrics: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, metrics.MetricsJSONFileName))
+	if err != nil {
+		t.Fatalf("expected %s in the output dir: %v", metrics.MetricsJSONFileName, err)
+	}
+	var report metrics.Snapshot
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.MonthlyQuota != metrics.DefaultMonthlyQuota {
+		t.Errorf("monthly_quota = %d, want default %d", report.MonthlyQuota, metrics.DefaultMonthlyQuota)
+	}
+	if report.Totals.Calls != 1 {
+		t.Errorf("totals.calls = %d, want 1", report.Totals.Calls)
+	}
+	if report.Version != "v0.0.0-test" {
+		t.Errorf("version = %q, want %q", report.Version, "v0.0.0-test")
+	}
+}
+
+// TestReportMetricsDisabledIsNoop confirms the exported path still honours
+// Options.Metrics, so a library caller that never opts in writes nothing.
+func TestReportMetricsDisabledIsNoop(t *testing.T) {
+	dir := t.TempDir()
+	if err := ReportMetrics(&phlare.Options{Output: dir}); err != nil {
+		t.Fatalf("ReportMetrics: %v", err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("reading %s: %v", dir, err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("output dir has %d entries, want 0 when Metrics is unset", len(entries))
+	}
+}

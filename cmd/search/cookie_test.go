@@ -2,6 +2,7 @@ package search
 
 import (
 	"testing"
+	"time"
 )
 
 func TestCheckExpirationRFC3339(t *testing.T) {
@@ -13,8 +14,8 @@ func TestCheckExpirationRFC3339(t *testing.T) {
 		args args
 		want bool
 	}{
-		{name: "expired timestamp", args: args{epochTimestamp: 1609459200}, want: true}, // Friday, January 1, 2021 12:00:00 AM
-		{name: "valid timestamp", args: args{epochTimestamp: 1791210273}, want: false},  // Monday, October 5, 2026 2:24:33 PM
+		{name: "expired timestamp", args: args{epochTimestamp: 1609459200}, want: true},                           // Friday, January 1, 2021 12:00:00 AM
+		{name: "valid timestamp", args: args{epochTimestamp: time.Now().Add(24 * time.Hour).Unix()}, want: false}, // tomorrow, so the case cannot rot
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

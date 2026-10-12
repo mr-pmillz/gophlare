@@ -142,13 +142,13 @@ jobs:
         with:
           name: coverage-report
           path: coverage/
-      - uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3
+      - uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3
         with:
           name: Go Tests
           path: coverage/gotest.json
           reporter: golang-json
           fail-on-error: false
-      - uses: actions/upload-code-coverage@d8e329117199404bba6fc81efe8093dc7c015e34 # v1.4.2
+      - uses: actions/upload-code-coverage@2b21a77928be8d5168c2b9581a67f2adbebacc52 # v1.4.4
         if: needs.coverage.result == 'success'
         with:
           file: coverage/coverage.xml
