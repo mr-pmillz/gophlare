@@ -50,6 +50,25 @@ type Options struct {
 	SearchStealerLogsByWildcardHost bool
 }
 
+// EnableMetrics opts a library caller in to the Flare API usage report, the
+// equivalent of --metrics for the CLI. monthlyQuota is the Global Search quota
+// used as the report denominator; a non-positive value selects
+// metrics.DefaultMonthlyQuota. A caller-supplied MetricsRecorder is kept,
+// otherwise a fresh recorder is attached so the report covers this run alone
+// and is never suppressed by an earlier ReportOnce on the shared
+// metrics.Default() recorder. Call search.ReportMetrics once the last search
+// helper has returned.
+func (opts *Options) EnableMetrics(monthlyQuota int) {
+	opts.Metrics = true
+	if monthlyQuota <= 0 {
+		monthlyQuota = metrics.DefaultMonthlyQuota
+	}
+	opts.MonthlyQuota = monthlyQuota
+	if opts.MetricsRecorder == nil {
+		opts.MetricsRecorder = metrics.NewRecorder()
+	}
+}
+
 // todaysDate gets today's UTC date as YYYY-MM-DD.
 func todaysDate() string {
 	return time.Now().UTC().Format(time.DateOnly)
