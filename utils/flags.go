@@ -17,7 +17,7 @@ type LoadFromCommandOpts struct {
 	ReadFileLines        bool // When true and value is an existing file, read its contents as lines
 	CommaInStringToSlice bool
 	Prefix               string
-	Opts                 interface{}
+	Opts                 any
 }
 
 // splitAndCleanSlice takes a slice of strings and splits any elements that contain
@@ -27,16 +27,16 @@ func splitAndCleanSlice(input []string, splitOnComma bool) []string {
 	var result []string
 	for _, item := range input {
 		// First split on newlines
-		lines := strings.Split(item, "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(item, "\n")
+		for line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" {
 				continue
 			}
 			// Then split on commas if enabled
 			if splitOnComma && strings.Contains(line, ",") {
-				parts := strings.Split(line, ",")
-				for _, part := range parts {
+				parts := strings.SplitSeq(line, ",")
+				for part := range parts {
 					part = strings.TrimSpace(part)
 					if part != "" {
 						result = append(result, part)
@@ -61,7 +61,7 @@ func splitStringToSlice(s string, splitOnComma bool) []string {
 // Supports string, int, bool, and string slices (comma-separated or YAML list via Viper).
 //
 //nolint:gocognit
-func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (interface{}, error) {
+func ConfigureFlagOpts(cmd *cobra.Command, lfcOpts *LoadFromCommandOpts) (any, error) {
 	name := fmt.Sprintf("%s%s", lfcOpts.Prefix, lfcOpts.Flag)
 	upper := strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
 

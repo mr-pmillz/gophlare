@@ -54,7 +54,7 @@ func TestConfigureFlagOpts(t *testing.T) {
 		name               string
 		setupCmd           func() *cobra.Command
 		lfcOpts            *LoadFromCommandOpts
-		want               interface{}
+		want               any
 		wantErr            bool
 		checkNoSlashPrefix bool // special check to ensure no leading slash
 	}{
@@ -1235,7 +1235,7 @@ func TestConfigureFlagOpts_ReadFileLines_NonExistentFile(t *testing.T) {
 		name       string
 		value      string
 		commaSplit bool
-		want       interface{}
+		want       any
 	}{
 		{
 			name:       "comma-separated non-file value is split",
