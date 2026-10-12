@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mr-pmillz/gophlare/utils"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"maps"
 )
 
 type Neo4jDB struct {
@@ -45,16 +46,14 @@ func NewNeo4jDBConnection(neo4jOpts *Neo4jDBOptions) (*Neo4jDB, error) {
 }
 
 // AddUserMetadata adds custom metadata to a user in neo4j
-func (db *Neo4jDB) AddUserMetadata(username string, metadata map[string]interface{}) error {
+func (db *Neo4jDB) AddUserMetadata(username string, metadata map[string]any) error {
 	session := *db.Conn
-	props := make(map[string]interface{})
-	for k, v := range metadata {
-		props[k] = v
-	}
+	props := make(map[string]any)
+	maps.Copy(props, metadata)
 
 	_, err := session.Run(
 		"MATCH (u:User {name: $username}) SET u += $props",
-		map[string]interface{}{
+		map[string]any{
 			"username": username,
 			"props":    props,
 		})
@@ -138,7 +137,7 @@ func (db *Neo4jDB) GetAllUserData() (*BHCEUserData, error) {
 		if v, ok := props["pwdlastset"].(float64); ok {
 			userData.Properties.Pwdlastset = int64(v)
 		}
-		if v, ok := props["serviceprincipalnames"].([]interface{}); ok {
+		if v, ok := props["serviceprincipalnames"].([]any); ok {
 			userData.Properties.Serviceprincipalnames = v
 		}
 		if v, ok := props["hasspn"].(bool); ok {
@@ -174,7 +173,7 @@ func (db *Neo4jDB) GetAllUserData() (*BHCEUserData, error) {
 		if v, ok := props["admincount"].(bool); ok {
 			userData.Properties.Admincount = v
 		}
-		if v, ok := props["sidhistory"].([]interface{}); ok {
+		if v, ok := props["sidhistory"].([]any); ok {
 			userData.Properties.Sidhistory = v
 		}
 		if v, ok := props["objectid"].(string); ok {

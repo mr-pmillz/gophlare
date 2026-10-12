@@ -106,7 +106,7 @@ func UpdateBloodHoundUserData(opts *bloodhound.Options, data *bloodhound.BHCEUse
 				}
 			}
 			if markUserAsPotentiallyCompromised {
-				props := map[string]interface{}{
+				props := map[string]any{
 					"hasbreachdata":                user.Properties.HasBreachData,
 					"hasbreachdataafterpwdlastset": user.Properties.HasBreachDataAfterPwdLastSet,
 					"pwdlastsetbeforebreach":       user.Properties.PwdLastSetBeforeBreach,
@@ -281,7 +281,7 @@ func processUsersSequentially(users []bloodhound.Data, leaksByDomainAndIdentity 
 
 		domainKey := strings.ToLower(baseADDomain)
 		emailKey := strings.ToLower(user.Properties.Email)
-		breachedAtEpochDates := make([]interface{}, 0)
+		breachedAtEpochDates := make([]any, 0)
 		breachSourceIDs := make([]string, 0)
 
 		// Check if we have leaks for this domain and email with O(1) lookups
@@ -362,7 +362,7 @@ func processUsersInParallel(users []bloodhound.Data, leaksByDomainAndIdentity ma
 
 				domainKey := strings.ToLower(baseADDomain)
 				emailKey := strings.ToLower(user.Properties.Email)
-				breachedAtEpochDates := make([]interface{}, 0)
+				breachedAtEpochDates := make([]any, 0)
 				breachSourceIDs := make([]string, 0)
 
 				// Check if we have leaks for this domain and email with O(1) lookups
@@ -487,10 +487,7 @@ func chunkUsers(users []bloodhound.Data, numChunks int) [][]bloodhound.Data {
 
 	chunks := make([][]bloodhound.Data, 0, numChunks)
 	for i := 0; i < len(users); i += chunkSize {
-		end := i + chunkSize
-		if end > len(users) {
-			end = len(users)
-		}
+		end := min(i+chunkSize, len(users))
 		chunks = append(chunks, users[i:end])
 	}
 

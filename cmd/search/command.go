@@ -19,16 +19,33 @@ func usageRecorder(opts *phlare.Options) *metrics.Recorder {
 	return metrics.Default()
 }
 
-// reportMetrics emits the Flare API usage report. Safe to call more than once —
-// ReportOnce is sync.Once-guarded — and a no-op unless --metrics is set.
-func reportMetrics(opts *phlare.Options) {
-	if err := usageRecorder(opts).ReportOnce(metrics.ReportOptions{
+// ReportMetrics renders the Flare API usage report and writes
+// flare-api-metrics.json to opts.Output. It is the library counterpart of the
+// CLI end-of-run report: a no-op unless opts.Metrics is set (see
+// phlare.Options.EnableMetrics) and rendered at most once per recorder, so
+// call it after the last search helper rather than after each one. A
+// non-positive MonthlyQuota falls back to metrics.DefaultMonthlyQuota, since
+// library callers never pass LoadFromCommand validation.
+func ReportMetrics(opts *phlare.Options) error {
+	quota := opts.MonthlyQuota
+	if quota <= 0 {
+		quota = metrics.DefaultMonthlyQuota
+	}
+	return usageRecorder(opts).ReportOnce(metrics.ReportOptions{
 		Enabled:      opts.Metrics,
-		MonthlyQuota: opts.MonthlyQuota,
+		MonthlyQuota: quota,
 		OutputDir:    opts.Output,
 		Version:      opts.Version,
 		Colorize:     true,
-	}); err != nil {
+	})
+}
+
+// reportMetrics emits the report for the CLI, logging rather than returning a
+// failure so the fatal path still exits with its original message. Safe to
+// call more than once — ReportOnce is sync.Once-guarded — and a no-op unless
+// --metrics is set.
+func reportMetrics(opts *phlare.Options) {
+	if err := ReportMetrics(opts); err != nil {
 		utils.LogWarningf("could not write Flare API metrics report: %s\n", err.Error())
 	}
 }

@@ -39,7 +39,7 @@ func LogError(err error) error {
 }
 
 // LogWarningf logs a warning to stdout
-func LogWarningf(format string, args ...interface{}) {
+func LogWarningf(format string, args ...any) {
 	msgColor := color.New(color.FgHiYellow)
 	emoji := "⚠️ " // Warning
 	msg := fmt.Sprintf(format, args...)
@@ -50,20 +50,20 @@ func LogWarningf(format string, args ...interface{}) {
 }
 
 // LogFatalf is a wrapper around gologger Fatal method
-func LogFatalf(format string, args ...interface{}) {
+func LogFatalf(format string, args ...any) {
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelFatal)
 	gologger.Fatal().Msgf(format, args...)
 }
 
 // InfoLabelf ...
-func InfoLabelf(label, format string, args ...interface{}) {
+func InfoLabelf(label, format string, args ...any) {
 	gologger.DefaultLogger.SetMaxLevel(levels.LevelInfo)
 	gologger.Info().Label(label).Msgf(format, args...)
 }
 
 // InfoLabelWithColorf logs a message to stdout with the format msg color.
 // color choices are green red yellow and defaults to blue
-func InfoLabelWithColorf(label, colorString, format string, args ...interface{}) {
+func InfoLabelWithColorf(label, colorString, format string, args ...any) {
 	var msgColor *color.Color
 	var emoji string
 	switch {

@@ -253,7 +253,7 @@ func isPathSafe(baseDir, filePath string) (bool, error) {
 }
 
 // WriteStructToJSONFile ...
-func WriteStructToJSONFile(data interface{}, outputFile string) error {
+func WriteStructToJSONFile(data any, outputFile string) error {
 	outputFileDir := filepath.Dir(outputFile)
 	if err := os.MkdirAll(outputFileDir, 0750); err != nil {
 		return LogError(err)
@@ -271,7 +271,7 @@ func WriteStructToJSONFile(data interface{}, outputFile string) error {
 }
 
 // WriteStructToCSVFile ...
-func WriteStructToCSVFile(data interface{}, outputFile string) error {
+func WriteStructToCSVFile(data any, outputFile string) error {
 	outputFileDir := filepath.Dir(outputFile)
 	if err := os.MkdirAll(outputFileDir, 0750); err != nil {
 		return LogError(err)
@@ -292,7 +292,7 @@ func WriteStructToCSVFile(data interface{}, outputFile string) error {
 }
 
 // UnmarshalCSVFile ...
-func UnmarshalCSVFile(filePath string, data interface{}) error {
+func UnmarshalCSVFile(filePath string, data any) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return LogError(err)
@@ -314,7 +314,7 @@ func UnmarshalCSVFile(filePath string, data interface{}) error {
 }
 
 // UnmarshalJSONLines ...
-func UnmarshalJSONLines(inputFile string, outStruct interface{}) (interface{}, error) {
+func UnmarshalJSONLines(inputFile string, outStruct any) (any, error) {
 	t := reflect.TypeOf(outStruct)
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("provided interface is not a struct")
@@ -360,7 +360,7 @@ func UnmarshalJSONLines(inputFile string, outStruct interface{}) (interface{}, e
 }
 
 // UnmarshalJSONFile unmarshal a JSON file into a struct
-func UnmarshalJSONFile(filePath string, v interface{}) error {
+func UnmarshalJSONFile(filePath string, v any) error {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return LogError(err)
@@ -566,7 +566,7 @@ func CopyFile(src, dest string) error {
 // - Slices of maps
 //
 // The function flattens nested structures so that each string field gets its own column.
-func WriteInterfaceToCSV(data interface{}, outputCSVFilePath string) error {
+func WriteInterfaceToCSV(data any, outputCSVFilePath string) error {
 	// Create or truncate the output file
 	file, err := os.Create(outputCSVFilePath)
 	if err != nil {
@@ -972,7 +972,7 @@ func getFlattenedValues(val reflect.Value, headers []string) ([]string, error) {
 }
 
 // getNestedFieldValue retrieves a value from nested structs using dot notation
-func getNestedFieldValue(val reflect.Value, fieldPath []string) (interface{}, error) {
+func getNestedFieldValue(val reflect.Value, fieldPath []string) (any, error) {
 	if len(fieldPath) == 0 {
 		return val.Interface(), nil
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ func FormatDate(date string) (string, error) {
 }
 
 // EpochOrDateToTime converts an interface{} epoch timestamp (seconds since Unix epoch) to time.Time in UTC
-func EpochOrDateToTime(epoch interface{}) (time.Time, error) {
+func EpochOrDateToTime(epoch any) (time.Time, error) {
 	switch v := epoch.(type) {
 	case int:
 		return time.Unix(int64(v), 0).UTC(), nil
@@ -58,13 +59,13 @@ func EpochOrDateToTime(epoch interface{}) (time.Time, error) {
 
 // FindMostRecentEpoch returns the most recent (latest) epoch from a slice of epochs
 // relative to the current time. If all epochs are in the future, returns the closest one.
-func FindMostRecentEpoch(epochs []interface{}) (interface{}, error) {
+func FindMostRecentEpoch(epochs []any) (any, error) {
 	if len(epochs) == 0 {
 		return nil, fmt.Errorf("epochs slice cannot be empty")
 	}
 
 	now := time.Now().UTC()
-	var mostRecentEpoch interface{}
+	var mostRecentEpoch any
 	var mostRecentTime time.Time
 	var found bool
 
@@ -89,7 +90,7 @@ func FindMostRecentEpoch(epochs []interface{}) (interface{}, error) {
 	}
 
 	// If all epochs are in the future, find the closest one
-	var closestEpoch interface{}
+	var closestEpoch any
 	var smallestDiff time.Duration
 	found = false
 
@@ -115,7 +116,7 @@ func FindMostRecentEpoch(epochs []interface{}) (interface{}, error) {
 }
 
 // EpochToFloat64 ...
-func EpochToFloat64(epoch interface{}) (float64, error) {
+func EpochToFloat64(epoch any) (float64, error) {
 	switch v := epoch.(type) {
 	case int64:
 		return float64(v), nil
@@ -150,7 +151,7 @@ func EpochToFloat64(epoch interface{}) (float64, error) {
 // returns true if breachedAt is after passwordLastSet, false otherwise
 // returns the difference between breachedAt and passwordLastSet in string format
 // returns an error if the input is not a valid time.Time or epoch timestamp
-func CompareBreachedAtToPasswordLastSetDate(breachedAt, passwordLastSet interface{}) (bool, string, error) {
+func CompareBreachedAtToPasswordLastSetDate(breachedAt, passwordLastSet any) (bool, string, error) {
 	pwLastSetTime, err := EpochOrDateToTime(passwordLastSet)
 	if err != nil {
 		return false, "", err
@@ -238,20 +239,21 @@ func IsLikelyAnEncryptedValue(input string) bool {
 // IsUserIDFormatMatch ...
 func IsUserIDFormatMatch(credentialUsername, userIDFormat string) bool {
 	// Dynamically generate a regex pattern to match the userIDFormat
-	patternStr := "^"
+	var patternStr strings.Builder
+	patternStr.WriteString("^")
 	for _, char := range userIDFormat {
 		switch {
 		case char >= '0' && char <= '9':
-			patternStr += "\\d"
+			patternStr.WriteString("\\d")
 		case (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z'):
-			patternStr += "[a-zA-Z]"
+			patternStr.WriteString("[a-zA-Z]")
 		default:
-			patternStr += regexp.QuoteMeta(string(char))
+			patternStr.WriteString(regexp.QuoteMeta(string(char)))
 		}
 	}
-	patternStr += "$"
+	patternStr.WriteString("$")
 
-	pattern, err := regexp.Compile(patternStr)
+	pattern, err := regexp.Compile(patternStr.String())
 	if err != nil {
 		return false
 	}
@@ -317,13 +319,7 @@ func SanitizeString(str string) string {
 
 // ContainsExactMatch checks if a string exists within a slice
 func ContainsExactMatch(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(s, str)
 }
 
 // ContainsExactMatchLowercase checks if a string exists within a slice
