@@ -13,11 +13,15 @@ repos:
         name: GolangCI-Lint
         description: Runs golangci-lint
         entry: bash -c 'make -f Makefile lint'
+        pass_filenames: false
+        require_serial: true
         language: system
         stages: ["pre-commit", "pre-push"]
       - id: test
         name: Test
         description: Runs all Go tests
         entry: bash -c 'make -f Makefile test'
+        pass_filenames: false
+        require_serial: true
         language: system
         stages: ["pre-commit", "pre-push"]
