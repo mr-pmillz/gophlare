@@ -336,8 +336,10 @@ Request and response models for the Flare API are generated with
 | `flareapi/astp` | A spec hand-authored from Flare's ASTP pages, which have no published OpenAPI spec |
 | `flareapi/tokens` | A spec hand-authored from Flare's token pages |
 
-The three published JSON specs at the repository root are the generation
-source of truth. Hand-authored supplements live in `flareapi/openapi`.
+The three published JSON specs at the repository root are committed generation
+inputs. Commit refreshed snapshots together with their regenerated code; normal
+generation and tests never download live specs. Hand-authored supplements live
+in `flareapi/openapi`.
 All Firework packages include `ClientWithResponses` and every component
 schema (`skip-prune: true`); `flareapi.NewClient` authenticates all three clients.
 Timestamps use `flaretime.Time`, which

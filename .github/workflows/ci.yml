@@ -52,7 +52,7 @@ jobs:
           # v1.7.12 predates GitHub's native coverage permission. Ignore only
           # that known scope diagnostic; retain all other workflow checks.
           actionlint -color -ignore 'unknown permission scope "code-quality"'
-      - name: Test release branch policy
+      - name: Test repository policies
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 
   coverage:
