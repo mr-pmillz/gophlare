@@ -291,7 +291,7 @@ func TestGlobalSearchRequestBody(t *testing.T) {
 		t.Errorf("date filter = %#v, want %#v", body.Filters.EstimatedCreatedAt, want)
 	}
 	item := results.Items[0]
-	if string(item.Metadata.Type) != "stealer_log" || item.Metadata.UID != "stealer_log/x/1" || item.Highlights["description"][0] != "a" {
+	if string(item.Metadata.Type) != "stealer_log" || item.Metadata.UID != "stealer_log/x/1" || item.Highlights == nil || (*item.Highlights)["description"][0] != "a" {
 		t.Errorf("item = %+v", item)
 	}
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mr-pmillz/gophlare/cmd/api"
 	"github.com/mr-pmillz/gophlare/cmd/bloodhound"
 	"github.com/mr-pmillz/gophlare/cmd/docs"
 	"github.com/mr-pmillz/gophlare/cmd/search"
@@ -41,6 +42,8 @@ func init() {
 	RootCmd.AddCommand(search.Command)
 	RootCmd.AddCommand(bloodhound.Command)
 	RootCmd.AddCommand(docs.Command)
+	RootCmd.AddCommand(api.NewCommand())
+	RootCmd.AddCommand(api.ResourceCommands()...)
 }
 
 // initConfig reads in config file and ENV variables if set.

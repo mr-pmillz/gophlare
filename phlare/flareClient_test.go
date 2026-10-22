@@ -48,7 +48,11 @@ func TestClientRecordsAuthPaginationRetriesAndEntity(t *testing.T) {
 		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 			t.Error(err)
 		}
-		pageSizes = append(pageSizes, body.Size)
+		if body.Size == nil {
+			t.Error("missing page size")
+			return
+		}
+		pageSizes = append(pageSizes, *body.Size)
 		switch attempts.Add(1) {
 		case 1:
 			w.Header().Set(metrics.HeaderGlobalSearchesRemaining, "9999")
@@ -57,8 +61,8 @@ func TestClientRecordsAuthPaginationRetriesAndEntity(t *testing.T) {
 			w.Header().Set(metrics.HeaderGlobalSearchesRemaining, "9999")
 			_, _ = w.Write([]byte(`{"items":[],"next":"page-2"}`))
 		default:
-			if body.From != "page-2" {
-				t.Errorf("cursor = %q", body.From)
+			if cursor, err := body.From.Get(); err != nil || cursor != "page-2" {
+				t.Errorf("cursor = %v", body.From)
 			}
 			w.Header().Set(metrics.HeaderGlobalSearchesRemaining, "9998")
 			_, _ = w.Write([]byte(`{"items":[],"next":null}`))

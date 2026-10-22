@@ -21,6 +21,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
+      - name: Verify generated API code
+        run: |
+          make generate
+          git diff --exit-code -- flareapi
       - run: make fmt build
       - name: Verify module files
         run: |

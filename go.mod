@@ -1,6 +1,6 @@
 module github.com/mr-pmillz/gophlare
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/SpecterOps/bloodhound-go-sdk v1.0.1
@@ -9,9 +9,11 @@ require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
 	github.com/neo4j/neo4j-go-driver/v4 v4.4.8
+	github.com/oapi-codegen/nullable v1.1.0
 	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
 	github.com/oapi-codegen/runtime v1.7.0
 	github.com/projectdiscovery/gologger v1.1.73
+	github.com/rivo/uniseg v0.4.7
 	github.com/schollz/progressbar/v3 v3.19.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -52,7 +54,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/richardlehane/mscfb v1.0.7 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
