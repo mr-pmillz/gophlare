@@ -1,5 +1,8 @@
 # Dependency update — 2026-10-22
 
+This records the initial dependency refresh. The [CI remediation follow-up](#ci-remediation-follow-up)
+supersedes the original Excelize exception and addresses the missing spec inputs.
+
 Checked all 17 direct Go modules against the Go module proxy and all 14 distinct
 GitHub Actions against their upstream release tags. Targets stay on their
 existing module paths, major versions, and release channels. The other 15 Go
@@ -101,3 +104,36 @@ rulesets, App grants, and hosted release execution were not verified locally.
 
 Release publication and Docker builds were not run. No remote PR changes were
 made. The earlier [security review](dependency-security.md) remains historical.
+
+## CI remediation follow-up
+
+[Run 39866826398](https://github.com/mr-pmillz/gophlare/actions/runs/39866826398)
+failed generation, coverage tests, and vulnerability scanning; `CI checks`
+correctly failed because it depends on those jobs. Public job metadata and
+clean-source reproductions identified two causes:
+
+- The root `*.json` ignore rule excluded all three Firework OpenAPI inputs.
+  A tracked-files-only export failed `make generate` with missing-spec errors
+  and failed `TestOperationsMatchSpecs` for the same reason. The three public
+  snapshots are now included with exact root-level ignore exceptions. Their
+  JSON content matches Flare's published specs, and generation does not change
+  the checked-in clients. Regression tests verify snapshot availability and
+  keep unrelated JSON output and tenant configuration ignored.
+- With explicit approval, Excelize is pinned to
+  `v2.11.1-0.20261020033641-611b222fd8f7` rather than the vulnerable stable tag.
+  Go's module tooling also selects its required `mscfb v1.0.8`, `efp v0.0.2`,
+  and `x/image v0.44.0`. The project stays on Go 1.27.3. Both package- and
+  symbol-level scans now report zero affected vulnerabilities; the unrelated,
+  unimported OpenPGP module advisory remains visible without failing either
+  check. No security gate or advisory suppression was added.
+
+Validation uses a fresh source snapshot containing only Git-visible files,
+not the original checkout's ignored inputs. Generation, build, module checks,
+full race/coverage tests, and all five repository-policy tests pass. The patched
+Excelize version also passes CSV-to-XLSX export/readback, vet, golangci-lint,
+and all four release-target builds. Workflow lint passes with the existing
+documented permission-scope exception; workflow execution and permissions are
+unchanged apart from renaming the policy-test step to reflect its broader tests.
+
+These are local validation results, not a successful rerun of the hosted jobs.
+The fixes must reach the PR branch before GitHub can validate them.
