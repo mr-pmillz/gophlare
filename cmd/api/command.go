@@ -85,7 +85,7 @@ func addFlags(command *cobra.Command) *options {
 	flags.StringVarP(&settings.format, "format", "f", "table", "Output format: table or json")
 	flags.StringSliceVar(&settings.columns, "columns", nil, "Table columns, comma-separated; supports nested keys such as metadata.uid")
 	flags.BoolVar(&settings.wide, "wide", false, "Do not truncate table cells")
-	flags.StringVar(&settings.outputFile, "output-file", "", "Write raw response to a new file (0600); use - for stdout")
+	flags.StringVar(&settings.outputFile, "output-file", "", "Write raw response to a new file (0600, retained on failure); use - for stdout")
 	flags.BoolVar(&settings.all, "all", false, "Collect cursor pages into one items array (may consume API quota)")
 	flags.IntVar(&settings.maxPages, "max-pages", 1000, "Maximum pages with --all; the last pagination cursor is retained")
 	flags.DurationVar(&settings.pageDelay, "page-delay", time.Second, "Delay between pages with --all")
@@ -316,7 +316,7 @@ func writeFile(command *cobra.Command, path string, response func() (io.ReadClos
 	}
 	reader, err := response()
 	if err != nil {
-		return errors.Join(err, file.Close(), os.Remove(path))
+		return fmt.Errorf("request failed; output file %q was not removed: %w", path, errors.Join(err, file.Close()))
 	}
 	_, copyError := io.Copy(file, reader)
 	if err := errors.Join(copyError, reader.Close(), file.Close()); err != nil {

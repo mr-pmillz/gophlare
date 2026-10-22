@@ -163,11 +163,14 @@ gophlare reports download --report-id 123 --output-file - > report.pdf
 
 Output files are exclusively created with mode `0600` **before authentication or
 API requests**, including with `--all`. Existing files, symlinks, and invalid
-destinations fail before any remote action. If the request fails before response
-copying begins, the empty reservation is removed; API error bodies are not saved
-as successful downloads. An interrupted download or disk write failure may leave
-a partial file and returns an error. Such failures can occur after a remote
-mutation has succeeded: check server state before retrying a write operation.
+destinations fail before any remote action. On request failure, the reservation
+is closed but **not automatically removed**, even if empty: deleting the pathname
+after a network wait could delete a file another process placed there. The error
+identifies the output path; API error bodies are not saved as successful downloads.
+An interrupted download or disk write failure may leave a partial file and returns
+an error. Such failures can occur after a remote mutation has succeeded: check
+server state before retrying a write operation. Use a new output path on retry,
+or inspect the retained file before removing it yourself.
 `--output-file` saves
 raw bytes rather than formatted output; combined with `--all`, it saves the
 aggregated JSON. Cross-origin redirects are intentionally rejected; fetch a

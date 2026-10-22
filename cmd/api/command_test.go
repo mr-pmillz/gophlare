@@ -222,7 +222,7 @@ func invalidOutputPath(test *testing.T, kind string) string {
 	return path
 }
 
-func TestDownloadReservationAndCleanup(test *testing.T) {
+func TestDownloadReservationAndRetention(test *testing.T) {
 	test.Parallel()
 	for _, fixture := range []struct {
 		name      string
@@ -269,17 +269,137 @@ func TestDownloadReservationAndCleanup(test *testing.T) {
 			if (err != nil) != fixture.wantError {
 				test.Fatalf("error=%v, wantError=%v", err, fixture.wantError)
 			}
-			if fixture.wantError {
-				if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
-					test.Fatalf("failed request left reserved file: %v", err)
-				}
-				return
-			}
-			contents, err := os.ReadFile(path)
-			if err != nil || string(contents) != fixture.body {
-				test.Fatalf("output=%q, error=%v", contents, err)
-			}
+			checkDownloadOutput(test, path, fixture.body, err)
 		})
+	}
+}
+
+func checkDownloadOutput(test *testing.T, path, want string, requestError error) {
+	test.Helper()
+	info, err := os.Stat(path)
+	if err != nil || info.Mode().Perm() != 0600 {
+		test.Fatalf("output reservation or permissions lost: info=%v error=%v", info, err)
+	}
+	if requestError != nil {
+		want = ""
+		if !strings.Contains(requestError.Error(), "not removed") {
+			test.Fatalf("missing output retention diagnostic: %v", requestError)
+		}
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil || string(contents) != want {
+		test.Fatalf("output=%q, want=%q, error=%v", contents, want, err)
+	}
+}
+
+func TestDownloadFailurePreservesChangedDestination(test *testing.T) {
+	test.Parallel()
+	for _, failureMode := range []string{"HTTP", "authentication", "aggregation", "cancellation"} {
+		for _, replacement := range []string{"file", "parent directory", "parent symlink", "in-place write"} {
+			test.Run(failureMode+"/"+replacement, func(test *testing.T) {
+				testDownloadFailurePreservesChangedDestination(test, failureMode, replacement)
+			})
+		}
+	}
+}
+
+func testDownloadFailurePreservesChangedDestination(test *testing.T, failureMode, replacement string) {
+	test.Helper()
+	test.Parallel()
+	parent := filepath.Join(test.TempDir(), "exports")
+	if err := os.Mkdir(parent, 0700); err != nil {
+		test.Fatal(err)
+	}
+	destination := filepath.Join(parent, "result.json")
+	const contents = "another process's completed report"
+	ctx, cancel := context.WithCancel(test.Context())
+	defer cancel()
+	var changed atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if err := changeDownloadDestination(destination, replacement, []byte(contents)); err != nil {
+			test.Errorf("change destination: %v", err)
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		changed.Store(true)
+		writer.Header().Set("Content-Type", "application/json")
+		switch failureMode {
+		case "aggregation":
+			_, _ = io.WriteString(writer, `{"items":[],"next":123}`)
+		case "cancellation":
+			cancel()
+			<-request.Context().Done()
+		default:
+			writer.WriteHeader(http.StatusForbidden)
+			_, _ = io.WriteString(writer, `{"detail":"fixture denied"}`)
+		}
+	}))
+	defer server.Close()
+	apiKey, token := "", "fixture"
+	if failureMode == "authentication" {
+		apiKey, token = "fixture", ""
+	}
+	arguments := []string{"v4", "list_identifiers_identifiers__get", "--output-file", destination, "--api-key", apiKey, "--api-token", token, "--auth-tenant-id", "0", "--base-url", server.URL}
+	if failureMode == "aggregation" {
+		arguments = append(arguments, "--all", "--page-delay", "0s")
+	}
+	command := NewCommand()
+	command.SetOut(io.Discard)
+	command.SetErr(io.Discard)
+	command.SetArgs(arguments)
+	err := command.ExecuteContext(ctx)
+	if err == nil || !changed.Load() {
+		test.Fatalf("expected request failure after destination change: changed=%v error=%v", changed.Load(), err)
+	}
+	actual, readError := os.ReadFile(destination)
+	if readError != nil || string(actual) != contents {
+		test.Fatalf("changed output was removed or modified: contents=%q readError=%v requestError=%v", actual, readError, err)
+	}
+	if !strings.Contains(err.Error(), "not removed") {
+		test.Fatalf("missing output retention diagnostic: %v", err)
+	}
+	if failureMode == "cancellation" && !errors.Is(err, context.Canceled) {
+		test.Fatalf("cancellation error lost: %v", err)
+	}
+	if failureMode == "HTTP" || failureMode == "authentication" {
+		var apiError *flareapi.APIError
+		if !errors.As(err, &apiError) || apiError.StatusCode != http.StatusForbidden {
+			test.Fatalf("API error lost: %v", err)
+		}
+	}
+}
+
+func changeDownloadDestination(destination, replacement string, contents []byte) error {
+	switch replacement {
+	case "file":
+		candidate := destination + ".replacement"
+		if err := os.WriteFile(candidate, contents, 0600); err != nil {
+			return err
+		}
+		return os.Rename(candidate, destination)
+	case "parent directory", "parent symlink":
+		parent := filepath.Dir(destination)
+		if err := os.Rename(parent, parent+".reserved"); err != nil {
+			return err
+		}
+		newParent := parent
+		if replacement == "parent symlink" {
+			newParent += ".replacement"
+		}
+		if err := os.Mkdir(newParent, 0700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(newParent, filepath.Base(destination)), contents, 0600); err != nil {
+			return err
+		}
+		if replacement == "parent symlink" {
+			return os.Symlink(newParent, parent)
+		}
+		return nil
+	case "in-place write":
+		return os.WriteFile(destination, contents, 0600)
+	default:
+		return fmt.Errorf("unknown replacement mode %q", replacement)
 	}
 }
 
