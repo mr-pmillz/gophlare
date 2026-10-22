@@ -66,3 +66,44 @@ type failingWriter struct{}
 func (failingWriter) Write([]byte) (int, error) {
 	return 0, errors.New("fixture write error")
 }
+
+func TestWriteResourceEnvelopes(test *testing.T) {
+	test.Parallel()
+	for _, fixture := range []struct {
+		name  string
+		body  string
+		key   string
+		want  string
+		count string
+	}{
+		{"group object", `{"assets_groups":{"id":7,"name":"Production"}}`, "assets_groups", "Production", "1 result(s)"},
+		{"group array", `{"assets_groups":[{"id":7,"name":"Production"},{"id":8,"name":"Staging"}]}`, "assets_groups", "Staging", "2 result(s)"},
+		{"alert object", `{"alerts":{"id":9,"name":"Production"}}`, "alerts", "Production", "1 result(s)"},
+		{"alert array", `{"alerts":[{"id":9,"name":"Production"},{"id":10,"name":"Staging"}]}`, "alerts", "Staging", "2 result(s)"},
+		{"empty array", `{"alerts":[]}`, "alerts", "No results.", ""},
+		{"empty object", `{"assets_groups":{}}`, "assets_groups", "No results.", ""},
+		{"null", `{"alerts":null}`, "alerts", "No results.", ""},
+		{"unwrapped", `[{"id":7,"name":"Production"}]`, "assets_groups", "Production", "1 result(s)"},
+		{"alternate envelope", `{"items":[{"id":7,"name":"Production"}]}`, "assets_groups", "Production", "1 result(s)"},
+		{"nested field not envelope", `{"id":7,"name":"Production","alerts":[{"id":9,"name":"Hidden"}]}`, "", "Production", "1 result(s)"},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			for _, columns := range [][]string{nil, {"id", "name"}} {
+				var buffer bytes.Buffer
+				if err := Write(&buffer, []byte(fixture.body), Options{Format: "table", RootKey: fixture.key, Columns: columns}); err != nil {
+					test.Fatal(err)
+				}
+				if !strings.Contains(buffer.String(), fixture.want) || !strings.Contains(buffer.String(), fixture.count) {
+					test.Fatalf("columns=%v: missing rows in output:\n%s", columns, buffer.String())
+				}
+			}
+			var formatted, compact bytes.Buffer
+			if err := Write(&formatted, []byte(fixture.body), Options{Format: "json", RootKey: fixture.key}); err != nil {
+				test.Fatal(err)
+			}
+			if err := json.Compact(&compact, formatted.Bytes()); err != nil || compact.String() != fixture.body {
+				test.Fatalf("JSON envelope changed: %s, %v", formatted.String(), err)
+			}
+		})
+	}
+}

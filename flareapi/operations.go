@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -22,18 +23,20 @@ type Parameter struct {
 }
 
 type Operation struct {
-	Version      string      `json:"version"`
-	ID           string      `json:"operation_id"`
-	Method       string      `json:"method"`
-	Path         string      `json:"path"`
-	Summary      string      `json:"summary,omitempty"`
-	Description  string      `json:"description,omitempty"`
-	Parameters   []Parameter `json:"parameters,omitempty"`
-	HasBody      bool        `json:"has_body"`
-	BodyRequired bool        `json:"body_required"`
-	BodySchema   string      `json:"body_schema,omitempty"`
-	Deprecated   bool        `json:"deprecated"`
-	PageIn       string      `json:"page_in,omitempty"`
+	Version      string            `json:"version"`
+	ID           string            `json:"operation_id"`
+	Method       string            `json:"method"`
+	Path         string            `json:"path"`
+	Summary      string            `json:"summary,omitempty"`
+	Description  string            `json:"description,omitempty"`
+	Parameters   []Parameter       `json:"parameters,omitempty"`
+	HasBody      bool              `json:"has_body"`
+	BodyRequired bool              `json:"body_required"`
+	BodySchema   string            `json:"body_schema,omitempty"`
+	Deprecated   bool              `json:"deprecated"`
+	PageIn       string            `json:"page_in,omitempty"`
+	PageCursors  map[string]string `json:"page_cursors,omitempty"`
+	ResponseKey  string            `json:"response_key,omitempty"`
 	build        func(string, Request, io.Reader) (*http.Request, error)
 }
 
@@ -46,6 +49,7 @@ func Operations() []Operation {
 	result := slices.Clone(operationDefinitions)
 	for index := range result {
 		result[index].Parameters = slices.Clone(result[index].Parameters)
+		result[index].PageCursors = maps.Clone(result[index].PageCursors)
 	}
 	return result
 }
@@ -53,6 +57,8 @@ func Operations() []Operation {
 func FindOperation(version, identifier string) (Operation, error) {
 	for _, operation := range operationDefinitions {
 		if operation.Version == version && operation.ID == identifier {
+			operation.Parameters = slices.Clone(operation.Parameters)
+			operation.PageCursors = maps.Clone(operation.PageCursors)
 			return operation, nil
 		}
 	}

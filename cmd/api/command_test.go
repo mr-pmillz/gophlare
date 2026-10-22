@@ -2,7 +2,9 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mr-pmillz/gophlare/flareapi"
@@ -85,10 +88,10 @@ func TestResourceCommands(t *testing.T) {
 		path string
 		body string
 	}{
-		{"groups", []string{"identifier-groups", "list"}, "/firework/v2/assets/groups/", `{"items":[{"id":7,"name":"Production"}]}`},
+		{"groups", []string{"identifier-groups", "list"}, "/firework/v2/assets/groups/", `{"assets_groups":{"id":7,"name":"Production","feed_id":123,"feed_owner_id":456}}`},
 		{"identifiers", []string{"identifiers", "list", "--is-disabled", "false", "--types", "domain", "--types", "keyword"}, "/firework/v4/identifiers/", `{"items":[{"id":8,"name":"Production","is_disabled":false}],"next":null}`},
-		{"alerts", []string{"alerts", "list", "--asset-id", "8"}, "/firework/v2/assets/8/alerts", `{"items":[{"id":9,"name":"Production","type":"email","frequency":60}]}`},
-		{"group alerts", []string{"group-alerts", "list", "--assets-group-id", "7"}, "/firework/v2/assets/groups/7/alerts", `[{"id":9,"name":"Production"}]`},
+		{"alerts", []string{"alerts", "list", "--asset-id", "8"}, "/firework/v2/assets/8/alerts", `{"alerts":{"id":9,"name":"Production","type":"email","frequency":60}}`},
+		{"group alerts", []string{"group-alerts", "list", "--assets-group-id", "7"}, "/firework/v2/assets/groups/7/alerts", `{"alerts":[{"id":9,"name":"Production"}]}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -150,11 +153,181 @@ func TestRequestBodySourcesAndDownloads(t *testing.T) {
 			if err != nil || info.Mode().Perm() != 0600 {
 				t.Fatalf("download permissions: %v, %v", info, err)
 			}
-			if err := writeFile(command, outputPath, strings.NewReader("overwrite")); err == nil {
+			if err := writeFile(command, outputPath, func() (io.ReadCloser, error) {
+				t.Fatal("existing file must be rejected before obtaining a response")
+				return nil, nil
+			}); err == nil {
 				t.Fatal("overwrote existing download")
 			}
 		})
 	}
+}
+
+func TestOutputDestinationValidatedBeforeRequests(test *testing.T) {
+	test.Parallel()
+	for _, mode := range []string{"stream", "all"} {
+		for _, kind := range []string{"existing file", "directory", "missing parent", "symlink"} {
+			test.Run(mode+"/"+kind, func(test *testing.T) {
+				test.Parallel()
+				path := invalidOutputPath(test, kind)
+				var calls atomic.Int32
+				server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+					calls.Add(1)
+					writer.WriteHeader(http.StatusInternalServerError)
+				}))
+				defer server.Close()
+				arguments := []string{"v2", "post_assets_groups", "--body", `{"name":"Production"}`}
+				if mode == "all" {
+					arguments = []string{"v4", "global_search_events_global__search_post", "--body", `{}`, "--all"}
+				}
+				command := NewCommand()
+				command.SetOut(io.Discard)
+				command.SetErr(io.Discard)
+				command.SetArgs(append(arguments, "--output-file", path, "--api-key", "fixture", "--api-token", "", "--auth-tenant-id", "0", "--base-url", server.URL))
+				if err := command.ExecuteContext(test.Context()); err == nil {
+					test.Fatal("expected invalid output destination error")
+				}
+				if calls.Load() != 0 {
+					test.Fatalf("invalid destination caused %d authentication/API requests", calls.Load())
+				}
+				if kind == "existing file" {
+					contents, err := os.ReadFile(path)
+					if err != nil || string(contents) != "original" {
+						test.Fatalf("existing file changed: %q, %v", contents, err)
+					}
+				}
+			})
+		}
+	}
+}
+
+func invalidOutputPath(test *testing.T, kind string) string {
+	test.Helper()
+	directory := test.TempDir()
+	path := filepath.Join(directory, "result.json")
+	switch kind {
+	case "existing file":
+		if err := os.WriteFile(path, []byte("original"), 0600); err != nil {
+			test.Fatal(err)
+		}
+	case "directory":
+		path = directory
+	case "missing parent":
+		path = filepath.Join(directory, "missing", "result.json")
+	case "symlink":
+		if err := os.Symlink(filepath.Join(directory, "missing-target"), path); err != nil {
+			test.Skipf("symlinks unavailable: %v", err)
+		}
+	}
+	return path
+}
+
+func TestDownloadReservationAndCleanup(test *testing.T) {
+	test.Parallel()
+	for _, fixture := range []struct {
+		name      string
+		status    int
+		body      string
+		all       bool
+		cancel    bool
+		wantError bool
+	}{
+		{"success", 200, `{"items":[{"id":1}],"next":null}`, false, false, false},
+		{"empty success", 204, "", false, false, false},
+		{"HTTP failure", 403, `{"detail":"denied"}`, false, false, true},
+		{"aggregate success", 200, `{"items":[{"id":1}],"next":null}`, true, false, false},
+		{"aggregate decode failure", 200, `{"items":[],"next":42}`, true, false, true},
+		{"canceled", 200, `{}`, false, true, true},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			path := filepath.Join(test.TempDir(), "result.json")
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				info, err := os.Stat(path)
+				if err != nil {
+					test.Errorf("output not reserved before request: %v", err)
+				} else if info.Mode().Perm() != 0600 || info.Size() != 0 {
+					test.Errorf("invalid reservation: permissions=%v, size=%d", info.Mode().Perm(), info.Size())
+				}
+				writer.WriteHeader(fixture.status)
+				_, _ = io.WriteString(writer, fixture.body)
+			}))
+			defer server.Close()
+			command := NewCommand()
+			command.SetOut(io.Discard)
+			command.SetErr(io.Discard)
+			arguments := []string{"v4", "global_search_events_global__search_post", "--body", `{}`, "--output-file", path, "--api-key", "", "--api-token", "fixture", "--auth-tenant-id", "0", "--base-url", server.URL}
+			if fixture.all {
+				arguments = append(arguments, "--all", "--page-delay", "0s")
+			}
+			command.SetArgs(arguments)
+			ctx, cancel := context.WithCancel(test.Context())
+			defer cancel()
+			if fixture.cancel {
+				cancel()
+			}
+			err := command.ExecuteContext(ctx)
+			if (err != nil) != fixture.wantError {
+				test.Fatalf("error=%v, wantError=%v", err, fixture.wantError)
+			}
+			if fixture.wantError {
+				if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+					test.Fatalf("failed request left reserved file: %v", err)
+				}
+				return
+			}
+			contents, err := os.ReadFile(path)
+			if err != nil || string(contents) != fixture.body {
+				test.Fatalf("output=%q, error=%v", contents, err)
+			}
+		})
+	}
+}
+
+func TestWriteFilePreservesPartialDataAndErrors(test *testing.T) {
+	test.Parallel()
+	failure := errors.New("fixture transfer failure")
+	for _, path := range []string{filepath.Join(test.TempDir(), "partial.bin"), "-"} {
+		test.Run(filepath.Base(path), func(test *testing.T) {
+			reader := &failingResponseReader{failure: failure}
+			var stdout bytes.Buffer
+			command := &cobra.Command{}
+			command.SetOut(&stdout)
+			err := writeFile(command, path, func() (io.ReadCloser, error) { return reader, nil })
+			if !errors.Is(err, failure) || !reader.closed {
+				test.Fatalf("transfer error or close lost: error=%v closed=%v", err, reader.closed)
+			}
+			contents := stdout.Bytes()
+			if path != "-" {
+				var readError error
+				contents, readError = os.ReadFile(path)
+				if readError != nil {
+					test.Fatal(readError)
+				}
+			}
+			if string(contents) != "partial" {
+				test.Fatalf("partial data lost: %q", contents)
+			}
+		})
+	}
+}
+
+type failingResponseReader struct {
+	failure error
+	sent    bool
+	closed  bool
+}
+
+func (reader *failingResponseReader) Read(destination []byte) (int, error) {
+	if reader.sent {
+		return 0, reader.failure
+	}
+	reader.sent = true
+	return copy(destination, "partial"), reader.failure
+}
+
+func (reader *failingResponseReader) Close() error {
+	reader.closed = true
+	return nil
 }
 
 func TestValidationBeforeHTTP(t *testing.T) {
@@ -218,6 +391,44 @@ func TestClientConfigPrecedence(t *testing.T) {
 			command.SetArgs(test.args)
 			if err := command.ExecuteContext(t.Context()); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestCursorMessagesAndRawJSON(test *testing.T) {
+	test.Parallel()
+	for _, fixture := range []struct {
+		name   string
+		args   []string
+		body   string
+		resume string
+	}{
+		{"legacy query", []string{"v2", "get_search"}, `{"items":[],"search_after":"resume\u001b[31m"}`, "--search-after"},
+		{"modern query", []string{"v4", "list_identifiers_identifiers__get"}, `{"items":[],"next":"resume"}`, "--from"},
+		{"body", []string{"v4", "global_search_events_global__search_post", "--body", `{}`}, `{"items":[],"next":"resume"}`, "JSON body's from field"},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				_, _ = io.WriteString(writer, fixture.body)
+			}))
+			defer server.Close()
+			for _, format := range []string{"table", "json"} {
+				command := NewCommand()
+				var stdout, stderr bytes.Buffer
+				command.SetOut(&stdout)
+				command.SetErr(&stderr)
+				command.SetArgs(append(fixture.args, "--api-key", "", "--api-token", "fixture", "--auth-tenant-id", "0", "--base-url", server.URL, "--format", format, "--all", "--max-pages", "1"))
+				if err := command.ExecuteContext(test.Context()); err != nil {
+					test.Fatal(err)
+				}
+				if format == "json" {
+					if !json.Valid(stdout.Bytes()) || stderr.Len() != 0 || !strings.Contains(stdout.String(), "resume") {
+						test.Fatalf("invalid JSON/cursor output: stdout=%s stderr=%s", stdout.String(), stderr.String())
+					}
+				} else if !strings.Contains(stderr.String(), fixture.resume) || strings.ContainsRune(stderr.String(), '\x1b') || strings.Contains(stdout.String(), "resume") {
+					test.Fatalf("incorrect cursor guidance: stdout=%s stderr=%q", stdout.String(), stderr.String())
+				}
 			}
 		})
 	}

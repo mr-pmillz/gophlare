@@ -499,9 +499,11 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 	postBody := &FlareEventsGlobalSearchBodyParams{
 		Size: &size,
 		Filters: &Filters{
-			Type:               &eventFilterTypes,
 			EstimatedCreatedAt: &dateFilter,
 		},
+	}
+	if len(eventFilterTypes) > 0 {
+		postBody.Filters.Type = &eventFilterTypes
 	}
 	if err := postBody.Query.FromQueryStringQuery(Query{QueryString: queryString}); err != nil {
 		return nil, utils.LogError(err)

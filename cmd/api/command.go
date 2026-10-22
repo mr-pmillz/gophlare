@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -85,7 +87,7 @@ func addFlags(command *cobra.Command) *options {
 	flags.BoolVar(&settings.wide, "wide", false, "Do not truncate table cells")
 	flags.StringVar(&settings.outputFile, "output-file", "", "Write raw response to a new file (0600); use - for stdout")
 	flags.BoolVar(&settings.all, "all", false, "Collect cursor pages into one items array (may consume API quota)")
-	flags.IntVar(&settings.maxPages, "max-pages", 1000, "Maximum pages with --all; the last next cursor is retained")
+	flags.IntVar(&settings.maxPages, "max-pages", 1000, "Maximum pages with --all; the last pagination cursor is retained")
 	flags.DurationVar(&settings.pageDelay, "page-delay", time.Second, "Delay between pages with --all")
 	return settings
 }
@@ -227,8 +229,8 @@ func runOperation(command *cobra.Command, operation flareapi.Operation, settings
 	if err != nil {
 		return err
 	}
-	if settings.outputFile != "" && !settings.all {
-		return download(command, client, operation, input, settings.outputFile)
+	if settings.outputFile != "" {
+		return download(command, client, operation, input, settings)
 	}
 	var response *flareapi.Response
 	if settings.all {
@@ -239,18 +241,25 @@ func runOperation(command *cobra.Command, operation flareapi.Operation, settings
 	if err != nil {
 		return err
 	}
-	if settings.outputFile != "" {
-		return writeFile(command, settings.outputFile, strings.NewReader(string(response.Body)))
-	}
 	if settings.format == "table" {
-		var page struct {
-			Next json.RawMessage `json:"next"`
-		}
-		if json.Unmarshal(response.Body, &page) == nil && len(page.Next) > 0 && string(page.Next) != "null" && string(page.Next) != `""` {
-			fmt.Fprintf(command.ErrOrStderr(), "More results available; next=%s (use --all or --from where supported).\n", page.Next)
-		}
+		printCursor(command, operation, response.Body)
 	}
-	return output.Write(command.OutOrStdout(), response.Body, settings.outputOptions())
+	format := settings.outputOptions()
+	format.RootKey = operation.ResponseKey
+	return output.Write(command.OutOrStdout(), response.Body, format)
+}
+
+func printCursor(command *cobra.Command, operation flareapi.Operation, body []byte) {
+	field, value, err := operation.NextCursor(body)
+	if err != nil || value == "" {
+		return
+	}
+	parameter := operation.PageCursors[field]
+	resume := "--" + parameterFlag(parameter)
+	if operation.PageIn == "body" {
+		resume = "the JSON body's " + parameter + " field"
+	}
+	fmt.Fprintf(command.ErrOrStderr(), "More results available; %s=%q (use --all or %s).\n", field, value, resume)
 }
 
 func (settings *options) clientConfig(command *cobra.Command) flareapi.Config {
@@ -275,28 +284,43 @@ func (settings *options) clientConfig(command *cobra.Command) flareapi.Config {
 	return flareapi.Config{APIKey: apiKey, Token: token, TenantID: tenantID, BaseURL: settings.baseURL, Timeout: settings.timeout}
 }
 
-func download(command *cobra.Command, client *flareapi.Client, operation flareapi.Operation, input flareapi.Request, path string) error {
-	response, err := client.Execute(command.Context(), operation, input)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	return writeFile(command, path, response.Body)
+func download(command *cobra.Command, client *flareapi.Client, operation flareapi.Operation, input flareapi.Request, settings *options) error {
+	return writeFile(command, settings.outputFile, func() (io.ReadCloser, error) {
+		if settings.all {
+			response, err := client.Collect(command.Context(), operation, input, settings.maxPages, settings.pageDelay)
+			if err != nil {
+				return nil, err
+			}
+			return io.NopCloser(bytes.NewReader(response.Body)), nil
+		}
+		response, err := client.Execute(command.Context(), operation, input)
+		if err != nil {
+			return nil, err
+		}
+		return response.Body, nil
+	})
 }
 
-func writeFile(command *cobra.Command, path string, reader io.Reader) error {
+func writeFile(command *cobra.Command, path string, response func() (io.ReadCloser, error)) error {
 	if path == "-" {
-		_, err := io.Copy(command.OutOrStdout(), reader)
-		return err
+		reader, err := response()
+		if err != nil {
+			return err
+		}
+		_, copyError := io.Copy(command.OutOrStdout(), reader)
+		return errors.Join(copyError, reader.Close())
 	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare output file: %w", err)
+	}
+	reader, err := response()
+	if err != nil {
+		return errors.Join(err, file.Close(), os.Remove(path))
 	}
 	_, copyError := io.Copy(file, reader)
-	closeError := file.Close()
-	if copyError != nil {
-		return fmt.Errorf("incomplete download in %s: %w", path, copyError)
+	if err := errors.Join(copyError, reader.Close(), file.Close()); err != nil {
+		return fmt.Errorf("incomplete download in %s: %w", path, err)
 	}
-	return closeError
+	return nil
 }

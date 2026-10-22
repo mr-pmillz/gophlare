@@ -300,6 +300,41 @@ func TestGlobalSearchRequestBody(t *testing.T) {
 	}
 }
 
+func TestGlobalSearchOptionalEventTypes(test *testing.T) {
+	for _, fixture := range []struct {
+		name  string
+		types []string
+		want  string
+	}{
+		{"nil", nil, ""},
+		{"empty", []string{}, ""},
+		{"specified", []string{"stealer_log", "leak"}, `["stealer_log","leak"]`},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			server := newFakeFlare(test, func(writer http.ResponseWriter, _ *http.Request, raw string) {
+				var body struct {
+					Filters map[string]json.RawMessage `json:"filters"`
+				}
+				if err := json.Unmarshal([]byte(raw), &body); err != nil {
+					test.Error(err)
+				}
+				if actual := string(body.Filters["type"]); actual != fixture.want {
+					test.Errorf("filters.type=%q, want %q", actual, fixture.want)
+					writer.WriteHeader(http.StatusUnprocessableEntity)
+				}
+				_, _ = io.WriteString(writer, `{"items":[],"next":null}`)
+			})
+			client, err := NewFlareClient("fixture", "", 0, 10, WithBaseURL(server.URL))
+			if err != nil {
+				test.Fatal(err)
+			}
+			if _, err := client.FlareEventsGlobalSearchByDomain("example.test", test.TempDir(), "", "", "", nil, fixture.types, false, false); err != nil {
+				test.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestSearchCookiesRequestBody(t *testing.T) {
 	f := newFakeFlare(t, func(w http.ResponseWriter, _ *http.Request, _ string) {
 		_, _ = w.Write([]byte(`{"items":[{"uuid":"44672461","domain":"example.com","expires_at":"2024-10-18T00:00:00+00:00",

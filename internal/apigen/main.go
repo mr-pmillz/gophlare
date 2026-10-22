@@ -15,6 +15,11 @@ import (
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/codegen"
 )
 
+const (
+	queryLocation = "query"
+	objectKind    = "object"
+)
+
 type document struct {
 	Paths      map[string]map[string]json.RawMessage `json:"paths"`
 	Components struct {
@@ -27,6 +32,7 @@ type schema struct {
 	Type       json.RawMessage   `json:"type"`
 	Format     string            `json:"format"`
 	AnyOf      []schema          `json:"anyOf"`
+	AllOf      []schema          `json:"allOf"`
 	Items      *schema           `json:"items"`
 	Properties map[string]schema `json:"properties"`
 }
@@ -39,17 +45,22 @@ type parameter struct {
 	Schema      schema `json:"schema"`
 }
 
+type content struct {
+	Schema schema `json:"schema"`
+}
+
 type operation struct {
 	ID          string      `json:"operationId"`
 	Summary     string      `json:"summary"`
 	Description string      `json:"description"`
 	Parameters  []parameter `json:"parameters"`
 	Deprecated  bool        `json:"deprecated"`
+	Responses   map[string]struct {
+		Content map[string]content `json:"content"`
+	} `json:"responses"`
 	RequestBody *struct {
-		Required bool `json:"required"`
-		Content  map[string]struct {
-			Schema schema `json:"schema"`
-		} `json:"content"`
+		Required bool               `json:"required"`
+		Content  map[string]content `json:"content"`
 	} `json:"requestBody"`
 }
 
@@ -156,6 +167,7 @@ func generateOperation(output *bytes.Buffer, version, method, path string, endpo
 		version, endpoint.ID, strings.ToUpper(method), path, endpoint.Summary, endpoint.Description, endpoint.Deprecated)
 	fmt.Fprintln(output, "Parameters: []Parameter{")
 	pageIn := ""
+	cursors := make(map[string]string)
 	for _, argument := range endpoint.Parameters {
 		kind := spec.kind(argument.Schema)
 		itemKind := "string"
@@ -165,8 +177,13 @@ func generateOperation(output *bytes.Buffer, version, method, path string, endpo
 		}
 		fmt.Fprintf(output, "{Name:%q, In:%q, Type:%q, Format:%q, ItemType:%q, Required:%t, Description:%q},\n",
 			argument.Name, argument.In, kind, resolved.Format, itemKind, argument.Required, argument.Description)
-		if argument.In == "query" && argument.Name == "from" {
-			pageIn = "query"
+		if argument.In == queryLocation && argument.Name == "from" {
+			pageIn = queryLocation
+			cursors["next"] = argument.Name
+		}
+		if argument.In == queryLocation && argument.Name == "search_after" {
+			pageIn = queryLocation
+			cursors["search_after"] = argument.Name
 		}
 	}
 	fmt.Fprintln(output, "},")
@@ -174,11 +191,34 @@ func generateOperation(output *bytes.Buffer, version, method, path string, endpo
 		body := endpoint.RequestBody.Content["application/json"].Schema
 		if _, exists := spec.resolve(body).Properties["from"]; exists {
 			pageIn = "body"
+			cursors = map[string]string{"next": "from"}
 		}
 		fmt.Fprintf(output, "HasBody:true, BodyRequired:%t, BodySchema:%q,\n", endpoint.RequestBody.Required, body.Ref)
 	}
 	fmt.Fprintf(output, "PageIn:%q,\n", pageIn)
+	if len(cursors) > 0 {
+		fmt.Fprintf(output, "PageCursors: %#v,\n", cursors)
+	}
+	if key := spec.responseKey(endpoint); key != "" {
+		fmt.Fprintf(output, "ResponseKey: %q,\n", key)
+	}
 	return generateBuilder(output, version, name, endpoint, builder)
+}
+
+func (spec document) responseKey(endpoint operation) string {
+	for _, status := range []string{"200", "201", "202"} {
+		response := spec.resolve(endpoint.Responses[status].Content["application/json"].Schema)
+		if len(response.Properties) != 1 {
+			continue
+		}
+		for key, property := range response.Properties {
+			kind := spec.kind(property)
+			if kind == "array" || kind == objectKind {
+				return key
+			}
+		}
+	}
+	return ""
 }
 
 func generateBuilder(output *bytes.Buffer, version, name string, endpoint operation, builder *ast.FuncDecl) error {
@@ -218,7 +258,7 @@ func generateBuilder(output *bytes.Buffer, version, name string, endpoint operat
 }
 
 func (spec document) resolve(value schema) schema {
-	for depth := 0; depth < 32; depth++ {
+	for range 32 {
 		if value.Ref != "" {
 			value = spec.Components.Schemas[strings.TrimPrefix(value.Ref, "#/components/schemas/")]
 			continue
@@ -242,6 +282,14 @@ func (spec document) kind(value schema) string {
 	var kind string
 	if json.Unmarshal(value.Type, &kind) == nil && kind != "" {
 		return kind
+	}
+	if len(value.Properties) > 0 {
+		return objectKind
+	}
+	for _, component := range value.AllOf {
+		if spec.kind(component) == objectKind {
+			return objectKind
+		}
 	}
 	var kinds []string
 	if json.Unmarshal(value.Type, &kinds) == nil {

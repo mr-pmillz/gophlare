@@ -15,7 +15,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "uid", In: "query", Type: "string", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "activity",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv2.GetActivityEndpointParams](input.Parameters)
 			if err != nil {
@@ -30,7 +31,8 @@ var operationDefinitions = []Operation{
 			{Name: "source", In: "path", Type: "string", Format: "", ItemType: "string", Required: true, Description: ""},
 			{Name: "id", In: "path", Type: "string", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "activity_ai_assistance",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			index, err := decodeParameter[string](input.Parameters, "index")
 			if err != nil {
@@ -50,14 +52,16 @@ var operationDefinitions = []Operation{
 	{Version: "v2", ID: "post_assets", Method: "POST", Path: "/firework/v2/assets/", Summary: "", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/IdentifierCreate",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "asset",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewPostAssetsRequestWithBody(server, "application/json", body)
 		},
 	},
 	{Version: "v2", ID: "get_assets_groups", Method: "GET", Path: "/firework/v2/assets/groups/", Summary: "", Description: "", Deprecated: false,
-		Parameters: []Parameter{},
-		PageIn:     "",
+		Parameters:  []Parameter{},
+		PageIn:      "",
+		ResponseKey: "assets_groups",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewGetAssetsGroupsRequest(server)
 		},
@@ -65,7 +69,8 @@ var operationDefinitions = []Operation{
 	{Version: "v2", ID: "post_assets_groups", Method: "POST", Path: "/firework/v2/assets/groups/", Summary: "", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/IdentifierGroup",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "assets_group",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewPostAssetsGroupsRequestWithBody(server, "application/json", body)
 		},
@@ -74,7 +79,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "assets_group_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "assets_group",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetsGroupID, err := decodeParameter[int](input.Parameters, "assets_group_id")
 			if err != nil {
@@ -100,7 +106,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "assets_group_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "alerts",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetsGroupID, err := decodeParameter[int](input.Parameters, "assets_group_id")
 			if err != nil {
@@ -183,7 +190,8 @@ var operationDefinitions = []Operation{
 			{Name: "has_modified_risk_score", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "has_notes", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from", "search_after": "search_after"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetsGroupID, err := decodeParameter[int](input.Parameters, "assets_group_id")
 			if err != nil {
@@ -201,7 +209,8 @@ var operationDefinitions = []Operation{
 			{Name: "asset_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: true, BodySchema: "#/components/schemas/Identifier",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "asset",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetID, err := decodeParameter[int](input.Parameters, "asset_id")
 			if err != nil {
@@ -227,7 +236,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "asset_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "alerts",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetID, err := decodeParameter[int](input.Parameters, "asset_id")
 			if err != nil {
@@ -310,7 +320,8 @@ var operationDefinitions = []Operation{
 			{Name: "has_modified_risk_score", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "has_notes", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from", "search_after": "search_after"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetID, err := decodeParameter[int](input.Parameters, "asset_id")
 			if err != nil {
@@ -328,7 +339,8 @@ var operationDefinitions = []Operation{
 			{Name: "asset_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: true, BodySchema: "#/components/schemas/IdentifierToggle",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "asset",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			assetID, err := decodeParameter[int](input.Parameters, "asset_id")
 			if err != nil {
@@ -358,7 +370,8 @@ var operationDefinitions = []Operation{
 			{Name: "has_modified_risk_score", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "has_notes", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from", "search_after": "search_after"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv2.GetCurrentUserHomeFeedParams](input.Parameters)
 			if err != nil {
@@ -373,7 +386,8 @@ var operationDefinitions = []Operation{
 			{Name: "from", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "order_type", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv2.GetLeakedCredentialsFeedEndpointParams](input.Parameters)
 			if err != nil {
@@ -383,8 +397,9 @@ var operationDefinitions = []Operation{
 		},
 	},
 	{Version: "v2", ID: "get_current_user_profile", Method: "GET", Path: "/firework/v2/me/profile", Summary: "", Description: "", Deprecated: false,
-		Parameters: []Parameter{},
-		PageIn:     "",
+		Parameters:  []Parameter{},
+		PageIn:      "",
+		ResponseKey: "profile",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewGetCurrentUserProfileRequest(server)
 		},
@@ -392,14 +407,16 @@ var operationDefinitions = []Operation{
 	{Version: "v2", ID: "put_current_user_profile", Method: "PUT", Path: "/firework/v2/me/profile", Summary: "", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/UserUpdate",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "profile",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewPutCurrentUserProfileRequestWithBody(server, "application/json", body)
 		},
 	},
 	{Version: "v2", ID: "get_current_user_tenants", Method: "GET", Path: "/firework/v2/me/tenants", Summary: "", Description: "", Deprecated: false,
-		Parameters: []Parameter{},
-		PageIn:     "",
+		Parameters:  []Parameter{},
+		PageIn:      "",
+		ResponseKey: "tenants",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewGetCurrentUserTenantsRequest(server)
 		},
@@ -411,7 +428,9 @@ var operationDefinitions = []Operation{
 			{Name: "from", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "q", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
+		ResponseKey: "members",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			organizationID, err := decodeParameter[int](input.Parameters, "organization_id")
 			if err != nil {
@@ -429,7 +448,8 @@ var operationDefinitions = []Operation{
 			{Name: "organization_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: true, BodySchema: "#/components/schemas/OrganizationMemberData",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "member",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			organizationID, err := decodeParameter[int](input.Parameters, "organization_id")
 			if err != nil {
@@ -443,7 +463,8 @@ var operationDefinitions = []Operation{
 			{Name: "organization_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 			{Name: "user_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "member",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			organizationID, err := decodeParameter[int](input.Parameters, "organization_id")
 			if err != nil {
@@ -462,7 +483,8 @@ var operationDefinitions = []Operation{
 			{Name: "user_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: true, BodySchema: "#/components/schemas/OrganizationMember",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "member",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			organizationID, err := decodeParameter[int](input.Parameters, "organization_id")
 			if err != nil {
@@ -540,7 +562,8 @@ var operationDefinitions = []Operation{
 			{Name: "q", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "types[]", In: "query", Type: "array", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			organizationID, err := decodeParameter[int](input.Parameters, "organization_id")
 			if err != nil {
@@ -594,7 +617,8 @@ var operationDefinitions = []Operation{
 	{Version: "v2", ID: "post_reports_endpoint", Method: "POST", Path: "/firework/v2/reporting/reports", Summary: "", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/NewReport",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "report",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv2.NewPostReportsEndpointRequestWithBody(server, "application/json", body)
 		},
@@ -603,7 +627,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "report_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "report",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			reportID, err := decodeParameter[int](input.Parameters, "report_id")
 			if err != nil {
@@ -617,7 +642,8 @@ var operationDefinitions = []Operation{
 			{Name: "report_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: true, BodySchema: "#/components/schemas/UpdatedReport",
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "report",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			reportID, err := decodeParameter[int](input.Parameters, "report_id")
 			if err != nil {
@@ -630,7 +656,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "report_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "report",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			reportID, err := decodeParameter[int](input.Parameters, "report_id")
 			if err != nil {
@@ -643,7 +670,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "report_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "report",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			reportID, err := decodeParameter[int](input.Parameters, "report_id")
 			if err != nil {
@@ -688,7 +716,8 @@ var operationDefinitions = []Operation{
 			{Name: "has_notes", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "labels", In: "query", Type: "array", Format: "", ItemType: "string", Required: false, Description: "Stealer log labels used to filter search results"},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from", "search_after": "search_after"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv2.GetSearchParams](input.Parameters)
 			if err != nil {
@@ -720,7 +749,8 @@ var operationDefinitions = []Operation{
 			{Name: "has_notes", In: "query", Type: "boolean", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "labels", In: "query", Type: "array", Format: "", ItemType: "string", Required: false, Description: "Stealer log labels used to filter search results"},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from", "search_after": "search_after"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv2.PostSearchParams](input.Parameters)
 			if err != nil {
@@ -827,7 +857,8 @@ var operationDefinitions = []Operation{
 			{Name: "size", In: "query", Type: "integer", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "from", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv3.GetIdentifiersEndpointParams](input.Parameters)
 			if err != nil {
@@ -840,7 +871,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "identifier_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "identifier",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			identifierID, err := decodeParameter[int](input.Parameters, "identifier_id")
 			if err != nil {
@@ -855,7 +887,8 @@ var operationDefinitions = []Operation{
 			{Name: "size", In: "query", Type: "integer", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "from", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			identifierID, err := decodeParameter[int](input.Parameters, "identifier_id")
 			if err != nil {
@@ -871,7 +904,8 @@ var operationDefinitions = []Operation{
 	{Version: "v4", ID: "search_audit_events_audit_logs__search_post", Method: "POST", Path: "/firework/v4/audit-logs/_search", Summary: "Search Audit Logs", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/AuditEventRequestBody",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv4.NewSearchAuditEventsAuditLogsSearchPostRequestWithBody(server, "application/json", body)
 		},
@@ -887,7 +921,8 @@ var operationDefinitions = []Operation{
 	{Version: "v4", ID: "credentials_global_search_credentials_global__search_post", Method: "POST", Path: "/firework/v4/credentials/global/_search", Summary: "Credentials Global Search", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/CredentialsQueryPayload",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv4.NewCredentialsGlobalSearchCredentialsGlobalSearchPostRequestWithBody(server, "application/json", body)
 		},
@@ -895,7 +930,8 @@ var operationDefinitions = []Operation{
 	{Version: "v4", ID: "list_entities_entities_global__search_post", Method: "POST", Path: "/firework/v4/entities/global/_search", Summary: "List Entities", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: false, BodySchema: "#/components/schemas/EntitySearchParamsPayload",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv4.NewListEntitiesEntitiesGlobalSearchPostRequestWithBody(server, "application/json", body)
 		},
@@ -918,7 +954,8 @@ var operationDefinitions = []Operation{
 			{Name: "id", In: "path", Type: "string", Format: "uuid", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: false, BodySchema: "#/components/schemas/EntityRelationsSearchParamsPayload",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			id, err := decodeParameter[openapi_types.UUID](input.Parameters, "id")
 			if err != nil {
@@ -947,7 +984,8 @@ var operationDefinitions = []Operation{
 			{Name: "from", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "size", In: "query", Type: "integer", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv4.ExpandEventFieldEventsExpandGetParams](input.Parameters)
 			if err != nil {
@@ -967,7 +1005,8 @@ var operationDefinitions = []Operation{
 	{Version: "v4", ID: "global_search_events_global__search_post", Method: "POST", Path: "/firework/v4/events/global/_search", Summary: "Global Search", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: true, BodySchema: "#/components/schemas/GlobalSearchRequestBody",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv4.NewGlobalSearchEventsGlobalSearchPostRequestWithBody(server, "application/json", body)
 		},
@@ -977,7 +1016,8 @@ var operationDefinitions = []Operation{
 			{Name: "identifier_group_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: false, BodySchema: "#/components/schemas/FeedRequestBody",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			identifierGroupID, err := decodeParameter[int](input.Parameters, "identifier_group_id")
 			if err != nil {
@@ -1009,7 +1049,8 @@ var operationDefinitions = []Operation{
 			{Name: "identifier_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
 		HasBody: true, BodyRequired: false, BodySchema: "#/components/schemas/FeedRequestBody",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			identifierID, err := decodeParameter[int](input.Parameters, "identifier_id")
 			if err != nil {
@@ -1021,7 +1062,8 @@ var operationDefinitions = []Operation{
 	{Version: "v4", ID: "current_tenant_feed_events_tenant__search_post", Method: "POST", Path: "/firework/v4/events/tenant/_search", Summary: "Current Tenant Feed", Description: "", Deprecated: false,
 		Parameters: []Parameter{},
 		HasBody:    true, BodyRequired: false, BodySchema: "#/components/schemas/FeedRequestBody",
-		PageIn: "body",
+		PageIn:      "body",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			return fireworkv4.NewCurrentTenantFeedEventsTenantSearchPostRequestWithBody(server, "application/json", body)
 		},
@@ -1049,7 +1091,8 @@ var operationDefinitions = []Operation{
 			{Name: "from", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "size", In: "query", Type: "integer", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv4.FetchIdentifierRecommendationsIdentifierRecommendationsGetParams](input.Parameters)
 			if err != nil {
@@ -1077,7 +1120,8 @@ var operationDefinitions = []Operation{
 			{Name: "types", In: "query", Type: "array", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "authorization_status", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv4.ListIdentifiersIdentifiersGetParams](input.Parameters)
 			if err != nil {
@@ -1140,7 +1184,8 @@ var operationDefinitions = []Operation{
 			{Name: "size", In: "query", Type: "integer", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "order", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			params, err := decodeParameters[fireworkv4.ListMatchingPoliciesMatchingPoliciesGetParams](input.Parameters)
 			if err != nil {
@@ -1217,7 +1262,8 @@ var operationDefinitions = []Operation{
 			{Name: "size", In: "query", Type: "integer", Format: "", ItemType: "string", Required: false, Description: ""},
 			{Name: "order", In: "query", Type: "string", Format: "", ItemType: "string", Required: false, Description: ""},
 		},
-		PageIn: "query",
+		PageIn:      "query",
+		PageCursors: map[string]string{"next": "from"},
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			policyUUID, err := decodeParameter[openapi_types.UUID](input.Parameters, "policy_uuid")
 			if err != nil {
@@ -1312,7 +1358,8 @@ var operationDefinitions = []Operation{
 		Parameters: []Parameter{
 			{Name: "report_id", In: "path", Type: "integer", Format: "", ItemType: "string", Required: true, Description: ""},
 		},
-		PageIn: "",
+		PageIn:      "",
+		ResponseKey: "report",
 		build: func(server string, input Request, body io.Reader) (*http.Request, error) {
 			reportID, err := decodeParameter[int](input.Parameters, "report_id")
 			if err != nil {

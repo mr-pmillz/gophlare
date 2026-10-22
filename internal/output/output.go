@@ -18,6 +18,7 @@ type Options struct {
 	Format  string
 	Columns []string
 	Wide    bool
+	RootKey string
 }
 
 func Write(writer io.Writer, data []byte, options Options) error {
@@ -44,6 +45,11 @@ func Write(writer io.Writer, data []byte, options Options) error {
 	var value any
 	if err := decoder.Decode(&value); err != nil {
 		return err
+	}
+	if envelope, ok := value.(map[string]any); ok && options.RootKey != "" {
+		if wrapped, exists := envelope[options.RootKey]; exists {
+			value = wrapped
+		}
 	}
 	return writeTable(writer, value, options)
 }
@@ -167,7 +173,7 @@ func defaultColumns(rows []map[string]any) []string {
 
 func lookup(row map[string]any, key string) any {
 	var value any = row
-	for _, segment := range strings.Split(key, ".") {
+	for segment := range strings.SplitSeq(key, ".") {
 		object, ok := value.(map[string]any)
 		if !ok {
 			return nil

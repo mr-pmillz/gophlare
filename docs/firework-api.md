@@ -96,6 +96,12 @@ Unicode-aware alignment, and 48-column cell truncation. `--wide` disables
 truncation; `--columns` selects exact fields. Terminal control characters are
 removed from table cells. Empty collections display `No results.`
 
+Response wrappers such as `assets_groups`, `alerts`, and `profile` are selected
+from each endpoint's response schema before rendering tables. Both a single
+wrapped object and an array produce resource rows, so `--columns id,name`
+selects the resource fields rather than fields on the wrapper. JSON output keeps
+the original wrapper unchanged.
+
 JSON output preserves the complete response envelope, unknown fields, nulls,
 and large integers. It never adds table summaries or pagination messages to
 stdout. Tables report a remaining cursor on stderr. APIs returning no body
@@ -123,7 +129,7 @@ unexpected extra search quota usage.
 ## Pagination and quota
 
 One page is fetched by default. `--all` combines `items` across cursor pages and
-retains the final response envelope. Empty pages with a nonempty `next` cursor
+retains the final response envelope. Empty pages with a nonempty pagination cursor
 do **not** stop traversal. All other query/body filters remain unchanged.
 
 ```bash
@@ -132,9 +138,14 @@ gophlare events search --body @search.json --all --max-pages 10 --format json
 ```
 
 The default `--page-delay 1s` applies between pages. `--max-pages` defaults to
-1000; when reached, output retains the last `next` cursor for manual resumption.
-Pass it as `--from` for query pagination or as the body's `from` field for POST
-searches. Cursors remain opaque strings and are never followed as URLs.
+1000; when reached, output retains the last cursor for manual resumption.
+Pass `next` as `--from` for query pagination or as the body's `from` field for
+POST searches. Legacy v2 search/feed responses can instead return `search_after`;
+it is sent through the matching `--search-after` parameter. If both response
+fields are present, `next` takes precedence, including when it is null. Advancing
+pagination removes the other cursor parameter but preserves all noncursor filters.
+Tables print the correct resumption parameter on stderr. Cursors remain opaque
+strings and are never followed as URLs.
 Repeated cursors fail rather than loop forever. `--all` is rejected for
 operations without declared cursor pagination.
 
@@ -150,9 +161,14 @@ gophlare reports download --report-id 123 --output-file report.pdf
 gophlare reports download --report-id 123 --output-file - > report.pdf
 ```
 
-Responses stream to files with mode `0600`, without overwriting an existing
-file. Error responses are not saved as successful downloads. An interrupted
-download may leave a partial file and returns an error. `--output-file` saves
+Output files are exclusively created with mode `0600` **before authentication or
+API requests**, including with `--all`. Existing files, symlinks, and invalid
+destinations fail before any remote action. If the request fails before response
+copying begins, the empty reservation is removed; API error bodies are not saved
+as successful downloads. An interrupted download or disk write failure may leave
+a partial file and returns an error. Such failures can occur after a remote
+mutation has succeeded: check server state before retrying a write operation.
+`--output-file` saves
 raw bytes rather than formatted output; combined with `--all`, it saves the
 aggregated JSON. Cross-origin redirects are intentionally rejected; fetch a
 returned presigned URL separately without Flare credentials when appropriate.

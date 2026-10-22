@@ -173,3 +173,29 @@ func TestBuildRequestPreservesServerPrefixAndEscapesParameters(t *testing.T) {
 		t.Fatalf("escaped path = %s, want %s", request.URL.EscapedPath(), want)
 	}
 }
+
+func TestOperationResponseKeys(test *testing.T) {
+	test.Parallel()
+	for _, fixture := range []struct {
+		name string
+		key  string
+	}{
+		{"get_assets_groups", "assets_groups"},
+		{"get_asset_alerts", "alerts"},
+		{"get_assets_group_alerts", "alerts"},
+		{"get_assets_group_api", "assets_group"},
+		{"get_current_user_profile", "profile"},
+		{"get_current_user_tenants", "tenants"},
+		{"get_search", ""},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			operation, err := FindOperation("v2", fixture.name)
+			if err != nil {
+				test.Fatal(err)
+			}
+			if operation.ResponseKey != fixture.key {
+				test.Fatalf("response key=%q, want %q", operation.ResponseKey, fixture.key)
+			}
+		})
+	}
+}
