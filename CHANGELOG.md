@@ -12,6 +12,11 @@ Generate v2, v3, and v4 clients and models for all 90 spec operations. Add resou
 
 ### 🐛 Bug fixes
 
+- Fix: avoid overflow in table row allocation
+
+Keep table headers separate from response rows so the allocation uses the row count directly without addition. Preserve existing rendering and add regression coverage for headers, row widths, empty results, Unicode, sanitization, truncation, and wide output.
+
+Addresses the CodeQL allocation-size finding reported on PR #33 without suppressing security analysis. - ([ce617cb](https://github.com/mr-pmillz/gophlare/commit/ce617cbea66dd29ea13f747b36d4680e3a32244c))
 - Fix: include OpenAPI inputs in clean checkouts
 
 The root JSON ignore rule excluded the three Firework specifications, causing generation and TestOperationsMatchSpecs to fail in CI run 39866826398 despite passing in the original checkout.
@@ -24,6 +29,7 @@ Validation: reproduce missing-file generation and coverage failures from a track
 
 ### ⚙️  Miscellaneous
 
+- Chore: update changelog - ([efc6bf8](https://github.com/mr-pmillz/gophlare/commit/efc6bf8334abc3527e63f3b24637526083820ebe))
 - Merge pull request #32 from mr-pmillz/feat/full-api-support
 
 Feat/full api support - ([a9ff16a](https://github.com/mr-pmillz/gophlare/commit/a9ff16a62bf15be4a24e331cb3a288ba14be39a6))
