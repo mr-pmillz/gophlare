@@ -44,7 +44,7 @@ automatically from release tags or Go build metadata. For local builds, use
 
 ## Supported API Endpoints
 
-Gophlare currently supports the following API endpoints:
+The original search workflows use these API endpoints:
 
 * [/tokens/generate](https://api.docs.flare.io/api-reference/tokens/endpoints/generate)
 * [/firework/v2/activities/?uid={UID}](https://api.docs.flare.io/api-reference/v2/endpoints/activities/get-fireworkv2activities-)
@@ -55,13 +55,40 @@ Gophlare currently supports the following API endpoints:
 * [/astp/v2/cookies/_search](https://api.docs.flare.io/api-reference/astp/endpoints/post-cookies-search)
 * [/astp/identities/by_accounts](https://api.docs.flare.io/api-reference/astp/endpoints/post-by-accounts), following each identity's `links.next` for passwords beyond the first 100
 
-Request and response models for these and every other endpoint in Flare's
-published Firework v2 and v4 specs are generated with oapi-codegen into the
-`flareapi` packages. See [Flare API Models](#flare-api-models).
+All **90 operations** in the checked-in Firework v2, v3, and v4 specs have
+oapi-codegen request/response models, typed HTTP clients, and CLI commands.
+The existing search and BloodHound workflows remain available.
+See [Full Firework API](docs/firework-api.md) and [Flare API Models](#flare-api-models).
 
-Of these, only [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search) draws on your monthly [Global Search quota](https://api.docs.flare.io/concepts/rate-limits-and-quotas). See [Flare API Usage Metrics](#flare-api-usage-metrics).
+Of the original search endpoints listed above, only [/firework/v4/events/global/_search](https://api.docs.flare.io/api-reference/v4/endpoints/global-search) draws on your monthly [Global Search quota](https://api.docs.flare.io/concepts/rate-limits-and-quotas). Other new global-search commands can also consume quota. See [Flare API Usage Metrics](#flare-api-usage-metrics).
 
 ## Usage
+
+### Full Firework API
+
+Use your existing `API_KEYS.FLARE_API` / `API_KEYS.FLARE_TENANT_ID` config,
+or set `GOFLARE_API_KEY`. API resource commands default to bordered Unicode
+tables; `--format json` preserves the complete response and pagination cursor.
+
+```bash
+gophlare identifier-groups list
+gophlare identifiers list --all --format json
+gophlare alerts list --asset-id 123
+gophlare group-alerts list --assets-group-id 456
+gophlare matching-policies list
+gophlare reports list --columns id,name
+gophlare api list --format json
+gophlare api v3 get_identifiers_endpoint --help
+```
+
+The `api v2|v3|v4 OPERATION_ID` interface exposes **every** operation, including
+deprecated endpoints. Resource shortcuts cover identifiers, groups, alerts,
+events, credentials, profiles, tenants, members, reports, entities, policies,
+recommendations, threat-flow intelligence, sandbox uploads, and audit logs.
+See the [API guide](docs/firework-api.md) for request bodies, pagination,
+downloads, authentication, and SDK examples. Search's existing `--output`
+continues to mean a report directory; new API commands use `--format` and
+`--output-file` instead.
 
 ```shell
 search the flare api for credentials, emails, and stealer logs
@@ -304,19 +331,35 @@ Request and response models for the Flare API are generated with
 | Package | Generated from |
 | --- | --- |
 | `flareapi/fireworkv4` | Flare's published [Firework v4 spec](https://api.docs.flare.io/api-reference/spec/firework-v4-openapi.json) |
+| `flareapi/fireworkv3` | Flare's published [Firework v3 spec](https://api.docs.flare.io/api-reference/spec/firework-v3-openapi.json) |
 | `flareapi/fireworkv2` | Flare's published [Firework v2 spec](https://api.docs.flare.io/api-reference/spec/firework-v2-openapi.json), plus a hand-authored supplement typing the `stealer_log` event payload |
 | `flareapi/astp` | A spec hand-authored from Flare's ASTP pages, which have no published OpenAPI spec |
 | `flareapi/tokens` | A spec hand-authored from Flare's token pages |
 
-Every spec lives in `flareapi/openapi`. Timestamps use `flaretime.Time`, which
+The three published JSON specs at the repository root are committed generation
+inputs. Commit refreshed snapshots together with their regenerated code; normal
+generation and tests never download live specs. Hand-authored supplements live
+in `flareapi/openapi`.
+All Firework packages include `ClientWithResponses` and every component
+schema (`skip-prune: true`); `flareapi.NewClient` authenticates all three clients.
+Timestamps use `flaretime.Time`, which
 decodes the API's mixed RFC 3339 and timezone-less formats; `phlare.FlareTime`
 is an alias of it. The `phlare` request and response types, such as
 `phlare.FlareSearchCredentialsASTP`, alias these generated models.
 
 ```bash
-make openapi-specs  # re-download Flare's published v2 and v4 specs
-make generate       # regenerate every flareapi model
+make openapi-specs  # explicitly refresh the published v2/v3/v4 specs
+make generate      # regenerate models, clients, and the CLI operation registry
 ```
+
+Firework optional fields now use pointers, and nullable JSON fields use
+`nullable.Nullable[T]`, preserving omission versus explicit `null`, `false`,
+`0`, and empty strings. SDK callers of the existing Firework type aliases must
+update struct literals and accessors accordingly. The ASTP,
+token, and legacy stealer-log supplement model conventions are unchanged.
+JSON bodies passed through the CLI are sent unchanged, including explicit nulls.
+Upstream empty/untyped schemas remain untyped; the CLI retains their raw JSON
+instead of inventing missing response fields.
 
 ## Bloodhound Data Correlation
 

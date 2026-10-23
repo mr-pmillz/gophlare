@@ -1,8 +1,13 @@
 package utils
 
 import (
+	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"testing"
+
+	"github.com/xuri/excelize/v2"
 )
 
 func TestIsPathSafe(t *testing.T) {
@@ -108,5 +113,97 @@ func TestIsPathSafe(t *testing.T) {
 					gotSafe, tt.wantSafe, tt.baseDir, tt.filePath, absBase, absFile, rel)
 			}
 		})
+	}
+}
+
+func TestCSVFileRoundTrip(test *testing.T) {
+	type record struct {
+		ID      uint64 `csv:"id"`
+		Value   string `csv:"value"`
+		Enabled bool   `csv:"enabled"`
+	}
+	want := []record{
+		{ID: 9007199254740993, Value: "fixture, \"quoted\"\n東京", Enabled: true},
+		{ID: 0, Value: "", Enabled: false},
+		{ID: 7, Value: "0010", Enabled: false},
+	}
+	filename := filepath.Join(test.TempDir(), "nested", "records.csv")
+	if err := WriteStructToCSVFile(want, filename); err != nil {
+		test.Fatal(err)
+	}
+	var actual []record
+	if err := UnmarshalCSVFile(filename, &actual); err != nil {
+		test.Fatal(err)
+	}
+	if !slices.Equal(actual, want) {
+		test.Fatalf("CSV round trip: got %#v, want %#v", actual, want)
+	}
+}
+
+func TestUnmarshalCSVFileNumbers(test *testing.T) {
+	for _, fixture := range []struct {
+		name      string
+		value     string
+		want      uint8
+		wantError bool
+	}{
+		{"zero", "0", 0, false},
+		{"decimal leading zero", "010", 10, false},
+		{"non-octal digit", "09", 9, false},
+		{"maximum", "255", 255, false},
+		{"overflow", "256", 0, true},
+		{"negative unsigned", "-1", 0, true},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			filename := filepath.Join(test.TempDir(), "records.csv")
+			if err := os.WriteFile(filename, []byte("value\n"+fixture.value+"\n"), 0600); err != nil {
+				test.Fatal(err)
+			}
+			var records []struct {
+				Value uint8 `csv:"value"`
+			}
+			err := UnmarshalCSVFile(filename, &records)
+			if (err != nil) != fixture.wantError {
+				test.Fatalf("decode error=%v, wantError=%v", err, fixture.wantError)
+			}
+			if !fixture.wantError && (len(records) != 1 || records[0].Value != fixture.want) {
+				test.Fatalf("decoded records=%v, want value=%d", records, fixture.want)
+			}
+		})
+	}
+}
+
+func TestCSVsToExcel(test *testing.T) {
+	test.Parallel()
+	directory := test.TempDir()
+	csvFile := filepath.Join(directory, "credentials.csv")
+	contents := "id,name\n9007199254740993,\"東京, sample\"\n0007,\"line one\nline two\"\n"
+	if err := os.WriteFile(csvFile, []byte(contents), 0600); err != nil {
+		test.Fatal(err)
+	}
+	workbookFile := filepath.Join(directory, "report.xlsx")
+	if err := CSVsToExcel([]string{csvFile}, workbookFile); err != nil {
+		test.Fatal(err)
+	}
+	workbook, err := excelize.OpenFile(workbookFile)
+	if err != nil {
+		test.Fatal(err)
+	}
+	defer func() {
+		if err := workbook.Close(); err != nil {
+			test.Error(err)
+		}
+	}()
+	rows, err := workbook.GetRows("credentials")
+	if err != nil {
+		test.Fatal(err)
+	}
+	want := [][]string{{"id", "name"}, {"9007199254740993", "東京, sample"}, {"0007", "line one\nline two"}}
+	if !reflect.DeepEqual(rows, want) {
+		test.Fatalf("spreadsheet changed CSV values: got %#v, want %#v", rows, want)
+	}
+	tables, err := workbook.GetTables("credentials")
+	if err != nil || len(tables) != 1 || tables[0].Range != "A1:B3" {
+		test.Fatalf("spreadsheet table=%+v, error=%v", tables, err)
 	}
 }

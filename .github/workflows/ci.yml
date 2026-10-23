@@ -21,6 +21,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
+      - name: Verify generated API code
+        run: |
+          make generate
+          git diff --exit-code -- flareapi
       - run: make fmt build
       - name: Verify module files
         run: |
@@ -48,7 +52,7 @@ jobs:
           # v1.7.12 predates GitHub's native coverage permission. Ignore only
           # that known scope diagnostic; retain all other workflow checks.
           actionlint -color -ignore 'unknown permission scope "code-quality"'
-      - name: Test release branch policy
+      - name: Test repository policies
         run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
 
   coverage:
@@ -80,7 +84,7 @@ jobs:
             tail -n 1 coverage/coverage-summary.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: coverage-report
@@ -138,7 +142,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: coverage-report
           path: coverage/

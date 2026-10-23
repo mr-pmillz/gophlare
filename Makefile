@@ -5,7 +5,7 @@ VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 CURRENT_TAG := $(VERSION)
 LDFLAGS := -s -w -X github.com/mr-pmillz/gophlare/internal/version.version=$(VERSION)
 FLARE_SPEC_URL := https://api.docs.flare.io/api-reference/spec
-FLARE_SPECS := firework-v2-openapi firework-v4-openapi
+FLARE_SPECS := firework-v2-openapi firework-v3-openapi firework-v4-openapi
 
 .PHONY: fmt lint build test clean compile compress generate openapi-specs
 
@@ -32,13 +32,14 @@ test:
 	fi
 
 generate:
-	$(info ******************** generating Flare API models ********************)
+	$(info ******************** generating Flare API models, clients and commands ********************)
 	go generate ./flareapi/...
+	go run ./internal/apigen
 
 openapi-specs:
 	$(info ******************** downloading Flare OpenAPI specs ********************)
 	@for spec in $(FLARE_SPECS); do \
-		curl -fsSL "$(FLARE_SPEC_URL)/$$spec.json" -o "flareapi/openapi/$$spec.json" || exit 1; \
+		curl -fsSL "$(FLARE_SPEC_URL)/$$spec.json" -o "$$spec.json" || exit 1; \
 	done
 
 changelog:

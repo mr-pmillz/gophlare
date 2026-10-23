@@ -39,6 +39,9 @@ coverage.xml
 !.golangci-lint.yml
 
 # Flare OpenAPI specs and oapi-codegen configuration
+!/firework-v2-openapi.json
+!/firework-v3-openapi.json
+!/firework-v4-openapi.json
 !flareapi/**/*.json
 !flareapi/**/*.yaml
 
