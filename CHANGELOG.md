@@ -2,6 +2,66 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.6.0](https://github.com/mr-pmillz/gophlare/compare/v1.5.0...v1.6.0) - 2026-10-23
+
+### ✨ New features
+
+- Feat: add complete Firework API clients and CLI coverage
+
+Generate v2, v3, and v4 clients and models for all 90 spec operations. Add resource commands, table and JSON output, cursor pagination, and downloads with parity tests. Bump Go and Docker to 1.27.3. - ([d4581f6](https://github.com/mr-pmillz/gophlare/commit/d4581f674ce84857fbd58a4df519c2d2df947155))
+
+### 🐛 Bug fixes
+
+- Fix: include OpenAPI inputs in clean checkouts
+
+The root JSON ignore rule excluded the three Firework specifications, causing generation and TestOperationsMatchSpecs to fail in CI run 39866826398 despite passing in the original checkout.
+
+Include the public v2, v3, and v4 snapshots with exact root-level ignore exceptions. Verify their content matches Flare upstream, preserve generated clients, and keep unrelated JSON output and tenant configuration ignored. Add regression tests for snapshot availability and ignore rules, and document committing refreshed specs with generated code.
+
+Validation: reproduce missing-file generation and coverage failures from a tracked-files-only baseline; clean-source generation matches the checked-in clients after the fix. All five repository-policy tests and actionlint pass. Workflow permissions, triggers, and commands remain unchanged. - ([43ee0db](https://github.com/mr-pmillz/gophlare/commit/43ee0db60c62b876e927212726ffc075442421b4))
+- Fix: preserve output files on request failure - ([da1b474](https://github.com/mr-pmillz/gophlare/commit/da1b474e33bfe0f8890c8d9ba9ad78b9ef871b4a))
+- Fix: harden API pagination and output handling - ([6e2c004](https://github.com/mr-pmillz/gophlare/commit/6e2c00401ad08078604be5fa96e962bf7dfc7045))
+
+### ⚙️  Miscellaneous
+
+- Merge pull request #32 from mr-pmillz/feat/full-api-support
+
+Feat/full api support - ([a9ff16a](https://github.com/mr-pmillz/gophlare/commit/a9ff16a62bf15be4a24e331cb3a288ba14be39a6))
+- Build(deps): patch Excelize security vulnerabilities
+
+With explicit approval, replace Excelize v2.11.0 with the fixed development snapshot v2.11.1-0.20261020033641-611b222fd8f7. The latest stable tag still carries all six advisories reported by the failing CI vulnerability job.
+
+Go module tooling also updates required mscfb v1.0.7 -> v1.0.8, efp v0.0.1 -> v0.0.2, and the x/image checksum entries from v0.38.0 -> v0.44.0. The snapshot requires Go 1.26; this project stays on Go 1.27.3.
+
+Affected according to the existing scans: this update fixes all six package-level Excelize findings, including both symbol-level findings. Package and symbol scans now pass; the unrelated unimported OpenPGP module advisory remains visible. Do not suppress advisories or weaken CI gates.
+
+Validation: the complete CI fix series passes 697 race-enabled test cases from a fresh source checkout, coverage report generation, CSV-to-XLSX readback, generated-code checks, formatting, vet, lint, module integrity, and linux/darwin amd64/arm64 builds. Record root causes and validation in the dependency audit.
+
+Rollback: reverting this commit restores Excelize v2.11.0 and the prior transitive graph, but also restores the known vulnerability failures. - ([9ff072c](https://github.com/mr-pmillz/gophlare/commit/9ff072c79ae0019ad40d1a5f6ba0ab0c00906407))
+- Ci(deps): update workflow actions from Dependabot #31
+
+Update actions/create-github-app-token v3.2.0 -> v3.3.0, actions/upload-artifact v7.0.1 -> v7.0.2, actions/download-artifact v8.0.1 -> v8.0.2, and goreleaser/goreleaser-action v7.2.3 -> v7.3.0.
+
+Re-resolve all 14 actions against upstream release tags. The four outdated actions match PR #31 exactly; update all seven full-SHA pin sites across four workflows and retain accurate version annotations. The other ten actions are already current. Do not merge or close the PR.
+
+Artifact throttling retries and GoReleaser tool-cache reuse improve reliability; dependency updates are defensive maintenance, not a demonstrated repository exploit fix. Preserve triggers, permissions, and the selected GoReleaser v2.13.3 tool. Record the combined dependency audit and unresolved Excelize release-channel decision.
+
+Validation: actionlint passes with the documented code-quality permission exception, all three release-policy tests pass, workflow YAML parses, and semantic comparisons confirm only action references changed. Security review finds no new privilege or injection paths; remote repository policy remains unverified.
+
+Rollback: restore the prior full-SHA pins for token v3.2.0, upload v7.0.1, download v8.0.1, and GoReleaser action v7.2.3. - ([7c0c2cf](https://github.com/mr-pmillz/gophlare/commit/7c0c2cff0ce6425f8030cd3f2f74e0712af78689))
+- Build(deps): update GoCSV and nullable
+
+Upgrade github.com/gocarina/gocsv from v0.0.0-20260523204920-c264028e67ea to v0.0.0-20261012193826-401c25af6907 and github.com/oapi-codegen/nullable from v1.1.0 to v1.2.0. All 17 direct modules were checked against upstream on their existing module paths and release channels; the other 15 are already current.
+
+GoCSV fixes numeric conversion and decoding edge cases; nullable adds GetOrEmpty without changing existing JSON semantics. Add CSV round-trip, decimal/overflow, and spreadsheet-export regression coverage. Preserve Go 1.27.3 and all indirect requirements.
+
+Validation: full race-enabled tests, vet, formatting, golangci-lint, module integrity, unchanged API regeneration, and linux/darwin amd64/arm64 builds pass. Excelize retains six pre-existing package advisories, including two symbol-level findings; its development-channel fix remains pending approval. No security check is suppressed.
+
+Rollback: restore GoCSV v0.0.0-20260523204920-c264028e67ea and nullable v1.1.0 with go get and go mod tidy. - ([844b469](https://github.com/mr-pmillz/gophlare/commit/844b469b416556df91e45704785ccbed51ea6ec7))
+- Merge pull request #30 from mr-pmillz/main
+
+sync main back to develop - ([7b388dc](https://github.com/mr-pmillz/gophlare/commit/7b388dcb1246a233c6ff8d4bfef0b4b691be3af3))
+
 ## [1.5.0](https://github.com/mr-pmillz/gophlare/compare/v1.4.4...v1.5.0) - 2026-10-12
 
 ### ✨: New features
@@ -56,6 +116,10 @@ the test started failing once that date passed. Use tomorrow instead. - ([8fe39d
 
 ### ⚙️  Miscellaneous
 
+- Merge pull request #28 from mr-pmillz/release/v1.5.0
+
+Release/v1.5.0 - ([0962e59](https://github.com/mr-pmillz/gophlare/commit/0962e59ea9eafbbf023be45affa23e31ec85ebe0))
+- Chore: update changelog - ([473cd6e](https://github.com/mr-pmillz/gophlare/commit/473cd6ea6d4d5888e8548239bb8e874910a2a204))
 - Merge pull request #27 from mr-pmillz/feat/metrics2
 
 Feat/metrics2 add metrics to SDK - ([440b25d](https://github.com/mr-pmillz/gophlare/commit/440b25da959f70cb97aa9535544a5de7370280ed))
