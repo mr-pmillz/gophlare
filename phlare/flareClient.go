@@ -440,27 +440,27 @@ func (fc *FlareClient) FlareDownloadStealerLogCookieFiles(data *FlareFireworkAct
 func searchDateFilter(from, to string, now time.Time) (EstimatedCreatedAt, error) {
 	var filter EstimatedCreatedAt
 	if from == "" {
-		filter.Gte = flaretime.Time{Time: now.UTC().AddDate(-2, 0, 0)}
+		filter.Gte.Set(flaretime.Time{Time: now.UTC().AddDate(-2, 0, 0)})
 	} else {
 		gte, err := flaretime.Parse(from)
 		if err != nil {
 			return filter, fmt.Errorf("invalid from date %q: %w", from, err)
 		}
-		filter.Gte = gte
+		filter.Gte.Set(gte)
 	}
 
 	if to == "" {
 		to = now.UTC().Format(time.DateOnly)
 	}
 	if day, err := time.Parse(time.DateOnly, to); err == nil {
-		filter.Lt = flaretime.Time{Time: day.AddDate(0, 0, 1)}
+		filter.Lt.Set(flaretime.Time{Time: day.AddDate(0, 0, 1)})
 		return filter, nil
 	}
 	lte, err := flaretime.Parse(to)
 	if err != nil {
 		return filter, fmt.Errorf("invalid to date %q: %w", to, err)
 	}
-	filter.Lte = lte
+	filter.Lte.Set(lte)
 	return filter, nil
 }
 
@@ -497,11 +497,13 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 		return nil, err
 	}
 	postBody := &FlareEventsGlobalSearchBodyParams{
-		Size: size,
-		Filters: Filters{
-			Type:               eventFilterTypes, // https://api.docs.flare.io/api-reference/v4/endpoints/global-search#param-type
-			EstimatedCreatedAt: dateFilter,
+		Size: &size,
+		Filters: &Filters{
+			EstimatedCreatedAt: &dateFilter,
 		},
+	}
+	if len(eventFilterTypes) > 0 {
+		postBody.Filters.Type = &eventFilterTypes
 	}
 	if err := postBody.Query.FromQueryStringQuery(Query{QueryString: queryString}); err != nil {
 		return nil, utils.LogError(err)
@@ -512,6 +514,7 @@ func (fc *FlareClient) FlareEventsGlobalSearchByDomain(domain, outputDir, query,
 		for _, sev := range severity {
 			severities = append(severities, fireworkv4.Severity(sev))
 		}
+		postBody.Filters.Severity = &fireworkv4.FeedFilters_Severity{}
 		if err := postBody.Filters.Severity.FromFeedFiltersSeverity1(severities); err != nil {
 			return nil, utils.LogError(err)
 		}
@@ -581,7 +584,8 @@ flarePaginate: //nolint:dupl
 		progressCount.Store(int64(len(allData.Items)))
 
 		// Check if we've reached the end of the results
-		if isLastPage(data.Next) {
+		next, _ := data.Next.Get()
+		if isLastPage(next) {
 			break flarePaginate
 		}
 		// Update the 'from' parameter for the next request

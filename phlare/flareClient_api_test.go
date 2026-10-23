@@ -291,12 +291,47 @@ func TestGlobalSearchRequestBody(t *testing.T) {
 		t.Errorf("date filter = %#v, want %#v", body.Filters.EstimatedCreatedAt, want)
 	}
 	item := results.Items[0]
-	if string(item.Metadata.Type) != "stealer_log" || item.Metadata.UID != "stealer_log/x/1" || item.Highlights["description"][0] != "a" {
+	if string(item.Metadata.Type) != "stealer_log" || item.Metadata.UID != "stealer_log/x/1" || item.Highlights == nil || (*item.Highlights)["description"][0] != "a" {
 		t.Errorf("item = %+v", item)
 	}
 
 	if _, err := fc.FlareEventsGlobalSearchByDomain("example.com", t.TempDir(), "", "not-a-date", "", nil, nil, false, false); err == nil {
 		t.Error("expected an error for an invalid from date")
+	}
+}
+
+func TestGlobalSearchOptionalEventTypes(test *testing.T) {
+	for _, fixture := range []struct {
+		name  string
+		types []string
+		want  string
+	}{
+		{"nil", nil, ""},
+		{"empty", []string{}, ""},
+		{"specified", []string{"stealer_log", "leak"}, `["stealer_log","leak"]`},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			server := newFakeFlare(test, func(writer http.ResponseWriter, _ *http.Request, raw string) {
+				var body struct {
+					Filters map[string]json.RawMessage `json:"filters"`
+				}
+				if err := json.Unmarshal([]byte(raw), &body); err != nil {
+					test.Error(err)
+				}
+				if actual := string(body.Filters["type"]); actual != fixture.want {
+					test.Errorf("filters.type=%q, want %q", actual, fixture.want)
+					writer.WriteHeader(http.StatusUnprocessableEntity)
+				}
+				_, _ = io.WriteString(writer, `{"items":[],"next":null}`)
+			})
+			client, err := NewFlareClient("fixture", "", 0, 10, WithBaseURL(server.URL))
+			if err != nil {
+				test.Fatal(err)
+			}
+			if _, err := client.FlareEventsGlobalSearchByDomain("example.test", test.TempDir(), "", "", "", nil, fixture.types, false, false); err != nil {
+				test.Fatal(err)
+			}
+		})
 	}
 }
 

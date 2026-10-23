@@ -1,7 +1,8 @@
 # Dependency security review — 2026-09-12
 
-Go is pinned to **1.26.6** in `go.mod` and the Docker builder. CI and release
-workflows read `go.mod`. Module upgrades were resolved with `GOTOOLCHAIN=local`
+Go is currently pinned to **1.27.3** in `go.mod` and the Docker builder. CI and
+release workflows read `go.mod`. At the time of this historical review, Go was
+1.26.6. The module upgrades below were resolved with `GOTOOLCHAIN=local`
 using Go 1.26.6, without a newer toolchain override.
 
 | Module | Previous | Updated | Minimum fixing all listed alerts |

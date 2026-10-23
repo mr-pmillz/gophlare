@@ -1,0 +1,15 @@
+package: fireworkv3
+generate:
+  models: true
+  client: true
+output: models.gen.go
+output-options:
+  skip-prune: true
+  nullable-type: true
+  name-normalizer: ToCamelCaseWithInitialisms
+  type-mapping:
+    string:
+      formats:
+        date-time:
+          type: flaretime.Time
+          import: github.com/mr-pmillz/gophlare/flareapi/flaretime

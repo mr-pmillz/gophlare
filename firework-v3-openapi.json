@@ -1,0 +1,626 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "description": "\nManage and access Firework resources.\n\nRequests are authenticated with API tokens, which are obtained using an API key:\n\n1. Generate an API key from the [Profile page](https://app.flare.io/#/profile).\n2. Send a `POST` request to `https://api.flare.io/tokens/generate` with the `Authorization: <api-key>` header to get an API token. API tokens expire after 1 hour.\n3. Call the API endpoints with the `Authorization: Bearer <api-token>` header.\n\nSee [Authentication](https://api.docs.flare.io/concepts/authentication) for details.\n",
+        "title": "Firework API",
+        "version": "v3"
+    },
+    "servers": [
+        {
+            "url": "https://api.flare.io/"
+        }
+    ],
+    "security": [
+        {
+            "BearerAuth": []
+        }
+    ],
+    "tags": [
+        {
+            "description": "Read and manage a tenant's identifiers",
+            "name": "identifiers"
+        }
+    ],
+    "paths": {
+        "/firework/v3/identifiers/": {
+            "get": {
+                "operationId": "get_identifiers_endpoint",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "source_group",
+                        "schema": {
+                            "default": "ALL",
+                            "enum": [
+                                "ALL",
+                                "USER",
+                                "COUNTED",
+                                "SYSTEM",
+                                "USER_AND_ATTRIBUTE",
+                                "USER_AND_SYSTEM",
+                                "AUTO_MONITOR"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "order_by",
+                        "schema": {
+                            "default": "id",
+                            "enum": [
+                                "id",
+                                "name",
+                                "type"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "explode": true,
+                        "in": "query",
+                        "name": "properties",
+                        "schema": {
+                            "items": {
+                                "enum": [
+                                    "recent",
+                                    "interest",
+                                    "resolves",
+                                    "reachable",
+                                    "unresolvable",
+                                    "unreachable"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "explode": true,
+                        "in": "query",
+                        "name": "types",
+                        "schema": {
+                            "items": {
+                                "enum": [
+                                    "domain",
+                                    "name",
+                                    "keyword",
+                                    "github_repository",
+                                    "username",
+                                    "email",
+                                    "search_query",
+                                    "bin",
+                                    "ip",
+                                    "secret",
+                                    "azure_tenant",
+                                    "identity",
+                                    "ransomleak",
+                                    "external_id",
+                                    "address_data",
+                                    "birth_year",
+                                    "role",
+                                    "phone_number"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "is_disabled",
+                        "schema": {
+                            "default": false,
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "exact_matches_only",
+                        "schema": {
+                            "default": false,
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "parent_group_id",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "size",
+                        "schema": {
+                            "default": 20,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "from",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedIdentifiers"
+                                }
+                            }
+                        },
+                        "description": "Success"
+                    }
+                },
+                "tags": [
+                    "identifiers"
+                ]
+            }
+        },
+        "/firework/v3/identifiers/{identifier_id}": {
+            "get": {
+                "operationId": "get_identifier_endpoint",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "identifier_id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/get_identifier_endpoint_200_response"
+                                }
+                            }
+                        },
+                        "description": "Success"
+                    }
+                },
+                "tags": [
+                    "identifiers"
+                ]
+            }
+        },
+        "/firework/v3/identifiers/{identifier_id}/feed/credentials": {
+            "get": {
+                "operationId": "get_leaked_credentials_feed_endpoint",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "identifier_id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "size",
+                        "schema": {
+                            "default": 20,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "from",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedCredentials"
+                                }
+                            }
+                        },
+                        "description": "Success"
+                    }
+                },
+                "tags": [
+                    "identifiers"
+                ]
+            }
+        }
+    },
+    "components": {
+        "responses": {
+            "ParseError": {
+                "content": {},
+                "description": "When a mask can't be parsed"
+            },
+            "MaskError": {
+                "content": {},
+                "description": "When any error occurs on mask"
+            },
+            "HTTPException": {
+                "content": {},
+                "description": ""
+            }
+        },
+        "schemas": {
+            "Identifier": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "tenant_id": {
+                        "type": "integer"
+                    },
+                    "feed_id": {
+                        "type": "integer"
+                    },
+                    "feed_owner_id": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "enum": [
+                            "domain",
+                            "name",
+                            "keyword",
+                            "github_repository",
+                            "username",
+                            "email",
+                            "search_query",
+                            "bin",
+                            "ip",
+                            "secret",
+                            "azure_tenant",
+                            "identity",
+                            "ransomleak",
+                            "external_id",
+                            "address_data",
+                            "birth_year",
+                            "role",
+                            "phone_number"
+                        ],
+                        "example": "domain",
+                        "type": "string"
+                    },
+                    "search_types": {
+                        "items": {
+                            "enum": [
+                                "attachment",
+                                "listing",
+                                "ransomleak",
+                                "forum_post",
+                                "forum_topic",
+                                "forum_profile",
+                                "blog_post",
+                                "seller",
+                                "paste",
+                                "leak",
+                                "chat_message",
+                                "domain",
+                                "bot",
+                                "stealer_log",
+                                "infected_devices",
+                                "driller",
+                                "driller_forum_topic",
+                                "driller_forum_post",
+                                "driller_profile",
+                                "cc",
+                                "ccbin",
+                                "financial_data",
+                                "leaked_data",
+                                "leaked_file",
+                                "document",
+                                "account",
+                                "actor",
+                                "forum_content",
+                                "blog_content",
+                                "profile",
+                                "leaked_credential",
+                                "valid_credential",
+                                "invalid_credential",
+                                "mitigated_credential",
+                                "illicit_networks",
+                                "open_web",
+                                "domains",
+                                "intelligence_object",
+                                "leaks",
+                                "social_media_account",
+                                "social_media",
+                                "source_code",
+                                "source_code_secrets_np",
+                                "source_code_secrets",
+                                "source_code_files",
+                                "secret",
+                                "docker",
+                                "stack_exchange",
+                                "google",
+                                "service",
+                                "driller_host",
+                                "buckets",
+                                "bucket",
+                                "bucket_object",
+                                "whois",
+                                "cookie",
+                                "pii",
+                                "experimental",
+                                "lookalike_discovery",
+                                "lookalike_title",
+                                "lookalike_favicon",
+                                "lookalike_screenshot",
+                                "lookalike_ip_address",
+                                "lookalike_dns",
+                                "lookalike_whois_rdap",
+                                "lookalike_ssl_certificate"
+                            ],
+                            "example": "attachment",
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "experimental_search_types": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "risks": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array"
+                    },
+                    "name": {
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "asset_uuid": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "properties": {},
+                        "type": "object"
+                    },
+                    "fetching_progress": {
+                        "type": "integer"
+                    },
+                    "count": {
+                        "type": "integer"
+                    },
+                    "urn": {
+                        "description": "The uniform resource name of the identifier.",
+                        "type": "string"
+                    },
+                    "is_disabled": {
+                        "type": "boolean"
+                    },
+                    "is_critical": {
+                        "type": "boolean"
+                    },
+                    "source": {
+                        "enum": [
+                            "USER",
+                            "SYSTEM_RELATION",
+                            "SELF_ONBOARDING",
+                            "ATTRIBUTE",
+                            "AUTO_MONITOR",
+                            "IDP_SYNC"
+                        ],
+                        "example": "USER",
+                        "type": "string"
+                    },
+                    "enrichments": {
+                        "properties": {},
+                        "type": "object"
+                    },
+                    "data_updated_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "event_count": {
+                        "type": "integer"
+                    },
+                    "first_rate_limited_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "rate_limits": {
+                        "$ref": "#/components/schemas/IdentifierRateLimits"
+                    }
+                },
+                "required": [
+                    "asset_uuid",
+                    "data",
+                    "data_updated_at",
+                    "name",
+                    "search_types",
+                    "source",
+                    "type"
+                ],
+                "type": "object"
+            },
+            "IdentifierRateLimits": {
+                "properties": {
+                    "first_rate_limited_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "last_rate_limited_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "activity_types": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/IdentifierRateLimit"
+                        },
+                        "type": "array"
+                    }
+                },
+                "type": "object"
+            },
+            "IdentifierRateLimit": {
+                "properties": {
+                    "first_rate_limited_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "last_rate_limited_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "activity_type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "activity_type",
+                    "first_rate_limited_at",
+                    "last_rate_limited_at"
+                ],
+                "type": "object"
+            },
+            "PaginatedIdentifiers": {
+                "properties": {
+                    "next": {
+                        "type": "string"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/Identifier"
+                        },
+                        "type": "array"
+                    }
+                },
+                "type": "object"
+            },
+            "PaginatedCredentials": {
+                "properties": {
+                    "next": {
+                        "type": "string"
+                    },
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/LeakActivityCredential"
+                        },
+                        "type": "array"
+                    }
+                },
+                "type": "object"
+            },
+            "LeakActivityCredential": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "source_id": {
+                        "type": "string"
+                    },
+                    "imported_at": {
+                        "type": "string"
+                    },
+                    "identity_name": {
+                        "type": "string"
+                    },
+                    "hash": {
+                        "type": "string"
+                    },
+                    "domain": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/source"
+                    },
+                    "remediated_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "ignored_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "known_password_id": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "identity_name",
+                    "imported_at",
+                    "source_id"
+                ],
+                "type": "object"
+            },
+            "source": {
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description_en": {
+                        "type": "string"
+                    },
+                    "description_fr": {
+                        "type": "string"
+                    },
+                    "breached_at": {
+                        "type": "string"
+                    },
+                    "leaked_at": {
+                        "type": "string"
+                    },
+                    "pii_tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "id"
+                ],
+                "type": "object"
+            },
+            "get_identifier_endpoint_200_response": {
+                "properties": {
+                    "identifier": {
+                        "$ref": "#/components/schemas/Identifier"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "x-original-swagger-version": "2.0"
+}
