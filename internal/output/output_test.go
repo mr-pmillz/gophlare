@@ -36,6 +36,115 @@ func TestWrite(t *testing.T) {
 	}
 }
 
+func TestWriteTableLayout(test *testing.T) {
+	test.Parallel()
+	for _, fixture := range []struct {
+		name    string
+		body    string
+		columns []string
+		want    string
+	}{
+		{
+			name: "empty",
+			body: `[]`,
+			want: "No results.\n",
+		},
+		{
+			name: "single row",
+			body: `[{"id":7,"name":"Production"}]`,
+			want: "┌────┬────────────┐\n" +
+				"│ ID │ NAME       │\n" +
+				"├────┼────────────┤\n" +
+				"│ 7  │ Production │\n" +
+				"└────┴────────────┘\n" +
+				"1 result(s)\n",
+		},
+		{
+			name: "last row determines widths",
+			body: `[{"id":7,"name":"Dev"},{"id":1001,"name":"Production"}]`,
+			want: "┌──────┬────────────┐\n" +
+				"│ ID   │ NAME       │\n" +
+				"├──────┼────────────┤\n" +
+				"│ 7    │ Dev        │\n" +
+				"│ 1001 │ Production │\n" +
+				"└──────┴────────────┘\n" +
+				"2 result(s)\n",
+		},
+		{
+			name:    "header determines width",
+			body:    `[{"identifier":"x"}]`,
+			columns: []string{"identifier"},
+			want: "┌────────────┐\n" +
+				"│ IDENTIFIER │\n" +
+				"├────────────┤\n" +
+				"│ x          │\n" +
+				"└────────────┘\n" +
+				"1 result(s)\n",
+		},
+		{
+			name: "unicode display width",
+			body: `[{"name":"東京 🔥"},{"name":"e\u0301"}]`,
+			want: "┌─────────┐\n" +
+				"│ NAME    │\n" +
+				"├─────────┤\n" +
+				"│ 東京 🔥 │\n" +
+				"│ e\u0301       │\n" +
+				"└─────────┘\n" +
+				"2 result(s)\n",
+		},
+		{
+			name: "no columns",
+			body: `[{}]`,
+			want: "┌┐\n│\n├┤\n│\n└┘\n1 result(s)\n",
+		},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			test.Parallel()
+			var buffer bytes.Buffer
+			if err := Write(&buffer, []byte(fixture.body), Options{Format: "table", Columns: fixture.columns}); err != nil {
+				test.Fatal(err)
+			}
+			if buffer.String() != fixture.want {
+				test.Fatalf("table layout changed:\ngot:\n%swant:\n%s", buffer.String(), fixture.want)
+			}
+		})
+	}
+}
+
+func TestWriteTableCellFormatting(test *testing.T) {
+	test.Parallel()
+	column := "\x1b" + strings.Repeat("x", 60) + "\n"
+	value := "\x1b" + strings.Repeat("y", 60) + "\n"
+	body, err := json.Marshal([]map[string]string{{column: value}})
+	if err != nil {
+		test.Fatal(err)
+	}
+	for _, fixture := range []struct {
+		name   string
+		wide   bool
+		header string
+		cell   string
+	}{
+		{"truncated", false, " " + strings.Repeat("X", 46) + "…", " " + strings.Repeat("y", 46) + "…"},
+		{"wide", true, " " + strings.Repeat("X", 60) + " ", " " + strings.Repeat("y", 60) + " "},
+	} {
+		test.Run(fixture.name, func(test *testing.T) {
+			test.Parallel()
+			var buffer bytes.Buffer
+			if err := Write(&buffer, body, Options{Format: "table", Columns: []string{column}, Wide: fixture.wide}); err != nil {
+				test.Fatal(err)
+			}
+			lines := strings.Split(buffer.String(), "\n")
+			if len(lines) != 7 {
+				test.Fatalf("unexpected number of table lines: %q", buffer.String())
+			}
+			if lines[1] != "│ "+fixture.header+" │" || lines[3] != "│ "+fixture.cell+" │" {
+				test.Fatalf("header or cell formatting changed: %q", buffer.String())
+			}
+		})
+	}
+}
+
 func TestWriteJSONAndTableSafety(t *testing.T) {
 	t.Parallel()
 	body := []byte(`{"items":[{"id":9007199254740993,"name":"\u001b[31mred\nname","metadata":{"severity":"high"}}],"next":"opaque"}`)
