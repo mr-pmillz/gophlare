@@ -65,45 +65,50 @@ func writeTable(writer io.Writer, value any, options Options) error {
 		columns = defaultColumns(rows)
 	}
 	widths := make([]int, len(columns))
-	cells := make([][]string, 0, len(rows)+1)
+	cells := make([][]string, len(rows))
 	headers := make([]string, len(columns))
 	for columnIndex, column := range columns {
 		headers[columnIndex] = strings.ToUpper(strings.NewReplacer("_", " ", ".", " ").Replace(column))
 	}
-	cells = append(cells, headers)
-	for _, row := range rows {
+	prepareTableRow(headers, widths, options.Wide)
+	for rowIndex, row := range rows {
 		rowCells := make([]string, len(columns))
 		for columnIndex, column := range columns {
 			rowCells[columnIndex] = display(lookup(row, column))
 		}
-		cells = append(cells, rowCells)
-	}
-	for rowIndex := range cells {
-		for columnIndex, cell := range cells[rowIndex] {
-			cell = sanitize(cell)
-			if !options.Wide {
-				cell = truncate(cell, 48)
-			}
-			cells[rowIndex][columnIndex] = cell
-			widths[columnIndex] = max(widths[columnIndex], uniseg.StringWidth(cell))
-		}
+		prepareTableRow(rowCells, widths, options.Wide)
+		cells[rowIndex] = rowCells
 	}
 	var result strings.Builder
 	border(&result, widths, "┌", "┬", "┐")
-	for rowIndex, row := range cells {
-		result.WriteString("│")
-		for columnIndex, cell := range row {
-			result.WriteString(" " + cell + strings.Repeat(" ", widths[columnIndex]-uniseg.StringWidth(cell)+1) + "│")
-		}
-		result.WriteByte('\n')
-		if rowIndex == 0 {
-			border(&result, widths, "├", "┼", "┤")
-		}
+	writeTableRow(&result, headers, widths)
+	border(&result, widths, "├", "┼", "┤")
+	for _, row := range cells {
+		writeTableRow(&result, row, widths)
 	}
 	border(&result, widths, "└", "┴", "┘")
 	fmt.Fprintf(&result, "%d result(s)\n", len(rows))
 	_, err := io.WriteString(writer, result.String())
 	return err
+}
+
+func prepareTableRow(cells []string, widths []int, wide bool) {
+	for columnIndex, cell := range cells {
+		cell = sanitize(cell)
+		if !wide {
+			cell = truncate(cell, 48)
+		}
+		cells[columnIndex] = cell
+		widths[columnIndex] = max(widths[columnIndex], uniseg.StringWidth(cell))
+	}
+}
+
+func writeTableRow(writer *strings.Builder, cells []string, widths []int) {
+	writer.WriteString("│")
+	for columnIndex, cell := range cells {
+		writer.WriteString(" " + cell + strings.Repeat(" ", widths[columnIndex]-uniseg.StringWidth(cell)+1) + "│")
+	}
+	writer.WriteByte('\n')
 }
 
 func records(value any) []map[string]any {
