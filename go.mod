@@ -10,9 +10,9 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20261012193826-401c25af6907
 	github.com/neo4j/neo4j-go-driver/v4 v4.4.8
 	github.com/oapi-codegen/nullable v1.2.0
-	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
-	github.com/oapi-codegen/runtime v1.7.0
-	github.com/projectdiscovery/gologger v1.1.73
+	github.com/oapi-codegen/oapi-codegen/v2 v2.8.1
+	github.com/oapi-codegen/runtime v1.8.0
+	github.com/projectdiscovery/gologger v1.1.74
 	github.com/rivo/uniseg v0.4.7
 	github.com/schollz/progressbar/v3 v3.19.1
 	github.com/spf13/cobra v1.10.2
@@ -50,7 +50,7 @@ require (
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/projectdiscovery/utils v0.11.1 // indirect
+	github.com/projectdiscovery/utils v0.11.9 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/richardlehane/mscfb v1.0.8 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
@@ -66,7 +66,7 @@ require (
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/xuri/efp v0.0.2 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
 	golang.org/x/mod v0.41.0 // indirect
