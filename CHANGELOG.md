@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented [here](https://github.com/mr-pmillz/gophlare/blob/main/CHANGELOG.md?ref_type=heads)
 
+## [1.7.0](https://github.com/mr-pmillz/gophlare/compare/v1.6.0...v1.7.0) - 2026-11-24
+
+### ✨ New features
+
+- Add include auth_domains and urls to ASTP request post body, bump go version and deps - ([24be13d](https://github.com/mr-pmillz/gophlare/commit/24be13d694efa082384f80c23308a7ab1cc6d127))
+
+### ⚙️  Miscellaneous
+
+- Merge pull request #38 from mr-pmillz/feat/astp-include
+
+add include auth_domains and urls to ASTP request post body, bump go … - ([37a6293](https://github.com/mr-pmillz/gophlare/commit/37a629302d57766127592feca6805e5dea5af1f0))
+- Make generate structs via newer version of oapi-codegen - ([171516d](https://github.com/mr-pmillz/gophlare/commit/171516da01db8c6d60dcc07922fe20669ffd0306))
+- Ratchet upgrade pinned hash versions for workflow actions - ([7d808af](https://github.com/mr-pmillz/gophlare/commit/7d808af947773f80fa77b6418b9383287871c05d))
+- Merge pull request #34 from mr-pmillz/main
+
+sync main back to develop - ([6ce80be](https://github.com/mr-pmillz/gophlare/commit/6ce80bee41b2f39ba98ca6a22f9d217d5d8cfed3))
+
 ## [1.6.0](https://github.com/mr-pmillz/gophlare/compare/v1.5.0...v1.6.0) - 2026-10-23
 
 ### ✨ New features
@@ -29,6 +46,10 @@ Validation: reproduce missing-file generation and coverage failures from a track
 
 ### ⚙️  Miscellaneous
 
+- Merge pull request #33 from mr-pmillz/release/v1.6.0
+
+Release/v1.6.0 - ([30ef385](https://github.com/mr-pmillz/gophlare/commit/30ef3853b4ae65b0388898742a62f266728cb3ac))
+- Chore: update changelog - ([0531618](https://github.com/mr-pmillz/gophlare/commit/0531618e56cd3fc43e0359469224c4b7a66856f4))
 - Chore: update changelog - ([efc6bf8](https://github.com/mr-pmillz/gophlare/commit/efc6bf8334abc3527e63f3b24637526083820ebe))
 - Merge pull request #32 from mr-pmillz/feat/full-api-support
 
