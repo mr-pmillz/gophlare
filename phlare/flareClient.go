@@ -929,6 +929,7 @@ func (fc *FlareClient) FlareSearchCredentialsByDomainASTP(domain string) (*Flare
 	if err := postBody.Query.FromDomainQuery(FlareDomainQuery{Fqdn: domain}); err != nil {
 		return nil, utils.LogError(err)
 	}
+	postBody.Include = append(postBody.Include, "auth_domains", "urls")
 
 	// progress reporter: emits a status line every 30s with the running count
 	// so users can see the SDK is still working on long-running searches.

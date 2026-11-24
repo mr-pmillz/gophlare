@@ -17,14 +17,16 @@ import (
 
 // FlareCredentialPairs ...
 type FlareCredentialPairs struct {
-	Email      string
-	Password   string
-	Hash       string
-	SourceID   string
-	Domain     string
-	ImportedAt phlare.FlareTime
-	LeakedAt   any
-	BreachedAt any
+	Email       string
+	Password    string
+	URLs        []string
+	AuthDomains []string
+	Hash        string
+	SourceID    string
+	Domain      string
+	ImportedAt  phlare.FlareTime
+	LeakedAt    any
+	BreachedAt  any
 }
 
 // FlareCreds ...
@@ -722,7 +724,7 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		flareData.Email = v.IdentityName
 		// check if the v.Hash value is a password or a hash...
 		// this is a funky work around because Flare currently does not differentiate between hashes, passwords, or encrypted values...
-		// this catches most likely non cleartext passwords. some URLs come through but who knows whatsagoinon'....
+		// this catches most likely non cleartext passwords.
 		// ToDo: Feature request differentiation to Flare peeps...
 		switch {
 		case utils.IsHash(v.Hash):
@@ -737,6 +739,10 @@ func setFlareCredentialPairsStructFromFlareData(data *phlare.FlareSearchCredenti
 		flareData.Domain = v.Domain
 		flareData.SourceID = v.SourceID
 		flareData.ImportedAt = v.ImportedAt
+		flareData.AuthDomains = make([]string, 0)
+		flareData.AuthDomains = v.AuthDomains
+		flareData.URLs = make([]string, 0)
+		flareData.URLs = v.Urls
 		if !v.Source.LeakedAt.IsZero() {
 			flareData.LeakedAt = v.Source.LeakedAt.Time
 		}
